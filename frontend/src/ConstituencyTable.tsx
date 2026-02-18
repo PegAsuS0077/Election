@@ -44,13 +44,11 @@ export default function ConstituencyTable() {
         prev.map((r) => {
           if (r.status === "DECLARED") return r;
 
-          // Randomly add votes to candidates
           const nextCandidates = (Array.isArray(r.candidates) ? r.candidates : []).map((c) => {
             const bump = Math.random() < 0.65 ? Math.floor(Math.random() * 220) : Math.floor(Math.random() * 40);
             return { ...c, votes: c.votes + bump };
           });
 
-          // Occasionally declare a seat
           const shouldDeclare = Math.random() < 0.08;
 
           return {
@@ -152,9 +150,7 @@ export default function ConstituencyTable() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((r) => (
-                  <Row key={r.code} r={r} onClick={() => setSelectedCode(r.code)} />
-                ))
+                filtered.map((r) => <Row key={r.code} r={r} onClick={() => setSelectedCode(r.code)} />)
               )}
             </tbody>
           </table>
@@ -186,66 +182,92 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
       : "bg-amber-50 text-amber-800 ring-amber-200";
 
   return (
-    <tr className="hover:bg-slate-50 cursor-pointer" onClick={onClick} title="Click to view details">
-      <td className="py-3 pr-4">
-        <div className="font-semibold text-slate-900">{r.name}</div>
-        <div className="text-xs text-slate-500">
-          <span className="font-semibold text-slate-700">{r.code}</span> · {r.district}
-        </div>
-      </td>
-
-      <td className="py-3 pr-4 text-sm text-slate-700">{r.province}</td>
-
-      <td className="py-3 pr-4">
-        {leader && leadParty ? (
-          <div className="flex items-center gap-2">
-            <span className={`h-3 w-3 rounded-full ${leadParty.color}`} />
-            <div>
-              <div className="text-sm font-semibold text-slate-900">{leader.name}</div>
+    <tr className="group">
+      <td colSpan={7} className="p-0">
+        <button
+          type="button"
+          onClick={onClick}
+          title="Click to view details"
+          className="
+            w-full text-left
+            transition
+            hover:bg-slate-50
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300
+            active:scale-[0.995]
+          "
+        >
+          <div className="grid grid-cols-7 items-center">
+            {/* Constituency */}
+            <div className="py-3 pr-4">
+              <div className="font-semibold text-slate-900">{r.name}</div>
               <div className="text-xs text-slate-500">
-                {leadParty.name} · <span className="font-semibold text-slate-700">{number(leader.votes)}</span>
+                <span className="font-semibold text-slate-700">{r.code}</span> · {r.district}
               </div>
             </div>
-          </div>
-        ) : (
-          <span className="text-sm text-slate-500">—</span>
-        )}
-      </td>
 
-      <td className="py-3 pr-4">
-        {runnerUp && runParty ? (
-          <div className="flex items-center gap-2">
-            <span className={`h-3 w-3 rounded-full ${runParty.color}`} />
-            <div>
-              <div className="text-sm font-semibold text-slate-900">{runnerUp.name}</div>
-              <div className="text-xs text-slate-500">
-                {runParty.name} · <span className="font-semibold text-slate-700">{number(runnerUp.votes)}</span>
+            {/* Province */}
+            <div className="py-3 pr-4 text-sm text-slate-700">{r.province}</div>
+
+            {/* Leading */}
+            <div className="py-3 pr-4">
+              {leader && leadParty ? (
+                <div className="flex items-center gap-2">
+                  <span className={`h-3 w-3 rounded-full ${leadParty.color}`} />
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{leader.name}</div>
+                    <div className="text-xs text-slate-500">
+                      {leadParty.name} ·{" "}
+                      <span className="font-semibold text-slate-700 tabular-nums">{number(leader.votes)}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-sm text-slate-500">—</span>
+              )}
+            </div>
+
+            {/* Runner-up */}
+            <div className="py-3 pr-4">
+              {runnerUp && runParty ? (
+                <div className="flex items-center gap-2">
+                  <span className={`h-3 w-3 rounded-full ${runParty.color}`} />
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{runnerUp.name}</div>
+                    <div className="text-xs text-slate-500">
+                      {runParty.name} ·{" "}
+                      <span className="font-semibold text-slate-700 tabular-nums">{number(runnerUp.votes)}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-sm text-slate-500">—</span>
+              )}
+            </div>
+
+            {/* Margin */}
+            <div className="py-3 pr-4 text-sm font-semibold text-slate-900 tabular-nums">{number(margin)}</div>
+
+            {/* Status */}
+            <div className="py-3 pr-4">
+              <div className="flex items-center gap-2">
+                {r.status === "COUNTING" ? (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200">
+                    <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+                    LIVE
+                  </span>
+                ) : null}
+
+                <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass}`}>
+                  {r.status === "DECLARED" ? "Declared" : "Counting"}
+                </span>
               </div>
             </div>
+
+            {/* Updated */}
+            <div className="py-3 text-xs text-slate-600">{formatTime(r.lastUpdated)}</div>
           </div>
-        ) : (
-          <span className="text-sm text-slate-500">—</span>
-        )}
+        </button>
       </td>
-
-      <td className="py-3 pr-4 text-sm font-semibold text-slate-900 tabular-nums">{number(margin)}</td>
-
-      <td className="py-3 pr-4">
-        <div className="flex items-center gap-2">
-          {r.status === "COUNTING" ? (
-            <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200">
-              <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
-              LIVE
-            </span>
-          ) : null}
-
-          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass}`}>
-            {r.status === "DECLARED" ? "Declared" : "Counting"}
-          </span>
-        </div>
-      </td>
-
-      <td className="py-3 text-xs text-slate-600">{formatTime(r.lastUpdated)}</td>
     </tr>
   );
 }
@@ -396,9 +418,7 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
             </div>
           </div>
 
-          <div className="text-xs text-slate-500">
-            Tip: bars animate when votes update. Buttons animate on click (active press).
-          </div>
+          <div className="text-xs text-slate-500">Tip: bars animate when votes update. Rows “press” on click.</div>
         </div>
       </div>
     </div>
