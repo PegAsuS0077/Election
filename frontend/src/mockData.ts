@@ -30,22 +30,20 @@ export type Province =
   | "Karnali"
   | "Sudurpashchim";
 
+export type Candidate = {
+  name: string;
+  party: PartyKey;
+  votes: number;
+};
+
 export type ConstituencyResult = {
   province: Province;
   district: string;
   code: string;
   name: string;
-
-  leadingParty: PartyKey;
-  leadingCandidate: string;
-  leadingVotes: number;
-
-  runnerUpParty: PartyKey;
-  runnerUpCandidate: string;
-  runnerUpVotes: number;
-
   status: "DECLARED" | "COUNTING";
   lastUpdated: string;
+  candidates: Candidate[];
 };
 
 export const provinces: Province[] = [
@@ -64,111 +62,111 @@ export const constituencyResults: ConstituencyResult[] = [
     district: "Kathmandu",
     code: "KTM-3",
     name: "Kathmandu–3",
-    leadingParty: "RSP",
-    leadingCandidate: "Suman Shrestha",
-    leadingVotes: 28754,
-    runnerUpParty: "NC",
-    runnerUpCandidate: "Prakash Koirala",
-    runnerUpVotes: 26111,
     status: "COUNTING",
     lastUpdated: new Date(Date.now() - 35 * 1000).toISOString(),
+    candidates: [
+      { name: "Suman Shrestha", party: "RSP", votes: 28754 },
+      { name: "Prakash Koirala", party: "NC", votes: 26111 },
+      { name: "Gita Lama", party: "CPN-UML", votes: 11420 },
+      { name: "Ramesh BK", party: "OTH", votes: 3200 },
+    ],
   },
   {
     province: "Bagmati",
     district: "Lalitpur",
     code: "LTP-1",
     name: "Lalitpur–1",
-    leadingParty: "NC",
-    leadingCandidate: "Bina Maharjan",
-    leadingVotes: 33440,
-    runnerUpParty: "CPN-UML",
-    runnerUpCandidate: "Keshav Adhikari",
-    runnerUpVotes: 31802,
     status: "DECLARED",
     lastUpdated: new Date(Date.now() - 90 * 1000).toISOString(),
+    candidates: [
+      { name: "Bina Maharjan", party: "NC", votes: 33440 },
+      { name: "Keshav Adhikari", party: "CPN-UML", votes: 31802 },
+      { name: "Saraswati Rai", party: "RSP", votes: 8200 },
+      { name: "Kiran Shahi", party: "OTH", votes: 1800 },
+    ],
   },
   {
     province: "Koshi",
     district: "Morang",
     code: "MRG-5",
     name: "Morang–5",
-    leadingParty: "CPN-UML",
-    leadingCandidate: "Ramesh Khadka",
-    leadingVotes: 41210,
-    runnerUpParty: "NC",
-    runnerUpCandidate: "Rita Dahal",
-    runnerUpVotes: 39955,
     status: "DECLARED",
     lastUpdated: new Date(Date.now() - 75 * 1000).toISOString(),
+    candidates: [
+      { name: "Ramesh Khadka", party: "CPN-UML", votes: 41210 },
+      { name: "Rita Dahal", party: "NC", votes: 39955 },
+      { name: "Anita Karki", party: "NCP", votes: 9200 },
+      { name: "Dinesh Yadav", party: "OTH", votes: 1600 },
+    ],
   },
   {
     province: "Madhesh",
     district: "Dhanusha",
     code: "DHS-2",
     name: "Dhanusha–2",
-    leadingParty: "NCP",
-    leadingCandidate: "Md. Aftab Ansari",
-    leadingVotes: 29888,
-    runnerUpParty: "CPN-UML",
-    runnerUpCandidate: "Bhola Yadav",
-    runnerUpVotes: 28741,
     status: "COUNTING",
     lastUpdated: new Date(Date.now() - 55 * 1000).toISOString(),
+    candidates: [
+      { name: "Md. Aftab Ansari", party: "NCP", votes: 29888 },
+      { name: "Bhola Yadav", party: "CPN-UML", votes: 28741 },
+      { name: "Nirmala Devi", party: "NC", votes: 13200 },
+      { name: "Raj Kishor", party: "OTH", votes: 2400 },
+    ],
   },
   {
     province: "Gandaki",
     district: "Kaski",
     code: "KSK-2",
     name: "Kaski–2",
-    leadingParty: "NC",
-    leadingCandidate: "Deepak Gurung",
-    leadingVotes: 26703,
-    runnerUpParty: "NCP",
-    runnerUpCandidate: "Saraswati Thapa",
-    runnerUpVotes: 25590,
     status: "DECLARED",
     lastUpdated: new Date(Date.now() - 120 * 1000).toISOString(),
+    candidates: [
+      { name: "Deepak Gurung", party: "NC", votes: 26703 },
+      { name: "Saraswati Thapa", party: "NCP", votes: 25590 },
+      { name: "Niraj Shrestha", party: "CPN-UML", votes: 10100 },
+      { name: "Tika Rana", party: "OTH", votes: 900 },
+    ],
   },
   {
     province: "Lumbini",
     district: "Rupandehi",
     code: "RPD-3",
     name: "Rupandehi–3",
-    leadingParty: "CPN-UML",
-    leadingCandidate: "Anil Bista",
-    leadingVotes: 36140,
-    runnerUpParty: "RSP",
-    runnerUpCandidate: "Niraj Poudel",
-    runnerUpVotes: 33901,
     status: "COUNTING",
     lastUpdated: new Date(Date.now() - 28 * 1000).toISOString(),
+    candidates: [
+      { name: "Anil Bista", party: "CPN-UML", votes: 36140 },
+      { name: "Niraj Poudel", party: "RSP", votes: 33901 },
+      { name: "Sita Kandel", party: "NC", votes: 15400 },
+      { name: "Hari Chaudhary", party: "OTH", votes: 2100 },
+    ],
   },
   {
     province: "Karnali",
     district: "Surkhet",
     code: "SRK-1",
     name: "Surkhet–1",
-    leadingParty: "OTH",
-    leadingCandidate: "Harka Bahadur BK",
-    leadingVotes: 18922,
-    runnerUpParty: "NC",
-    runnerUpCandidate: "Laxmi Rawal",
-    runnerUpVotes: 18110,
     status: "COUNTING",
     lastUpdated: new Date(Date.now() - 62 * 1000).toISOString(),
+    candidates: [
+      { name: "Harka Bahadur BK", party: "OTH", votes: 18922 },
+      { name: "Laxmi Rawal", party: "NC", votes: 18110 },
+      { name: "Dawa Tamang", party: "NCP", votes: 9200 },
+      { name: "Rajan Shahi", party: "CPN-UML", votes: 5400 },
+    ],
   },
   {
     province: "Sudurpashchim",
     district: "Kailali",
     code: "KLL-4",
     name: "Kailali–4",
-    leadingParty: "NCP",
-    leadingCandidate: "Manju Chaudhary",
-    leadingVotes: 24410,
-    runnerUpParty: "NC",
-    runnerUpCandidate: "Tek Bahadur Thapa",
-    runnerUpVotes: 23007,
     status: "DECLARED",
     lastUpdated: new Date(Date.now() - 140 * 1000).toISOString(),
+    candidates: [
+      { name: "Manju Chaudhary", party: "NCP", votes: 24410 },
+      { name: "Tek Bahadur Thapa", party: "NC", votes: 23007 },
+      { name: "Bishnu Bohara", party: "CPN-UML", votes: 9800 },
+      { name: "Gopal BK", party: "OTH", votes: 1200 },
+    ],
   },
 ];
