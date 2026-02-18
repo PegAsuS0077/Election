@@ -8,6 +8,15 @@ export const parties: Record<PartyKey, { name: string; color: string }> = {
   OTH: { name: "Others/Ind.", color: "bg-slate-500" },
 };
 
+// Mock “change vs previous election” (positive = gain, negative = loss)
+export const seatChange: Record<PartyKey, number> = {
+  NC: +3,
+  "CPN-UML": -2,
+  NCP: +1,
+  RSP: +6,
+  OTH: -1,
+};
+
 export const mockSnapshot = {
   totalSeats: 275,
   declaredSeats: 245,

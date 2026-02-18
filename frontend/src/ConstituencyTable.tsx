@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { constituencyResults, provinces, parties } from "./mockData";
+import { parties } from "./mockData";
 import type { Candidate, ConstituencyResult, Province } from "./mockData";
 
 function formatTime(iso: string) {
@@ -27,48 +27,51 @@ function topCandidates(cands: Candidate[] | undefined | null) {
   };
 }
 
-export default function ConstituencyTable() {
-  const [query, setQuery] = useState("");
-  const [province, setProvince] = useState<"All" | Province>("All");
+// Smooth number animation (count-up)
+function useCountUp(target: number, durationMs = 550) {
+  const [val, setVal] = useState(target);
 
-  // Live, mutable results (start from mock data)
-  const [results, setResults] = useState<ConstituencyResult[]>(constituencyResults);
-
-  // Selected row (by code) for the modal
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
-
-  // Simulate election-night live updates (multi-candidate)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setResults((prev) =>
-        prev.map((r) => {
-          if (r.status === "DECLARED") return r;
+    const start = performance.now();
+    const from = val;
+    const to = target;
+    if (from === to) return;
 
-          const nextCandidates = (Array.isArray(r.candidates) ? r.candidates : []).map((c) => {
-            const bump = Math.random() < 0.65 ? Math.floor(Math.random() * 220) : Math.floor(Math.random() * 40);
-            return { ...c, votes: c.votes + bump };
-          });
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      setVal(Math.round(from + (to - from) * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
 
-          const shouldDeclare = Math.random() < 0.08;
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
 
-          return {
-            ...r,
-            candidates: nextCandidates,
-            status: shouldDeclare ? "DECLARED" : "COUNTING",
-            lastUpdated: new Date().toISOString(),
-          };
-        })
-      );
-    }, 3000);
+  return val;
+}
 
-    return () => clearInterval(interval);
-  }, []);
+export default function ConstituencyTable({
+  results,
+  provinces,
+  selectedProvince,
+  onProvinceChange,
+}: {
+  results: ConstituencyResult[];
+  provinces: Province[];
+  selectedProvince: "All" | Province;
+  onProvinceChange: (p: "All" | Province) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
     return results
-      .filter((r) => (province === "All" ? true : r.province === province))
+      .filter((r) => (selectedProvince === "All" ? true : r.province === selectedProvince))
       .filter((r) => {
         if (!q) return true;
         const names = Array.isArray(r.candidates) ? r.candidates.map((c) => c.name).join(" ") : "";
@@ -85,9 +88,8 @@ export default function ConstituencyTable() {
         const mb = (tb.leader?.votes ?? 0) - (tb.runnerUp?.votes ?? 0);
         return mb - ma;
       });
-  }, [query, province, results]);
+  }, [query, selectedProvince, results]);
 
-  // Always show latest version of selected constituency
   const selected = useMemo(() => {
     if (!selectedCode) return null;
     return results.find((r) => r.code === selectedCode) ?? null;
@@ -95,14 +97,15 @@ export default function ConstituencyTable() {
 
   return (
     <>
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Constituency Results</h2>
-            <p className="text-sm text-slate-600 mt-1">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Constituency Results
+            </h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
               Click a row to view details · Search and filter by province
             </p>
-            <p className="text-xs text-slate-500 mt-1">Demo mode: vote totals update every 3 seconds.</p>
           </div>
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -110,13 +113,15 @@ export default function ConstituencyTable() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search…"
-              className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-200"
+              className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
+                         focus:ring-2 focus:ring-slate-200 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-slate-700"
             />
 
             <select
-              value={province}
-              onChange={(e) => setProvince(e.target.value as "All" | Province)}
-              className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-200"
+              value={selectedProvince}
+              onChange={(e) => onProvinceChange(e.target.value as "All" | Province)}
+              className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
+                         focus:ring-2 focus:ring-slate-200 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-slate-700"
             >
               <option value="All">All provinces</option>
               {provinces.map((p) => (
@@ -131,7 +136,7 @@ export default function ConstituencyTable() {
         <div className="mt-5 overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-0">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr className="text-left text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 <th className="py-3 pr-4">Constituency</th>
                 <th className="py-3 pr-4">Province</th>
                 <th className="py-3 pr-4">Leading</th>
@@ -142,22 +147,25 @@ export default function ConstituencyTable() {
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-sm text-slate-600">
+                  <td colSpan={7} className="py-8 text-sm text-slate-600 dark:text-slate-300">
                     No rows match your search.
                   </td>
                 </tr>
               ) : (
-                filtered.map((r) => <Row key={r.code} r={r} onClick={() => setSelectedCode(r.code)} />)
+                filtered.map((r) => (
+                  <Row key={r.code} r={r} onClick={() => setSelectedCode(r.code)} />
+                ))
               )}
             </tbody>
           </table>
         </div>
 
-        <div className="mt-3 text-xs text-slate-500">
-          Showing <span className="font-semibold text-slate-700">{filtered.length}</span> constituencies (mock subset)
+        <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{filtered.length}</span>{" "}
+          constituencies (mock subset)
         </div>
       </section>
 
@@ -178,11 +186,11 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
 
   const statusClass =
     r.status === "DECLARED"
-      ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
-      : "bg-amber-50 text-amber-800 ring-amber-200";
+      ? "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-900"
+      : "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-900";
 
   return (
-    <tr className="group">
+    <tr>
       <td colSpan={7} className="p-0">
         <button
           type="button"
@@ -191,67 +199,67 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
           className="
             w-full text-left
             transition
-            hover:bg-slate-50
-            focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300
+            hover:bg-slate-50 dark:hover:bg-slate-800/60
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 dark:focus-visible:ring-slate-700
             active:scale-[0.995]
           "
         >
           <div className="grid grid-cols-7 items-center">
-            {/* Constituency */}
             <div className="py-3 pr-4">
-              <div className="font-semibold text-slate-900">{r.name}</div>
-              <div className="text-xs text-slate-500">
-                <span className="font-semibold text-slate-700">{r.code}</span> · {r.district}
+              <div className="font-semibold text-slate-900 dark:text-slate-100">{r.name}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-semibold text-slate-700 dark:text-slate-200">{r.code}</span> · {r.district}
               </div>
             </div>
 
-            {/* Province */}
-            <div className="py-3 pr-4 text-sm text-slate-700">{r.province}</div>
+            <div className="py-3 pr-4 text-sm text-slate-700 dark:text-slate-200">{r.province}</div>
 
-            {/* Leading */}
             <div className="py-3 pr-4">
               {leader && leadParty ? (
                 <div className="flex items-center gap-2">
                   <span className={`h-3 w-3 rounded-full ${leadParty.color}`} />
                   <div>
-                    <div className="text-sm font-semibold text-slate-900">{leader.name}</div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{leader.name}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       {leadParty.name} ·{" "}
-                      <span className="font-semibold text-slate-700 tabular-nums">{number(leader.votes)}</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                        {number(leader.votes)}
+                      </span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <span className="text-sm text-slate-500">—</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">—</span>
               )}
             </div>
 
-            {/* Runner-up */}
             <div className="py-3 pr-4">
               {runnerUp && runParty ? (
                 <div className="flex items-center gap-2">
                   <span className={`h-3 w-3 rounded-full ${runParty.color}`} />
                   <div>
-                    <div className="text-sm font-semibold text-slate-900">{runnerUp.name}</div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{runnerUp.name}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       {runParty.name} ·{" "}
-                      <span className="font-semibold text-slate-700 tabular-nums">{number(runnerUp.votes)}</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                        {number(runnerUp.votes)}
+                      </span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <span className="text-sm text-slate-500">—</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">—</span>
               )}
             </div>
 
-            {/* Margin */}
-            <div className="py-3 pr-4 text-sm font-semibold text-slate-900 tabular-nums">{number(margin)}</div>
+            <div className="py-3 pr-4 text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+              {number(margin)}
+            </div>
 
-            {/* Status */}
             <div className="py-3 pr-4">
               <div className="flex items-center gap-2">
                 {r.status === "COUNTING" ? (
-                  <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-900">
                     <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
                     LIVE
                   </span>
@@ -263,8 +271,7 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
               </div>
             </div>
 
-            {/* Updated */}
-            <div className="py-3 text-xs text-slate-600">{formatTime(r.lastUpdated)}</div>
+            <div className="py-3 text-xs text-slate-600 dark:text-slate-300">{formatTime(r.lastUpdated)}</div>
           </div>
         </button>
       </td>
@@ -273,13 +280,26 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
 }
 
 function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => void }) {
+  // open animation
+  const [open, setOpen] = useState(false);
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const id = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  // close on ESC
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && requestClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const requestClose = () => {
+    setOpen(false);
+    setTimeout(onClose, 160);
+  };
 
   const t = topCandidates(r.candidates);
   const leader = t.leader;
@@ -294,23 +314,32 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
 
   const statusBadge =
     r.status === "DECLARED"
-      ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
-      : "bg-amber-50 text-amber-800 ring-amber-200";
+      ? "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-900"
+      : "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-900";
+
+  const backCls = open ? "opacity-100" : "opacity-0";
+  const panelCls = open ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-[0.98] translate-y-1";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} />
+      <div
+        className={`absolute inset-0 bg-slate-900/50 transition-opacity duration-150 ${backCls}`}
+        onClick={requestClose}
+      />
 
-      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl">
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-200">
+      <div
+        className={`relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl transition-all duration-150 ${panelCls}
+                    dark:bg-slate-900 dark:border-slate-800`}
+      >
+        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-200 dark:border-slate-800">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-slate-900 truncate">{r.name}</h3>
-              <span className="text-xs font-semibold text-slate-500">{r.code}</span>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate">{r.name}</h3>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{r.code}</span>
 
               <div className="ml-2 flex items-center gap-2">
                 {r.status === "COUNTING" ? (
-                  <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-900">
                     <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
                     LIVE
                   </span>
@@ -322,15 +351,16 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
               </div>
             </div>
 
-            <div className="mt-1 text-sm text-slate-600">
+            <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               {r.district} · {r.province} · Updated {formatTime(r.lastUpdated)}
             </div>
           </div>
 
           <button
-            onClick={onClose}
+            onClick={requestClose}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700
-                       transition-transform duration-150 hover:bg-slate-50 active:scale-95"
+                       transition-transform duration-150 hover:bg-slate-50 active:scale-95
+                       dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Close
           </button>
@@ -338,18 +368,18 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
 
         <div className="p-5 space-y-5">
           {r.status === "DECLARED" && leader && leadParty ? (
-            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4">
-              <div className="text-sm font-semibold text-emerald-900">Result declared</div>
-              <div className="mt-1 text-lg font-bold text-slate-900">Winner: {leader.name}</div>
-              <div className="mt-1 text-sm text-slate-700">
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 dark:bg-emerald-900/30 dark:border-emerald-900">
+              <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Result declared</div>
+              <div className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">Winner: {leader.name}</div>
+              <div className="mt-1 text-sm text-slate-700 dark:text-slate-200">
                 {leadParty.name} · {number(leader.votes)} votes · Margin{" "}
                 <span className="font-semibold">{number(margin)}</span>
               </div>
             </div>
           ) : r.status === "COUNTING" ? (
-            <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
-              <div className="text-sm font-semibold text-amber-900">Counting in progress</div>
-              <div className="mt-1 text-sm text-slate-700">
+            <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 dark:bg-amber-900/30 dark:border-amber-900">
+              <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">Counting in progress</div>
+              <div className="mt-1 text-sm text-slate-700 dark:text-slate-200">
                 This chart compares the current top two candidates.
               </div>
             </div>
@@ -360,10 +390,12 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
             <CandidateCard title="Runner-up" candidate={runnerUp} percent={runPct} />
           </div>
 
-          <div className="rounded-2xl border border-slate-200 p-4">
-            <div className="flex items-center justify-between text-sm text-slate-700">
+          <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+            <div className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-200">
               <span className="font-semibold">Top-two vote share</span>
-              <span className="text-slate-500 tabular-nums">Total shown: {number(topTwoTotal)}</span>
+              <span className="text-slate-500 dark:text-slate-400 tabular-nums">
+                Total shown: {number(topTwoTotal)}
+              </span>
             </div>
 
             <div className="mt-3 space-y-3">
@@ -381,15 +413,15 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
               />
             </div>
 
-            <div className="mt-3 text-xs text-slate-500">
-              Margin: <span className="font-semibold text-slate-700">{number(margin)}</span> votes
+            <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              Margin: <span className="font-semibold text-slate-700 dark:text-slate-200">{number(margin)}</span> votes
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 p-4">
+          <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-slate-900">All candidates</div>
-              <div className="text-xs text-slate-500">{t.sorted.length} total</div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">All candidates</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">{t.sorted.length} total</div>
             </div>
 
             <div className="mt-3 space-y-2">
@@ -399,26 +431,32 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
                 return (
                   <div
                     key={`${c.name}-${c.party}`}
-                    className={`flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 ${
-                      isTop2 ? "bg-slate-50" : "bg-white"
-                    }`}
+                    className={`flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2
+                      dark:border-slate-800
+                      ${isTop2 ? "bg-slate-50 dark:bg-slate-800/60" : "bg-white dark:bg-slate-900"}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`h-3 w-3 rounded-full ${party.color}`} />
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold text-slate-900 truncate">{c.name}</div>
-                        <div className="text-xs text-slate-500 truncate">{party.name}</div>
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                          {c.name}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{party.name}</div>
                       </div>
                     </div>
 
-                    <div className="text-sm font-bold text-slate-900 tabular-nums">{number(c.votes)}</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-slate-100 tabular-nums">
+                      {number(c.votes)}
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div className="text-xs text-slate-500">Tip: bars animate when votes update. Rows “press” on click.</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            Bars + modal animate; votes count up smoothly.
+          </div>
         </div>
       </div>
     </div>
@@ -435,22 +473,27 @@ function CandidateCard({
   percent: number;
 }) {
   const party = candidate ? parties[candidate.party] : null;
+  const animatedVotes = useCountUp(candidate?.votes ?? 0, 650);
 
   return (
-    <div className="rounded-2xl border border-slate-200 p-4">
+    <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-slate-600">{title}</div>
+        <div className="text-sm font-semibold text-slate-600 dark:text-slate-300">{title}</div>
         {party ? <span className={`h-3 w-3 rounded-full ${party.color}`} /> : null}
       </div>
 
-      <div className="mt-2 text-base font-bold text-slate-900">{candidate ? candidate.name : "—"}</div>
-      <div className="mt-1 text-sm text-slate-600">{party ? party.name : "—"}</div>
+      <div className="mt-2 text-base font-bold text-slate-900 dark:text-slate-100">
+        {candidate ? candidate.name : "—"}
+      </div>
+      <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{party ? party.name : "—"}</div>
 
       <div className="mt-2 flex items-baseline justify-between">
-        <div className="text-lg font-extrabold text-slate-900 tabular-nums transition-colors duration-300">
-          {candidate ? number(candidate.votes) : "—"}
+        <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 tabular-nums">
+          {candidate ? number(animatedVotes) : "—"}
         </div>
-        <div className="text-sm font-semibold text-slate-700 tabular-nums">{candidate ? `${percent}%` : ""}</div>
+        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+          {candidate ? `${percent}%` : ""}
+        </div>
       </div>
     </div>
   );
@@ -472,12 +515,15 @@ function BarRow({
   return (
     <div>
       <div className="flex items-center justify-between text-sm">
-        <div className="text-slate-700">{label}</div>
-        <div className="font-semibold text-slate-900 tabular-nums">{number(value)}</div>
+        <div className="text-slate-700 dark:text-slate-200">{label}</div>
+        <div className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{number(value)}</div>
       </div>
 
-      <div className="mt-2 h-3 w-full rounded-full bg-slate-200 overflow-hidden">
-        <div className={`h-3 ${barClass} transition-[width] duration-700 ease-out`} style={{ width: `${width}%` }} />
+      <div className="mt-2 h-3 w-full rounded-full bg-slate-200 overflow-hidden dark:bg-slate-700">
+        <div
+          className={`h-3 ${barClass} transition-[width] duration-700 ease-out`}
+          style={{ width: `${width}%` }}
+        />
       </div>
     </div>
   );

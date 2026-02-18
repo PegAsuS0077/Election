@@ -23,28 +23,26 @@ export default function SeatShareBars() {
     .sort((a, b) => b.total - a.total);
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+    <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             Seat Share (Out of {totalSeats})
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Majority needed: <span className="font-semibold text-slate-900">{majority}</span>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            Majority needed:{" "}
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
+              {majority}
+            </span>
           </p>
         </div>
 
-        <div className="text-xs text-slate-500">
-          FPTP + PR combined
-        </div>
+        <div className="text-xs text-slate-500 dark:text-slate-400">FPTP + PR</div>
       </div>
 
-      {/* Majority marker legend */}
-      <div className="mt-4 flex items-center gap-2 text-xs text-slate-600">
-        <span className="inline-block h-3 w-[2px] bg-slate-900/60" />
-        <span>
-          Majority line ({majority})
-        </span>
+      <div className="mt-4 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+        <span className="inline-block h-3 w-[2px] bg-slate-900/60 dark:bg-slate-100/60" />
+        <span>Majority line ({majority})</span>
       </div>
 
       <div className="mt-4 space-y-5">
@@ -53,34 +51,31 @@ export default function SeatShareBars() {
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <span className={`h-3 w-3 rounded-full ${r.color}`} />
-                <span className="font-medium text-slate-900">{r.name}</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  {r.name}
+                </span>
               </div>
-
-              <span className="font-semibold text-slate-700 tabular-nums">
+              <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-200">
                 {r.total}
               </span>
             </div>
 
-            {/* Track */}
-            <div className="mt-2 relative h-3 w-full rounded-full bg-slate-200 overflow-hidden">
-              {/* Majority line */}
+            <div className="mt-2 relative h-3 w-full rounded-full bg-slate-200 overflow-hidden dark:bg-slate-700">
               <div
-                className="absolute top-0 h-full w-[2px] bg-slate-900/60"
+                className="absolute top-0 h-full w-[2px] bg-slate-900/60 dark:bg-slate-100/60"
                 style={{ left: `${majorityPct}%` }}
                 aria-hidden="true"
               />
 
-              {/* Fill */}
               <div
                 className={`h-3 ${r.color} transition-[width] duration-700 ease-out`}
                 style={{ width: `${r.percent}%` }}
               />
             </div>
 
-            {/* Majority label under bar (optional, subtle) */}
             <div className="mt-1 relative h-4">
               <div
-                className="absolute -translate-x-1/2 text-[10px] text-slate-500"
+                className="absolute -translate-x-1/2 text-[10px] text-slate-500 dark:text-slate-400"
                 style={{ left: `${majorityPct}%` }}
               >
                 {majority}
