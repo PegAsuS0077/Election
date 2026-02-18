@@ -138,11 +138,7 @@ export default function ConstituencyTable() {
                 </tr>
               ) : (
                 filtered.map((r) => (
-                  <Row
-                    key={r.code}
-                    r={r}
-                    onClick={() => setSelectedCode(r.code)}
-                  />
+                  <Row key={r.code} r={r} onClick={() => setSelectedCode(r.code)} />
                 ))
               )}
             </tbody>
@@ -154,12 +150,7 @@ export default function ConstituencyTable() {
         </div>
       </section>
 
-      {selected ? (
-        <DetailsModal
-          r={selected}
-          onClose={() => setSelectedCode(null)}
-        />
-      ) : null}
+      {selected ? <DetailsModal r={selected} onClose={() => setSelectedCode(null)} /> : null}
     </>
   );
 }
@@ -175,11 +166,7 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
       : "bg-amber-50 text-amber-800 ring-amber-200";
 
   return (
-    <tr
-      className="hover:bg-slate-50 cursor-pointer"
-      onClick={onClick}
-      title="Click to view details"
-    >
+    <tr className="hover:bg-slate-50 cursor-pointer" onClick={onClick} title="Click to view details">
       <td className="py-3 pr-4">
         <div className="font-semibold text-slate-900">{r.name}</div>
         <div className="text-xs text-slate-500">
@@ -213,14 +200,21 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
         </div>
       </td>
 
-      <td className="py-3 pr-4 text-sm font-semibold text-slate-900 tabular-nums">
-        {number(margin)}
-      </td>
+      <td className="py-3 pr-4 text-sm font-semibold text-slate-900 tabular-nums">{number(margin)}</td>
 
       <td className="py-3 pr-4">
-        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass}`}>
-          {r.status === "DECLARED" ? "Declared" : "Counting"}
-        </span>
+        <div className="flex items-center gap-2">
+          {r.status === "COUNTING" ? (
+            <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200">
+              <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+              LIVE
+            </span>
+          ) : null}
+
+          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass}`}>
+            {r.status === "DECLARED" ? "Declared" : "Counting"}
+          </span>
+        </div>
       </td>
 
       <td className="py-3 text-xs text-slate-600">{formatTime(r.lastUpdated)}</td>
@@ -253,17 +247,9 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
       : "bg-amber-50 text-amber-800 ring-amber-200";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Constituency details"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-slate-900/50"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl">
@@ -272,10 +258,21 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-bold text-slate-900 truncate">{r.name}</h3>
               <span className="text-xs font-semibold text-slate-500">{r.code}</span>
-              <span className={`ml-2 inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusBadge}`}>
-                {r.status === "DECLARED" ? "Declared" : "Counting"}
-              </span>
+
+              <div className="ml-2 flex items-center gap-2">
+                {r.status === "COUNTING" ? (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200">
+                    <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+                    LIVE
+                  </span>
+                ) : null}
+
+                <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusBadge}`}>
+                  {r.status === "DECLARED" ? "Declared" : "Counting"}
+                </span>
+              </div>
             </div>
+
             <div className="mt-1 text-sm text-slate-600">
               {r.district} · {r.province} · Updated {formatTime(r.lastUpdated)}
             </div>
@@ -294,9 +291,7 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
           {r.status === "DECLARED" ? (
             <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4">
               <div className="text-sm font-semibold text-emerald-900">Result declared</div>
-              <div className="mt-1 text-lg font-bold text-slate-900">
-                Winner: {r.leadingCandidate}
-              </div>
+              <div className="mt-1 text-lg font-bold text-slate-900">Winner: {r.leadingCandidate}</div>
               <div className="mt-1 text-sm text-slate-700">
                 {lead.name} · {number(r.leadingVotes)} votes · Margin{" "}
                 <span className="font-semibold">{number(margin)}</span>
@@ -335,9 +330,7 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
           <div className="rounded-2xl border border-slate-200 p-4">
             <div className="flex items-center justify-between text-sm text-slate-700">
               <span className="font-semibold">Top-two vote share</span>
-              <span className="text-slate-500 tabular-nums">
-                Total shown: {number(totalTwo)}
-              </span>
+              <span className="text-slate-500 tabular-nums">Total shown: {number(totalTwo)}</span>
             </div>
 
             <div className="mt-3 space-y-3">
@@ -386,13 +379,15 @@ function CandidateCard({
         <div className="text-sm font-semibold text-slate-600">{title}</div>
         <span className={`h-3 w-3 rounded-full ${dotColor}`} />
       </div>
+
       <div className="mt-2 text-base font-bold text-slate-900">{candidate}</div>
       <div className="mt-1 text-sm text-slate-600">{partyName}</div>
+
       <div className="mt-2 flex items-baseline justify-between">
-      <div className="text-lg font-extrabold text-slate-900 tabular-nums transition-colors duration-300">
-        {number(votes)}
-      </div>
-      <div className="text-sm font-semibold text-slate-700 tabular-nums">{percent}%</div>
+        <div className="text-lg font-extrabold text-slate-900 tabular-nums transition-colors duration-300">
+          {number(votes)}
+        </div>
+        <div className="text-sm font-semibold text-slate-700 tabular-nums">{percent}%</div>
       </div>
     </div>
   );
@@ -417,12 +412,12 @@ function BarRow({
         <div className="text-slate-700">{label}</div>
         <div className="font-semibold text-slate-900 tabular-nums">{number(value)}</div>
       </div>
+
       <div className="mt-2 h-3 w-full rounded-full bg-slate-200 overflow-hidden">
         <div
-            className={`h-3 ${barClass} transition-[width] duration-700 ease-out`}
-            style={{ width: `${width}%` }}
+          className={`h-3 ${barClass} transition-[width] duration-700 ease-out`}
+          style={{ width: `${width}%` }}
         />
-
       </div>
     </div>
   );
