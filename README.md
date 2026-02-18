@@ -1,35 +1,50 @@
 # Nepal Election Live Vote Counter
 
-A real-time vote counting application for monitoring and tracking election results in Nepal.
+A real-time vote counting application for monitoring and tracking election results for Nepal's House of Representatives general election on March 5, 2026.
 
 ## Description
 
-This application provides a comprehensive platform for live vote counting during Nepal's elections. It enables real-time tracking of voting data, result updates, and comprehensive reporting across different constituencies and candidates.
+This full-stack web application provides live tracking of Nepal's parliamentary election results. It displays real-time vote counts and seat tallies across 275 parliamentary seats (165 FPTP constituency seats + 110 PR seats) with automatic updates every 30 seconds.
 
 ## Features
 
-- **Live Vote Counting**: Real-time vote count updates as results come in
-- **Multi-Constituency Support**: Track votes across different constituencies
-- **Candidate Tracking**: Monitor individual candidate performance
-- **Real-Time Dashboard**: Interactive dashboard displaying current vote totals
-- **Data Validation**: Built-in checks to ensure data accuracy
-- **Vote Statistics**: Detailed analytics and voting statistics
-- **User Authentication**: Secure login and access control
-- **Result Reports**: Generate comprehensive election result reports
+- **Live Leaderboard**: Real-time seat count per party (FPTP + PR combined)
+- **Progress Tracking**: Visual progress bar showing declared vs. total seats (275)
+- **Constituency Results Table**: Searchable and filterable results by province
+- **Party Color Coding**: Distinct colors for major parties (NC, CPN-UML, NCP, RSP)
+- **Last Updated Timestamp**: Shows freshness of data
+- **Mobile Responsive Design**: Fully optimized for desktop and mobile
+- **WebSocket Updates**: Automatic frontend updates without page refresh
+- **Data Snapshots**: SQLite database stores results every 30 seconds
+
+## Major Parties
+
+- Nepali Congress (NC)
+- CPN-UML
+- Nepali Communist Party (NCP)
+- Rastriya Swatantra Party (RSP)
+
+## Tech Stack
+
+- **Frontend**: React + TypeScript, Tailwind CSS, Vite
+- **Backend**: Python + FastAPI
+- **Database**: SQLite
+- **Real-time**: WebSockets
+- **Scraping**: Playwright (for result.election.gov.np)
 
 ## Installation
 
 ### Prerequisites
 - Node.js (v14 or higher)
 - npm or yarn
-- Database (MongoDB/PostgreSQL)
+- Python 3.8+
+- pip
 
-### Setup
+### Frontend Setup
 
-1. Clone the repository:
+1. Navigate to frontend directory:
 ```bash
-git clone <repository-url>
-cd Nepal-Election-Vote-Counter
+cd frontend
 ```
 
 2. Install dependencies:
@@ -37,37 +52,74 @@ cd Nepal-Election-Vote-Counter
 npm install
 ```
 
-3. Configure environment variables:
+3. Start development server:
 ```bash
-cp .env.example .env
-# Edit .env file with your configuration
+npm run dev
 ```
 
-4. Start the application:
+### Backend Setup
+
+1. Navigate to backend directory:
 ```bash
-npm start
+cd backend
 ```
 
-## Usage
+2. Create virtual environment:
+```bash
+python -m venv venv
+source venv/Scripts/activate  # Windows
+```
 
-1. Log in with your credentials
-2. Navigate to the vote counting dashboard
-3. Enter vote counts for each candidate per constituency
-4. View real-time results and statistics
-5. Generate reports as needed
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Run FastAPI server:
+```bash
+uvicorn main:app --reload
+```
 
 ## Project Structure
 
 ```
-├── src/
-│   ├── components/       # UI components
-│   ├── pages/           # Page templates
-│   ├── services/        # API and business logic
-│   └── utils/           # Utility functions
-├── public/              # Static files
-├── config/              # Configuration files
-└── tests/               # Test files
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── SummaryCards.tsx
+│   │   │   ├── ProgressBar.tsx
+│   │   │   ├── SeatShareBars.tsx
+│   │   │   └── ConstituencyTable.tsx
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   └── mockData.ts
+│   ├── index.html
+│   ├── tailwind.config.js
+│   └── vite.config.ts
+├── backend/
+│   ├── scraper.py
+│   ├── main.py
+│   └── database.py
+└── README.md
 ```
+
+## Usage
+
+1. Start the backend server
+2. Start the frontend development server
+3. Open http://localhost:5173 in your browser
+4. Results update automatically every 30 seconds via WebSocket
+
+## Data Source
+
+Official results: https://result.election.gov.np
+
+## Build Order
+
+1. ✅ React frontend UI with mock data
+2. ⏳ FastAPI backend with SQLite database
+3. ⏳ Playwright scraper
+4. ⏳ WebSocket integration
 
 ## Contributing
 
@@ -89,4 +141,4 @@ For issues, questions, or suggestions, please create an issue on the GitHub repo
 
 ## Disclaimer
 
-This application is designed for legitimate election monitoring purposes only. Unauthorized access or manipulation of election data is illegal.
+This application is designed for legitimate election monitoring and educational purposes only. It is not affiliated with Nepal's Election Commission. Unauthorized access or manipulation of official election data is illegal.
