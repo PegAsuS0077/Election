@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git -C \"d:/Teaching_Support/New_Project\" log --oneline -10)"
+    ]
+  }
+}
