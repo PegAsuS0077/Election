@@ -13,6 +13,10 @@ import SummaryCards from "./SummaryCards";
 import SeatShareBars from "./SeatShareBars";
 import ProvinceSummary from "./ProvinceSummary";
 import ConstituencyTable from "./ConstituencyTable";
+import {
+  SummaryCardsSkeleton,
+  SeatShareBarsSkeleton,
+} from "./Skeleton";
 
 const THEME_KEY = "theme";
 
@@ -48,6 +52,13 @@ export default function App() {
     document.documentElement.classList.toggle("dark", dark);
     localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
   }, [dark]);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   /* ---------------- Live Constituency Data ---------------- */
 
@@ -142,9 +153,9 @@ export default function App() {
 
       {/* Main */}
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-        <SummaryCards />
+        {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards />}
 
-        <SeatShareBars />
+        {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars />}
 
         <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -168,6 +179,7 @@ export default function App() {
           provinces={provinces}
           selectedProvince={selectedProvince}
           onProvinceChange={setSelectedProvince}
+          isLoading={isLoading}
         />
       </main>
     </div>

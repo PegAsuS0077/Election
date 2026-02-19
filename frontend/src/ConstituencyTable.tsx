@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { parties } from "./mockData";
 import type { Candidate, ConstituencyResult, Province } from "./mockData";
+import { TableRowsSkeleton } from "./Skeleton";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString();
@@ -58,11 +59,13 @@ export default function ConstituencyTable({
   provinces,
   selectedProvince,
   onProvinceChange,
+  isLoading,
 }: {
   results: ConstituencyResult[];
   provinces: Province[];
   selectedProvince: "All" | Province;
   onProvinceChange: (p: "All" | Province) => void;
+  isLoading?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -148,7 +151,9 @@ export default function ConstituencyTable({
             </thead>
 
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <TableRowsSkeleton />
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-sm text-slate-600 dark:text-slate-300">
                     No rows match your search.
