@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   constituencyResults,
   mockSnapshot,
@@ -13,6 +13,8 @@ import SummaryCards from "./SummaryCards";
 import SeatShareBars from "./SeatShareBars";
 import ProvinceSummary from "./ProvinceSummary";
 import ConstituencyTable from "./ConstituencyTable";
+
+const THEME_KEY = "theme";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString();
@@ -35,23 +37,22 @@ function topPartyKey() {
 }
 
 export default function App() {
-  // Dark mode
+  /* ---------------- Dark Mode ---------------- */
+
   const [dark, setDark] = useState<boolean>(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark") return true;
-    if (saved === "light") return false;
-    return false;
+    return localStorage.getItem(THEME_KEY) === "dark";
   });
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (dark) root.classList.add("dark");
-    else root.classList.remove("dark");
-    localStorage.setItem("theme", dark ? "dark" : "light");
+    // This guarantees correct add/remove behavior
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
   }, [dark]);
 
-  // Single source of truth for constituency results (live simulation)
-  const [results, setResults] = useState<ConstituencyResult[]>(constituencyResults);
+  /* ---------------- Live Constituency Data ---------------- */
+
+  const [results, setResults] =
+    useState<ConstituencyResult[]>(constituencyResults);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -59,8 +60,12 @@ export default function App() {
         prev.map((r) => {
           if (r.status === "DECLARED") return r;
 
-          const nextCandidates = (Array.isArray(r.candidates) ? r.candidates : []).map((c) => {
-            const bump = Math.random() < 0.65 ? Math.floor(Math.random() * 220) : Math.floor(Math.random() * 40);
+          const nextCandidates = r.candidates.map((c) => {
+            const bump =
+              Math.random() < 0.65
+                ? Math.floor(Math.random() * 220)
+                : Math.floor(Math.random() * 40);
+
             return { ...c, votes: c.votes + bump };
           });
 
@@ -79,16 +84,23 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Province filter shared across ProvinceSummary + Table
-  const [selectedProvince, setSelectedProvince] = useState<"All" | Province>("All");
+  /* ---------------- Province Filter ---------------- */
 
-  // Projected banner
+  const [selectedProvince, setSelectedProvince] =
+    useState<"All" | Province>("All");
+
+  /* ---------------- Majority Banner ---------------- */
+
   const majority = seatsToMajority(mockSnapshot.totalSeats);
   const lead = topPartyKey();
-  const projected = lead.total >= majority ? lead : null;
+  const projected =
+    lead.total >= majority ? lead : null;
+
+  /* ---------------- Render ---------------- */
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
+      {/* Header */}
       <header className="bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-start justify-between gap-4">
           <div>
@@ -103,6 +115,7 @@ export default function App() {
             </p>
           </div>
 
+          {/* Dark Mode Toggle */}
           <button
             type="button"
             onClick={() => setDark((d) => !d)}
@@ -115,7 +128,8 @@ export default function App() {
         </div>
       </header>
 
-      {projected ? (
+      {/* Projected Government Banner */}
+      {projected && (
         <div className="border-b border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800">
           <div className="max-w-6xl mx-auto px-6 py-3 text-sm text-slate-700 dark:text-slate-200">
             <span className="font-bold text-slate-900 dark:text-slate-100">
@@ -124,8 +138,9 @@ export default function App() {
             is projected to form government (≥ {majority} seats).
           </div>
         </div>
-      ) : null}
+      )}
 
+      {/* Main */}
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
         <SummaryCards />
 
