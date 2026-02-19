@@ -61,3 +61,28 @@ The 20-feature roadmap ([docs/plans/2026-02-19-frontend-roadmap.md](docs/plans/2
 
 - Current branch: `Task_1`
 - Detailed implementation plans live in [docs/plans/](docs/plans/) — read these before implementing new features to understand intended architecture
+
+## Superpowers Mode Policy
+
+During PASS 1 (Tasks 1–10):
+- Execute tasks manually.
+- No execute-plan orchestration.
+- No automatic reviewer dispatch.
+- Prioritize quota efficiency.
+
+During PASS 2:
+- execute-plan allowed for structural changes only.
+
+
+## Usage Constraints (Important)
+
+When implementing roadmap tasks:
+
+- Modify ONLY the specified file unless explicitly instructed.
+- Do NOT verify or re-read unrelated files.
+- Do NOT refactor outside the current task scope.
+- Return ONLY changed sections (diff-style when possible).
+- Assume previous tasks compile successfully unless told otherwise.
+- Treat each roadmap task as isolated.
+
+Priority: Surgical edits over broad verification.

@@ -1,6 +1,18 @@
 # Frontend Roadmap — 20-Feature Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude (Execution Mode Rules):**
+>
+> PASS 1 (Tasks 1–10):
+> - DO NOT use superpowers:executing-plans.
+> - DO NOT dispatch spec-compliance or reviewer agents.
+> - Implement tasks surgically, modifying only specified files.
+> - Treat each task as isolated.
+>
+> PASS 2 (Tasks 11–20):
+> - superpowers:executing-plans may be used for architectural refactors,
+>   API integration, WebSocket wiring, and test scaffolding.
+> - Spec-compliance reviewer allowed only for major architecture changes.
+
 
 **Goal:** Progressively enhance the Nepal election dashboard from a mock-data prototype into a production-ready, accessible, real-time React application across 20 features.
 
