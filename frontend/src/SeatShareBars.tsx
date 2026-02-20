@@ -24,7 +24,10 @@ export default function SeatShareBars() {
     .sort((a, b) => b.total - a.total);
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+    <section
+      aria-label="Seat share by party"
+      className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -75,6 +78,11 @@ export default function SeatShareBars() {
               />
 
               <div
+                role="progressbar"
+                aria-label={`${r.name}: ${r.total} seats`}
+                aria-valuenow={r.total}
+                aria-valuemin={0}
+                aria-valuemax={mockSnapshot.totalSeats}
                 className={`h-3 ${r.color} transition-[width] duration-700 ease-out`}
                 style={{ width: `${r.percent}%` }}
               />

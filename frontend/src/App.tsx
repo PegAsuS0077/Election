@@ -121,6 +121,13 @@ export default function App() {
             <ConstituencyTable results={results} provinces={provinces} selectedProvince={selectedProvince} onProvinceChange={setSelectedProvince} isLoading={isLoading} />
           </>
         )}
+        <div
+          aria-live="polite"
+          aria-atomic="false"
+          className="sr-only"
+        >
+          {results.filter((r) => r.status === "COUNTING").length} constituencies still counting.
+        </div>
       </main>
     </div>
   );

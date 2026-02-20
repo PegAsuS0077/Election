@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { FocusTrap } from "focus-trap-react";
 import { parties } from "./mockData";
 import type { Candidate, ConstituencyResult, Province } from "./mockData";
 import { TableRowsSkeleton } from "./Skeleton";
@@ -156,6 +157,7 @@ export default function ConstituencyTable({
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <input
+              aria-label="Search constituencies"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search…"
@@ -164,6 +166,7 @@ export default function ConstituencyTable({
             />
 
             <select
+              aria-label="Filter by province"
               value={selectedProvince}
               onChange={(e) => onProvinceChange(e.target.value as "All" | Province)}
               className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
@@ -178,6 +181,7 @@ export default function ConstituencyTable({
             </select>
 
             <select
+              aria-label="Sort constituencies"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
               className="w-full sm:w-44 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
@@ -415,7 +419,8 @@ const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: Constituenc
   const panelCls = open ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-[0.98] translate-y-1";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: true, onDeactivate: requestClose }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div
         className={`absolute inset-0 bg-slate-900/50 transition-opacity duration-150 ${backCls}`}
         onClick={requestClose}
@@ -429,7 +434,7 @@ const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: Constituenc
         <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-200 dark:border-slate-800">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate">{r.name}</h3>
+              <h3 id="modal-title" className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate">{r.name}</h3>
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{r.code}</span>
 
               <div className="ml-2 flex items-center gap-2">
@@ -576,6 +581,7 @@ const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: Constituenc
         </div>
       </div>
     </div>
+    </FocusTrap>
   );
 });
 
