@@ -1,4 +1,5 @@
 import { mockSnapshot, parties, seatChange } from "./mockData";
+import { SummaryCardsSkeleton } from "./Skeleton";
 
 function seatsToMajority(totalSeats: number) {
   return Math.floor(totalSeats / 2) + 1;
@@ -24,7 +25,9 @@ function ChangePill({ delta }: { delta: number }) {
   );
 }
 
-export default function SummaryCards() {
+export default function SummaryCards({ isLoading }: { isLoading?: boolean }) {
+  if (isLoading) return <SummaryCardsSkeleton />;
+
   const majority = seatsToMajority(mockSnapshot.totalSeats);
 
   const totals = Object.entries(mockSnapshot.seatTally).map(([key, v]) => ({

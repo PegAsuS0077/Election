@@ -1,4 +1,5 @@
 import { mockSnapshot, parties } from "./mockData";
+import Tooltip from "./Tooltip";
 
 function seatsToMajority(totalSeats: number) {
   return Math.floor(totalSeats / 2) + 1;
@@ -41,8 +42,12 @@ export default function SeatShareBars() {
       </div>
 
       <div className="mt-4 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-        <span className="inline-block h-3 w-[2px] bg-slate-900/60 dark:bg-slate-100/60" />
-        <span>Majority line ({majority})</span>
+        <Tooltip text="A party needs this many seats to form a majority government.">
+          <span className="inline-flex items-center gap-2 cursor-default">
+            <span className="inline-block h-3 w-[2px] bg-slate-900/60 dark:bg-slate-100/60" />
+            <span>Majority line ({majority})</span>
+          </span>
+        </Tooltip>
       </div>
 
       <div className="mt-4 space-y-5">
@@ -55,9 +60,11 @@ export default function SeatShareBars() {
                   {r.name}
                 </span>
               </div>
-              <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-200">
-                {r.total}
-              </span>
+              <Tooltip text={`${r.name}: ${r.total} seats (${r.percent.toFixed(1)}%)`}>
+                <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-200 cursor-default">
+                  {r.total}
+                </span>
+              </Tooltip>
             </div>
 
             <div className="mt-2 relative h-3 w-full rounded-full bg-slate-200 overflow-hidden dark:bg-slate-700">

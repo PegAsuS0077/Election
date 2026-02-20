@@ -13,6 +13,7 @@ import SummaryCards from "./SummaryCards";
 import SeatShareBars from "./SeatShareBars";
 import ProvinceSummary from "./ProvinceSummary";
 import ConstituencyTable from "./ConstituencyTable";
+import NepalMap from "./NepalMap";
 import {
   SummaryCardsSkeleton,
   SeatShareBarsSkeleton,
@@ -100,6 +101,8 @@ export default function App() {
   const [selectedProvince, setSelectedProvince] =
     useState<"All" | Province>("All");
 
+  const [viewMode, setViewMode] = useState<"table" | "map">("table");
+
   /* ---------------- Majority Banner ---------------- */
 
   const majority = seatsToMajority(mockSnapshot.totalSeats);
@@ -112,7 +115,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -168,19 +171,47 @@ export default function App() {
           />
         </section>
 
-        <ProvinceSummary
-          results={results}
-          selectedProvince={selectedProvince}
-          onSelect={setSelectedProvince}
-        />
+        {/* View toggle */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">View:</span>
+          {(["table", "map"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setViewMode(mode)}
+              className={`rounded-xl border px-3 py-1.5 text-sm font-semibold transition active:scale-95
+                ${viewMode === mode
+                  ? "border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
+            >
+              {mode === "table" ? "📋 Table" : "🗺️ Map"}
+            </button>
+          ))}
+        </div>
 
-        <ConstituencyTable
-          results={results}
-          provinces={provinces}
-          selectedProvince={selectedProvince}
-          onProvinceChange={setSelectedProvince}
-          isLoading={isLoading}
-        />
+        {viewMode === "map" ? (
+          <NepalMap
+            results={results}
+            selectedProvince={selectedProvince}
+            onSelect={setSelectedProvince}
+          />
+        ) : (
+          <>
+            <ProvinceSummary
+              results={results}
+              selectedProvince={selectedProvince}
+              onSelect={setSelectedProvince}
+            />
+            <ConstituencyTable
+              results={results}
+              provinces={provinces}
+              selectedProvince={selectedProvince}
+              onProvinceChange={setSelectedProvince}
+              isLoading={isLoading}
+            />
+          </>
+        )}
       </main>
     </div>
   );

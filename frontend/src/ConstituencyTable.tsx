@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { parties } from "./mockData";
 import type { Candidate, ConstituencyResult, Province } from "./mockData";
 import { TableRowsSkeleton } from "./Skeleton";
+import Tooltip from "./Tooltip";
+
+type SortKey = "margin" | "province" | "alpha" | "status";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString();
@@ -16,6 +19,12 @@ function pct(n: number, total: number) {
   return Math.round((n / total) * 100);
 }
 
+function votePct(votes: number, candidates: Candidate[]): string {
+  const total = candidates.reduce((s, c) => s + c.votes, 0);
+  if (total === 0) return "";
+  return `${((votes / total) * 100).toFixed(1)}%`;
+}
+
 function topCandidates(cands: Candidate[] | undefined | null) {
   const safe = Array.isArray(cands) ? cands : [];
   const sorted = [...safe].sort((a, b) => b.votes - a.votes);
@@ -26,6 +35,22 @@ function topCandidates(cands: Candidate[] | undefined | null) {
     runnerUp: sorted[1] ?? null,
     others: sorted.slice(2),
   };
+}
+
+function useFlash(trigger: string) {
+  const [flashing, setFlashing] = useState(false);
+  const prevRef = useRef(trigger);
+
+  useEffect(() => {
+    if (prevRef.current !== trigger) {
+      prevRef.current = trigger;
+      setFlashing(true);
+      const t = setTimeout(() => setFlashing(false), 900);
+      return () => clearTimeout(t);
+    }
+  }, [trigger]);
+
+  return flashing;
 }
 
 // Smooth number animation (count-up)
@@ -69,29 +94,45 @@ export default function ConstituencyTable({
 }) {
   const [query, setQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortKey>("status");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    return results
+    const base = results
       .filter((r) => (selectedProvince === "All" ? true : r.province === selectedProvince))
       .filter((r) => {
         if (!q) return true;
         const names = Array.isArray(r.candidates) ? r.candidates.map((c) => c.name).join(" ") : "";
         const hay = `${r.name} ${r.code} ${r.district} ${names}`.toLowerCase();
         return hay.includes(q);
-      })
-      .sort((a, b) => {
-        if (a.status !== b.status) return a.status === "DECLARED" ? -1 : 1;
-
-        const ta = topCandidates(a.candidates);
-        const tb = topCandidates(b.candidates);
-
-        const ma = (ta.leader?.votes ?? 0) - (ta.runnerUp?.votes ?? 0);
-        const mb = (tb.leader?.votes ?? 0) - (tb.runnerUp?.votes ?? 0);
-        return mb - ma;
       });
-  }, [query, selectedProvince, results]);
+
+    return [...base].sort((a, b) => {
+      switch (sortBy) {
+        case "margin": {
+          const ta = topCandidates(a.candidates);
+          const tb = topCandidates(b.candidates);
+          const ma = (ta.leader?.votes ?? 0) - (ta.runnerUp?.votes ?? 0);
+          const mb = (tb.leader?.votes ?? 0) - (tb.runnerUp?.votes ?? 0);
+          return mb - ma;
+        }
+        case "province":
+          return a.province.localeCompare(b.province);
+        case "alpha":
+          return a.name.localeCompare(b.name);
+        case "status":
+        default: {
+          if (a.status !== b.status) return a.status === "DECLARED" ? -1 : 1;
+          const ta2 = topCandidates(a.candidates);
+          const tb2 = topCandidates(b.candidates);
+          const ma2 = (ta2.leader?.votes ?? 0) - (ta2.runnerUp?.votes ?? 0);
+          const mb2 = (tb2.leader?.votes ?? 0) - (tb2.runnerUp?.votes ?? 0);
+          return mb2 - ma2;
+        }
+      }
+    });
+  }, [query, selectedProvince, sortBy, results]);
 
   const selected = useMemo(() => {
     if (!selectedCode) return null;
@@ -132,6 +173,18 @@ export default function ConstituencyTable({
                   {p}
                 </option>
               ))}
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortKey)}
+              className="w-full sm:w-44 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
+                         focus:ring-2 focus:ring-slate-200 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-slate-700"
+            >
+              <option value="status">Sort: Status</option>
+              <option value="margin">Sort: Margin ↓</option>
+              <option value="province">Sort: Province A–Z</option>
+              <option value="alpha">Sort: Name A–Z</option>
             </select>
           </div>
         </div>
@@ -183,11 +236,13 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
   const t = topCandidates(r.candidates);
   const leader = t.leader;
   const runnerUp = t.runnerUp;
-
   const leadParty = leader ? parties[leader.party] : null;
   const runParty = runnerUp ? parties[runnerUp.party] : null;
-
   const margin = (leader?.votes ?? 0) - (runnerUp?.votes ?? 0);
+
+  const currentLeaderParty = leader?.party ?? "";
+  const flashing = useFlash(currentLeaderParty);
+  const flashClass = flashing ? "bg-yellow-50 dark:bg-yellow-900/20" : "";
 
   const statusClass =
     r.status === "DECLARED"
@@ -201,15 +256,51 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
           type="button"
           onClick={onClick}
           title="Click to view details"
-          className="
-            w-full text-left
-            transition
-            hover:bg-slate-50 dark:hover:bg-slate-800/60
-            focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 dark:focus-visible:ring-slate-700
-            active:scale-[0.995]
-          "
+          className={`w-full text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60
+                     focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300
+                     dark:focus-visible:ring-slate-700 active:scale-[0.995] min-h-[44px] ${flashClass}`}
         >
-          <div className="grid grid-cols-7 items-center">
+          {/* Mobile: stacked card */}
+          <div className="sm:hidden px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{r.name}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  {r.code} · {r.district} · {r.province}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {flashing && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800 ring-1 ring-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-200 dark:ring-yellow-800">
+                    ↕ Updated
+                  </span>
+                )}
+                {r.status === "COUNTING" && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700 ring-1 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-900">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
+                    LIVE
+                  </span>
+                )}
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ring-1 ${statusClass}`}>
+                  {r.status === "DECLARED" ? "Declared" : "Counting"}
+                </span>
+              </div>
+            </div>
+
+            {leader && leadParty && (
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${leadParty.color}`} />
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{leader.name}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{number(leader.votes)}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
+                  Margin: <span className="font-semibold text-slate-700 dark:text-slate-200">{number(margin)}</span>
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: 7-column grid */}
+          <div className="hidden sm:grid grid-cols-7 items-center">
             <div className="py-3 pr-4">
               <div className="font-semibold text-slate-900 dark:text-slate-100">{r.name}</div>
               <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -226,16 +317,12 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{leader.name}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {leadParty.name} ·{" "}
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                        {number(leader.votes)}
-                      </span>
+                      {leadParty.name} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(leader.votes)}</span>{" "}
+                      <span className="text-slate-400 dark:text-slate-500">({votePct(leader.votes, r.candidates)})</span>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <span className="text-sm text-slate-500 dark:text-slate-400">—</span>
-              )}
+              ) : <span className="text-sm text-slate-500 dark:text-slate-400">—</span>}
             </div>
 
             <div className="py-3 pr-4">
@@ -245,31 +332,30 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{runnerUp.name}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {runParty.name} ·{" "}
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                        {number(runnerUp.votes)}
-                      </span>
+                      {runParty.name} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(runnerUp.votes)}</span>{" "}
+                      <span className="text-slate-400 dark:text-slate-500">({votePct(runnerUp.votes, r.candidates)})</span>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <span className="text-sm text-slate-500 dark:text-slate-400">—</span>
-              )}
+              ) : <span className="text-sm text-slate-500 dark:text-slate-400">—</span>}
             </div>
 
             <div className="py-3 pr-4 text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
-              {number(margin)}
+              <Tooltip text="Vote difference between 1st and 2nd place">
+                <span className="cursor-default">{number(margin)}</span>
+              </Tooltip>
             </div>
 
             <div className="py-3 pr-4">
               <div className="flex items-center gap-2">
-                {r.status === "COUNTING" ? (
-                  <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-900">
-                    <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
-                    LIVE
-                  </span>
-                ) : null}
-
+                {r.status === "COUNTING" && (
+                  <Tooltip text="Counting in progress — votes are still being tallied">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-900">
+                      <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+                      LIVE
+                    </span>
+                  </Tooltip>
+                )}
                 <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass}`}>
                   {r.status === "DECLARED" ? "Declared" : "Counting"}
                 </span>
@@ -312,6 +398,7 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
 
   const leadParty = leader ? parties[leader.party] : null;
 
+  const totalAllVotes = t.sorted.reduce((s, c) => s + c.votes, 0);
   const topTwoTotal = (leader?.votes ?? 0) + (runnerUp?.votes ?? 0);
   const leadPct = pct(leader?.votes ?? 0, topTwoTotal);
   const runPct = pct(runnerUp?.votes ?? 0, topTwoTotal);
@@ -333,7 +420,8 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
       />
 
       <div
-        className={`relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl transition-all duration-150 ${panelCls}
+        className={`relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl
+                    transition-all duration-150 overflow-y-auto max-h-[90vh] ${panelCls}
                     dark:bg-slate-900 dark:border-slate-800`}
       >
         <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-200 dark:border-slate-800">
@@ -423,6 +511,24 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
             </div>
           </div>
 
+          {/* Turnout */}
+          <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Voter Turnout</div>
+            <div className="mt-2 flex items-center justify-between text-sm text-slate-700 dark:text-slate-200">
+              <span>Votes cast</span>
+              <span className="font-semibold tabular-nums">{number(r.votesCast)} / {number(r.totalVoters)}</span>
+            </div>
+            <div className="mt-2 h-2 w-full rounded-full bg-slate-200 overflow-hidden dark:bg-slate-700">
+              <div
+                className="h-2 bg-slate-900 dark:bg-slate-100 transition-[width] duration-700 ease-out"
+                style={{ width: `${Math.min(100, (r.votesCast / r.totalVoters) * 100).toFixed(1)}%` }}
+              />
+            </div>
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {r.totalVoters > 0 ? `${((r.votesCast / r.totalVoters) * 100).toFixed(1)}% turnout` : "—"}
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">All candidates</div>
@@ -452,6 +558,9 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
 
                     <div className="text-sm font-bold text-slate-900 dark:text-slate-100 tabular-nums">
                       {number(c.votes)}
+                      <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">
+                        {totalAllVotes > 0 ? `(${((c.votes / totalAllVotes) * 100).toFixed(1)}%)` : ""}
+                      </span>
                     </div>
                   </div>
                 );

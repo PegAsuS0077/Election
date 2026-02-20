@@ -53,6 +53,8 @@ export type ConstituencyResult = {
   status: "DECLARED" | "COUNTING";
   lastUpdated: string;
   candidates: Candidate[];
+  totalVoters: number;
+  votesCast: number;
 };
 
 export const provinces: Province[] = [
@@ -73,6 +75,8 @@ export const constituencyResults: ConstituencyResult[] = [
     name: "Kathmandu–3",
     status: "COUNTING",
     lastUpdated: new Date(Date.now() - 35 * 1000).toISOString(),
+    totalVoters: 72000,
+    votesCast: 55000,
     candidates: [
       { name: "Suman Shrestha", party: "RSP", votes: 28754 },
       { name: "Prakash Koirala", party: "NC", votes: 26111 },
@@ -87,6 +91,8 @@ export const constituencyResults: ConstituencyResult[] = [
     name: "Lalitpur–1",
     status: "DECLARED",
     lastUpdated: new Date(Date.now() - 90 * 1000).toISOString(),
+    totalVoters: 68000,
+    votesCast: 59000,
     candidates: [
       { name: "Bina Maharjan", party: "NC", votes: 33440 },
       { name: "Keshav Adhikari", party: "CPN-UML", votes: 31802 },
@@ -101,6 +107,8 @@ export const constituencyResults: ConstituencyResult[] = [
     name: "Morang–5",
     status: "DECLARED",
     lastUpdated: new Date(Date.now() - 75 * 1000).toISOString(),
+    totalVoters: 78000,
+    votesCast: 62000,
     candidates: [
       { name: "Ramesh Khadka", party: "CPN-UML", votes: 41210 },
       { name: "Rita Dahal", party: "NC", votes: 39955 },
@@ -115,6 +123,8 @@ export const constituencyResults: ConstituencyResult[] = [
     name: "Dhanusha–2",
     status: "COUNTING",
     lastUpdated: new Date(Date.now() - 55 * 1000).toISOString(),
+    totalVoters: 82000,
+    votesCast: 61000,
     candidates: [
       { name: "Md. Aftab Ansari", party: "NCP", votes: 29888 },
       { name: "Bhola Yadav", party: "CPN-UML", votes: 28741 },
@@ -129,6 +139,8 @@ export const constituencyResults: ConstituencyResult[] = [
     name: "Kaski–2",
     status: "DECLARED",
     lastUpdated: new Date(Date.now() - 120 * 1000).toISOString(),
+    totalVoters: 60000,
+    votesCast: 48000,
     candidates: [
       { name: "Deepak Gurung", party: "NC", votes: 26703 },
       { name: "Saraswati Thapa", party: "NCP", votes: 25590 },
@@ -143,6 +155,8 @@ export const constituencyResults: ConstituencyResult[] = [
     name: "Rupandehi–3",
     status: "COUNTING",
     lastUpdated: new Date(Date.now() - 28 * 1000).toISOString(),
+    totalVoters: 88000,
+    votesCast: 71000,
     candidates: [
       { name: "Anil Bista", party: "CPN-UML", votes: 36140 },
       { name: "Niraj Poudel", party: "RSP", votes: 33901 },
@@ -157,6 +171,8 @@ export const constituencyResults: ConstituencyResult[] = [
     name: "Surkhet–1",
     status: "COUNTING",
     lastUpdated: new Date(Date.now() - 62 * 1000).toISOString(),
+    totalVoters: 54000,
+    votesCast: 40000,
     candidates: [
       { name: "Harka Bahadur BK", party: "OTH", votes: 18922 },
       { name: "Laxmi Rawal", party: "NC", votes: 18110 },
@@ -171,6 +187,8 @@ export const constituencyResults: ConstituencyResult[] = [
     name: "Kailali–4",
     status: "DECLARED",
     lastUpdated: new Date(Date.now() - 140 * 1000).toISOString(),
+    totalVoters: 63000,
+    votesCast: 50000,
     candidates: [
       { name: "Manju Chaudhary", party: "NCP", votes: 24410 },
       { name: "Tek Bahadur Thapa", party: "NC", votes: 23007 },
