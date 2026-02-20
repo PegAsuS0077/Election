@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import {
-  constituencyResults,
   mockSnapshot,
   parties,
   provinces,
-  type ConstituencyResult,
   type Province,
 } from "./mockData";
+import { useElectionSimulation } from "./hooks/useElectionSimulation";
 
 import ProgressBar from "./ProgressBar";
 import SummaryCards from "./SummaryCards";
@@ -63,38 +62,7 @@ export default function App() {
 
   /* ---------------- Live Constituency Data ---------------- */
 
-  const [results, setResults] =
-    useState<ConstituencyResult[]>(constituencyResults);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setResults((prev) =>
-        prev.map((r) => {
-          if (r.status === "DECLARED") return r;
-
-          const nextCandidates = r.candidates.map((c) => {
-            const bump =
-              Math.random() < 0.65
-                ? Math.floor(Math.random() * 220)
-                : Math.floor(Math.random() * 40);
-
-            return { ...c, votes: c.votes + bump };
-          });
-
-          const shouldDeclare = Math.random() < 0.08;
-
-          return {
-            ...r,
-            candidates: nextCandidates,
-            status: shouldDeclare ? "DECLARED" : "COUNTING",
-            lastUpdated: new Date().toISOString(),
-          };
-        })
-      );
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const results = useElectionSimulation();
 
   /* ---------------- Province Filter ---------------- */
 
