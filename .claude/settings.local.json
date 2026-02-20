@@ -3,7 +3,9 @@
     "allow": [
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git -C \"d:/Teaching_Support/New_Project\" log --oneline -10)"
+      "Bash(git -C \"d:/Teaching_Support/New_Project\" log --oneline -10)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }
