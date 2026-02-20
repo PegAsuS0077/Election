@@ -419,7 +419,7 @@ const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: Constituenc
   const panelCls = open ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-[0.98] translate-y-1";
 
   return (
-    <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: true, onDeactivate: requestClose }}>
+    <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: false }}>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div
         className={`absolute inset-0 bg-slate-900/50 transition-opacity duration-150 ${backCls}`}

@@ -114,7 +114,10 @@ export default function App() {
         </div>
 
         {viewMode === "map" ? (
-          <NepalMap results={results} selectedProvince={selectedProvince} onSelect={setSelectedProvince} />
+          <>
+            <NepalMap results={results} selectedProvince={selectedProvince} onSelect={setSelectedProvince} />
+            <ConstituencyTable results={results} provinces={provinces} selectedProvince={selectedProvince} onProvinceChange={setSelectedProvince} isLoading={isLoading} />
+          </>
         ) : (
           <>
             <ProvinceSummary results={results} selectedProvince={selectedProvince} onSelect={setSelectedProvince} />
