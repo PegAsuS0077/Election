@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { parties } from "./mockData";
 import type { Candidate, ConstituencyResult, Province } from "./mockData";
 import { TableRowsSkeleton } from "./Skeleton";
@@ -234,7 +234,7 @@ export default function ConstituencyTable({
   );
 }
 
-function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
+const Row = memo(function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
   const t = topCandidates(r.candidates);
   const leader = t.leader;
   const runnerUp = t.runnerUp;
@@ -370,9 +370,9 @@ function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
       </td>
     </tr>
   );
-}
+});
 
-function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => void }) {
+const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => void }) {
   // open animation
   const [open, setOpen] = useState(false);
 
@@ -577,7 +577,7 @@ function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => vo
       </div>
     </div>
   );
-}
+});
 
 function CandidateCard({
   title,
