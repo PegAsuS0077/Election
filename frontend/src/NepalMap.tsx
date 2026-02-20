@@ -124,7 +124,7 @@ export default function NepalMap({
             <g
               key={province}
               onClick={() => onSelect(isSelected ? "All" : province)}
-              className="cursor-pointer"
+              className="cursor-pointer outline-none"
               role="button"
               aria-label={`${province} province${leadParty ? ` — leading: ${leadParty}` : ""}`}
               tabIndex={0}
@@ -134,9 +134,10 @@ export default function NepalMap({
                 d={d}
                 fill={fillHex}
                 fillOpacity={isSelected ? 1 : 0.65}
-                stroke={isSelected ? "#1e293b" : "#94a3b8"}
-                strokeWidth={isSelected ? 2.5 : 1}
+                stroke="#94a3b8"
+                strokeWidth={1}
                 className="transition-all duration-200 hover:fill-opacity-90"
+                style={{ outline: "none" }}
               />
               <text
                 x={labelX}
