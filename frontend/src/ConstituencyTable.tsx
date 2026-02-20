@@ -3,6 +3,7 @@ import { parties } from "./mockData";
 import type { Candidate, ConstituencyResult, Province } from "./mockData";
 import { TableRowsSkeleton } from "./Skeleton";
 import Tooltip from "./Tooltip";
+import { useElectionStore } from "./store/electionStore";
 
 type SortKey = "margin" | "province" | "alpha" | "status";
 
@@ -94,7 +95,8 @@ export default function ConstituencyTable({
 }) {
   const [query, setQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortKey>("status");
+  const sortBy = useElectionStore((s) => s.sortBy);
+  const setSortBy = useElectionStore((s) => s.setSortBy);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
