@@ -4,33 +4,54 @@ import type { ConstituencyResult } from "../mockData";
 import { useElectionStore } from "../store/electionStore";
 import { fetchConstituencies } from "../api/results";
 
-const HAS_API = Boolean(import.meta.env.VITE_API_URL);
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
 export function useElectionSimulation() {
   const setResults = useElectionStore((s) => s.setResults);
   const resultsRef = useRef<ConstituencyResult[]>(constituencyResults);
 
   useEffect(() => {
-    if (HAS_API) {
-      // Poll real API
-      const interval = setInterval(async () => {
-        try {
-          const data = await fetchConstituencies();
-          resultsRef.current = data;
-          setResults(data);
-        } catch (e) {
-          console.error("[api] fetch error:", e);
-        }
-      }, 30_000);
+    if (API_BASE) {
       // Initial fetch
-      fetchConstituencies().then((data) => {
-        resultsRef.current = data;
-        setResults(data);
-      }).catch(console.error);
-      return () => clearInterval(interval);
+      fetchConstituencies()
+        .then((data) => { resultsRef.current = data; setResults(data); })
+        .catch(console.error);
+
+      // WebSocket for live updates
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${proto}//${new URL(API_BASE).host}/ws`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data as string);
+          if (msg.type === "constituencies" && Array.isArray(msg.data)) {
+            resultsRef.current = msg.data;
+            setResults(msg.data);
+          }
+        } catch {
+          // ignore parse errors
+        }
+      };
+
+      ws.onerror = () => {
+        // Fall back to polling if WS fails
+        const interval = setInterval(async () => {
+          try {
+            const data = await fetchConstituencies();
+            resultsRef.current = data;
+            setResults(data);
+          } catch (err) {
+            console.error("[api] poll error:", err);
+          }
+        }, 30_000);
+        return () => clearInterval(interval);
+      };
+
+      return () => ws.close();
     }
 
-    // Mock simulation
+    // Mock simulation (no API configured)
     const interval = setInterval(() => {
       const next = resultsRef.current.map((r) => {
         if (r.status === "DECLARED") return r;
