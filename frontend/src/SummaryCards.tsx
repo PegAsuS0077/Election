@@ -1,4 +1,6 @@
-import { mockSnapshot, parties, seatChange } from "./mockData";
+import { mockSnapshot, parties } from "./mockData";
+import { useElectionStore } from "./store/electionStore";
+import type { PartyKey } from "./mockData";
 import { SummaryCardsSkeleton } from "./Skeleton";
 
 function seatsToMajority(totalSeats: number) {
@@ -26,14 +28,19 @@ function ChangePill({ delta }: { delta: number }) {
 }
 
 export default function SummaryCards({ isLoading }: { isLoading?: boolean }) {
+  const seatTally = useElectionStore((s) => s.seatTally);
+  const baselineTally = useElectionStore((s) => s.baselineTally);
+
   if (isLoading) return <SummaryCardsSkeleton />;
 
   const majority = seatsToMajority(mockSnapshot.totalSeats);
 
-  const totals = Object.entries(mockSnapshot.seatTally).map(([key, v]) => ({
-    key,
-    total: v.fptp + v.pr,
-  }));
+  const totals = Object.entries(seatTally).map(([key, v]) => {
+    const k = key as PartyKey;
+    const current = v.fptp + v.pr;
+    const baseline = baselineTally[k].fptp + baselineTally[k].pr;
+    return { key: k, total: current, delta: current - baseline };
+  });
 
   totals.sort((a, b) => b.total - a.total);
   const leader = totals[0];
@@ -45,18 +52,18 @@ export default function SummaryCards({ isLoading }: { isLoading?: boolean }) {
 
       <Card
         title="Leading party"
-        big={parties[leader.key as keyof typeof parties].name.split(" (")[0]}
+        big={parties[leader.key].name.split(" (")[0]}
         sub={`${leader.total} seats`}
-        dotColor={parties[leader.key as keyof typeof parties].color}
-        right={<ChangePill delta={seatChange[leader.key as keyof typeof seatChange]} />}
+        dotColor={parties[leader.key].color}
+        right={<ChangePill delta={leader.delta} />}
       />
 
       <Card
         title="Runner-up"
-        big={parties[runnerUp.key as keyof typeof parties].name.split(" (")[0]}
+        big={parties[runnerUp.key].name.split(" (")[0]}
         sub={`${runnerUp.total} seats`}
-        dotColor={parties[runnerUp.key as keyof typeof parties].color}
-        right={<ChangePill delta={seatChange[runnerUp.key as keyof typeof seatChange]} />}
+        dotColor={parties[runnerUp.key].color}
+        right={<ChangePill delta={runnerUp.delta} />}
       />
     </section>
   );

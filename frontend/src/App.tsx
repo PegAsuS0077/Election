@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { mockSnapshot, parties, provinces } from "./mockData";
 import { useElectionStore } from "./store/electionStore";
 import { useElectionSimulation } from "./hooks/useElectionSimulation";
+import type { PartyKey } from "./mockData";
 
 import ProgressBar from "./ProgressBar";
 import SummaryCards from "./SummaryCards";
@@ -41,9 +42,11 @@ export default function App() {
   useElectionSimulation();
 
   const results = useElectionStore((s) => s.results);
+  const seatTally = useElectionStore((s) => s.seatTally);
+  const declaredSeats = useElectionStore((s) => s.declaredSeats);
   const majority = seatsToMajority(mockSnapshot.totalSeats);
-  const tallyRows = Object.entries(mockSnapshot.seatTally)
-    .map(([key, v]) => ({ key, total: v.fptp + v.pr }))
+  const tallyRows = Object.entries(seatTally)
+    .map(([key, v]) => ({ key: key as PartyKey, total: v.fptp + v.pr }))
     .sort((a, b) => b.total - a.total);
   const lead = tallyRows[0];
   const projected = lead && lead.total >= majority ? lead : null;
@@ -92,7 +95,7 @@ export default function App() {
 
         <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Seats Declared Progress</h2>
-          <ProgressBar declared={mockSnapshot.declaredSeats} total={mockSnapshot.totalSeats} />
+          <ProgressBar declared={declaredSeats} total={mockSnapshot.totalSeats} />
         </section>
 
         <div className="flex items-center gap-2">

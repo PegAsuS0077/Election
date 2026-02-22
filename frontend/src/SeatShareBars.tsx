@@ -1,4 +1,5 @@
 import { mockSnapshot, parties } from "./mockData";
+import { useElectionStore } from "./store/electionStore";
 import Tooltip from "./Tooltip";
 
 function seatsToMajority(totalSeats: number) {
@@ -6,11 +7,12 @@ function seatsToMajority(totalSeats: number) {
 }
 
 export default function SeatShareBars() {
+  const seatTally = useElectionStore((s) => s.seatTally);
   const totalSeats = mockSnapshot.totalSeats;
   const majority = seatsToMajority(totalSeats);
   const majorityPct = (majority / totalSeats) * 100;
 
-  const rows = Object.entries(mockSnapshot.seatTally)
+  const rows = Object.entries(seatTally)
     .map(([key, v]) => {
       const total = v.fptp + v.pr;
       return {
@@ -82,7 +84,7 @@ export default function SeatShareBars() {
                 aria-label={`${r.name}: ${r.total} seats`}
                 aria-valuenow={r.total}
                 aria-valuemin={0}
-                aria-valuemax={mockSnapshot.totalSeats}
+                aria-valuemax={totalSeats}
                 className={`h-3 ${r.color} transition-[width] duration-700 ease-out`}
                 style={{ width: `${r.percent}%` }}
               />
