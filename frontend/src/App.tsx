@@ -1,88 +1,84 @@
-import { useEffect, useState } from "react";
-import { parties, provinces, seatChange } from "./mockData";
-import type { Province } from "./mockData";
-import {
-  fetchSnapshot,
-  fetchConstituencies,
-} from "./api";
-import type { Snapshot, ConstituencyResult, WsMessage } from "./api";
+import { useEffect } from "react";
+import { parties, provinces } from "./mockData";
+import { useElectionStore } from "./store/electionStore";
+import { useElectionSimulation } from "./hooks/useElectionSimulation";
+import type { PartyKey } from "./mockData";
+import type { WsMessage } from "./api";
 
-import ProgressBar     from "./ProgressBar";
-import SummaryCards    from "./SummaryCards";
-import SeatShareBars   from "./SeatShareBars";
+import ProgressBar from "./ProgressBar";
+import SummaryCards from "./SummaryCards";
+import SeatShareBars from "./SeatShareBars";
 import ProvinceSummary from "./ProvinceSummary";
 import ConstituencyTable from "./ConstituencyTable";
-
-const THEME_KEY = "theme";
+import NepalMap from "./NepalMap";
+import { SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
 
 function formatTime(iso: string) {
-  return iso ? new Date(iso).toLocaleString() : "—";
+  return new Date(iso).toLocaleString();
 }
-
-function seatsToMajority(totalSeats: number) {
-  return Math.floor(totalSeats / 2) + 1;
+function seatsToMajority(n: number) {
+  return Math.floor(n / 2) + 1;
 }
-
-const EMPTY_SNAPSHOT: Snapshot = {
-  totalSeats:    275,
-  declaredSeats: 0,
-  lastUpdated:   "",
-  seatTally: {
-    NC:        { fptp: 0, pr: 0 },
-    "CPN-UML": { fptp: 0, pr: 0 },
-    NCP:       { fptp: 0, pr: 0 },
-    RSP:       { fptp: 0, pr: 0 },
-    OTH:       { fptp: 0, pr: 0 },
-  },
-};
 
 export default function App() {
-  /* ── Dark mode ── */
-  const [dark, setDark] = useState(() => localStorage.getItem(THEME_KEY) === "dark");
+  const {
+    dark, toggleDark,
+    isLoading, setIsLoading,
+    selectedProvince, setSelectedProvince,
+    viewMode, setViewMode,
+  } = useElectionStore();
+
+  // Sync initial dark class on mount
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
-  }, [dark]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── Live data ── */
-  const [snapshot, setSnapshot]   = useState<Snapshot>(EMPTY_SNAPSHOT);
-  const [results, setResults]     = useState<ConstituencyResult[]>([]);
-  const [selectedProvince, setSelectedProvince] = useState<"All" | Province>("All");
-
-  // Initial HTTP fetch
+  // Simulated loading
   useEffect(() => {
-    fetchSnapshot().then(setSnapshot).catch(console.error);
-    fetchConstituencies().then(setResults).catch(console.error);
-  }, []);
+    const t = setTimeout(() => setIsLoading(false), 1500);
+    return () => clearTimeout(t);
+  }, [setIsLoading]);
 
-  // WebSocket for live updates
+  // Drives results into the store (mock simulation OR live API + WebSocket)
+  useElectionSimulation();
+
+  const results = useElectionStore((s) => s.results);
+  const seatTally = useElectionStore((s) => s.seatTally);
+  const declaredSeats = useElectionStore((s) => s.declaredSeats);
+
+  // Also subscribe to live snapshot updates (seat tally + lastUpdated) over WebSocket
+  const setResults = useElectionStore((s) => s.setResults);
   useEffect(() => {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${proto}//${window.location.host}/ws`);
 
     ws.onmessage = (e: MessageEvent) => {
-      const msg = JSON.parse(e.data) as WsMessage;
-      if (msg.type === "snapshot")      setSnapshot(msg.data);
-      if (msg.type === "constituencies") setResults(msg.data);
+      try {
+        const msg = JSON.parse(e.data as string) as WsMessage;
+        if (msg.type === "constituencies" && Array.isArray(msg.data)) {
+          setResults(msg.data);
+        }
+      } catch {
+        // ignore parse errors
+      }
     };
 
-    ws.onerror = (err) => console.error("[ws] error", err);
+    ws.onerror = () => {}; // useElectionSimulation handles fallback polling
 
     return () => ws.close();
-  }, []);
+  }, [setResults]);
 
-  /* ── Majority banner ── */
-  const majority  = seatsToMajority(snapshot.totalSeats);
-  const tallyRows = Object.entries(snapshot.seatTally)
-    .map(([key, v]) => ({ key, total: v.fptp + v.pr }))
+  const totalSeats = 275;
+  const majority = seatsToMajority(totalSeats);
+  const tallyRows = Object.entries(seatTally)
+    .map(([key, v]) => ({ key: key as PartyKey, total: v.fptp + v.pr }))
     .sort((a, b) => b.total - a.total);
-  const lead      = tallyRows[0];
+  const lead = tallyRows[0];
   const projected = lead && lead.total >= majority ? lead : null;
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -91,15 +87,15 @@ export default function App() {
             <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
               Live Results Dashboard · Last updated:{" "}
               <span className="font-semibold text-slate-800 dark:text-slate-100">
-                {formatTime(snapshot.lastUpdated)}
+                {results.length > 0 ? formatTime(results[0].lastUpdated) : "—"}
               </span>
             </p>
           </div>
           <button
             type="button"
-            onClick={() => setDark((d) => !d)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700
-                       transition hover:bg-slate-50 active:scale-95
+            onClick={toggleDark}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold
+                       text-slate-700 transition hover:bg-slate-50 active:scale-95
                        dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             {dark ? "☀️ Light" : "🌙 Dark"}
@@ -107,7 +103,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Projected Government Banner */}
       {projected && (
         <div className="border-b border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800">
           <div className="max-w-6xl mx-auto px-6 py-3 text-sm text-slate-700 dark:text-slate-200">
@@ -119,34 +114,48 @@ export default function App() {
         </div>
       )}
 
-      {/* Main */}
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-        <SummaryCards snapshot={snapshot} />
-
-        <SeatShareBars snapshot={snapshot} />
+        {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards />}
+        {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars />}
 
         <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Seats Declared Progress
-          </h2>
-          <ProgressBar
-            declared={snapshot.declaredSeats}
-            total={snapshot.totalSeats}
-          />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Seats Declared Progress</h2>
+          <ProgressBar declared={declaredSeats} total={totalSeats} />
         </section>
 
-        <ProvinceSummary
-          results={results}
-          selectedProvince={selectedProvince}
-          onSelect={setSelectedProvince}
-        />
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">View:</span>
+          {(["table", "map"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setViewMode(mode)}
+              className={`rounded-xl border px-3 py-1.5 text-sm font-semibold transition active:scale-95
+                ${viewMode === mode
+                  ? "border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
+            >
+              {mode === "table" ? "📋 Table" : "🗺️ Map"}
+            </button>
+          ))}
+        </div>
 
-        <ConstituencyTable
-          results={results}
-          provinces={provinces}
-          selectedProvince={selectedProvince}
-          onProvinceChange={setSelectedProvince}
-        />
+        {viewMode === "map" ? (
+          <>
+            <NepalMap results={results} selectedProvince={selectedProvince} onSelect={setSelectedProvince} />
+            <ConstituencyTable results={results} provinces={provinces} selectedProvince={selectedProvince} onProvinceChange={setSelectedProvince} isLoading={isLoading} />
+          </>
+        ) : (
+          <>
+            <ProvinceSummary results={results} selectedProvince={selectedProvince} onSelect={setSelectedProvince} />
+            <ConstituencyTable results={results} provinces={provinces} selectedProvince={selectedProvince} onProvinceChange={setSelectedProvince} isLoading={isLoading} />
+          </>
+        )}
+
+        <div aria-live="polite" aria-atomic="false" className="sr-only">
+          {results.filter((r) => r.status === "COUNTING").length} constituencies still counting.
+        </div>
       </main>
     </div>
   );

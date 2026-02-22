@@ -1,7 +1,8 @@
 // Shared types and fetch helpers for the live backend API.
 // These mirror the data shapes from backend/database.py and scraper.py.
 
-export type PartyKey = "NC" | "CPN-UML" | "NCP" | "RSP" | "OTH";
+import type { Province, PartyKey } from "./mockData";
+export type { Province, PartyKey };
 
 export type SeatTally = Record<PartyKey, { fptp: number; pr: number }>;
 
@@ -19,13 +20,15 @@ export type Candidate = {
 };
 
 export type ConstituencyResult = {
-  province: string;
+  province: Province;
   district: string;
   code: string;
   name: string;
   status: "DECLARED" | "COUNTING";
   lastUpdated: string;
   candidates: Candidate[];
+  totalVoters: number;
+  votesCast: number;
 };
 
 export type WsMessage =

@@ -52,7 +52,9 @@ export default function SummaryCards({
     return { key: k, total: current, delta: current - baseline };
   });
 
-  totals.sort((a, b) => b.total - a.total);
+  // Stable sort: by total desc, then by fixed party order as tiebreaker
+  const PARTY_ORDER: PartyKey[] = ["NC", "CPN-UML", "NCP", "RSP", "OTH"];
+  totals.sort((a, b) => b.total - a.total || PARTY_ORDER.indexOf(a.key) - PARTY_ORDER.indexOf(b.key));
   const leader = totals[0];
   const runnerUp = totals[1];
 
@@ -65,6 +67,7 @@ export default function SummaryCards({
         big={parties[leader.key].name.split(" (")[0]}
         sub={`${leader.total} seats`}
         dotColor={parties[leader.key].color}
+        symbol={parties[leader.key].symbol}
         right={<ChangePill delta={leader.delta} />}
       />
 
@@ -73,6 +76,7 @@ export default function SummaryCards({
         big={parties[runnerUp.key].name.split(" (")[0]}
         sub={`${runnerUp.total} seats`}
         dotColor={parties[runnerUp.key].color}
+        symbol={parties[runnerUp.key].symbol}
         right={<ChangePill delta={runnerUp.delta} />}
       />
     </section>
@@ -84,12 +88,14 @@ function Card({
   big,
   sub,
   dotColor,
+  symbol,
   right,
 }: {
   title: string;
   big: string;
   sub: string;
   dotColor?: string;
+  symbol?: string;
   right?: React.ReactNode;
 }) {
   return (
@@ -102,8 +108,9 @@ function Card({
         {right}
       </div>
 
-      <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-        {big}
+      <div className="mt-2 flex items-center gap-2">
+        {symbol && <span className="text-2xl leading-none">{symbol}</span>}
+        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{big}</span>
       </div>
       <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{sub}</div>
     </div>

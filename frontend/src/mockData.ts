@@ -1,11 +1,11 @@
 export type PartyKey = "NC" | "CPN-UML" | "NCP" | "RSP" | "OTH";
 
-export const parties: Record<PartyKey, { name: string; color: string }> = {
-  NC: { name: "Nepali Congress (NC)", color: "bg-red-600" },
-  "CPN-UML": { name: "CPN-UML", color: "bg-blue-600" },
-  NCP: { name: "Nepali Communist Party (NCP)", color: "bg-orange-600" },
-  RSP: { name: "Rastriya Swatantra Party (RSP)", color: "bg-emerald-600" },
-  OTH: { name: "Others/Ind.", color: "bg-slate-500" },
+export const parties: Record<PartyKey, { name: string; color: string; symbol: string }> = {
+  NC:        { name: "Nepali Congress (NC)",           color: "bg-red-600",     symbol: "🌳" },
+  "CPN-UML": { name: "CPN-UML",                        color: "bg-blue-600",    symbol: "☀️" },
+  NCP:       { name: "Nepali Communist Party (NCP)",   color: "bg-orange-600",  symbol: "🌙" },
+  RSP:       { name: "Rastriya Swatantra Party (RSP)", color: "bg-emerald-600", symbol: "⚡" },
+  OTH:       { name: "Others/Ind.",                    color: "bg-slate-500",   symbol: "🏳️" },
 };
 
 // Mock "change vs previous election" (positive = gain, negative = loss)

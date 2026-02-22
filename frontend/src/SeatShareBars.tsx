@@ -15,18 +15,20 @@ export default function SeatShareBars({ snapshot }: { snapshot?: Snapshot }) {
   const majority = seatsToMajority(totalSeats);
   const majorityPct = (majority / totalSeats) * 100;
 
+  const PARTY_ORDER = ["NC", "CPN-UML", "NCP", "RSP", "OTH"];
   const rows = Object.entries(seatTally)
     .map(([key, v]) => {
       const total = v.fptp + v.pr;
       return {
         key,
         total,
-        color: parties[key as keyof typeof parties].color,
-        name: parties[key as keyof typeof parties].name,
+        color:   parties[key as keyof typeof parties].color,
+        name:    parties[key as keyof typeof parties].name,
+        symbol:  parties[key as keyof typeof parties].symbol,
         percent: (total / totalSeats) * 100,
       };
     })
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => b.total - a.total || PARTY_ORDER.indexOf(a.key) - PARTY_ORDER.indexOf(b.key));
 
   return (
     <section
@@ -64,6 +66,7 @@ export default function SeatShareBars({ snapshot }: { snapshot?: Snapshot }) {
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <span className={`h-3 w-3 rounded-full ${r.color}`} />
+                <span className="text-base leading-none">{r.symbol}</span>
                 <span className="font-medium text-slate-900 dark:text-slate-100">
                   {r.name}
                 </span>

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { constituencyResults } from "../mockData";
 import type { ConstituencyResult } from "../mockData";
 import { useElectionStore } from "../store/electionStore";
-import { fetchConstituencies } from "../api/results";
+import { fetchConstituencies } from "../api";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -12,14 +12,14 @@ export function useElectionSimulation() {
 
   useEffect(() => {
     if (API_BASE) {
-      // Initial fetch
+      // Initial fetch via Vite proxy (/api/constituencies → localhost:8000)
       fetchConstituencies()
         .then((data) => { resultsRef.current = data; setResults(data); })
         .catch(console.error);
 
-      // WebSocket for live updates
+      // WebSocket via Vite proxy (/ws → ws://localhost:8000)
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${proto}//${new URL(API_BASE).host}/ws`;
+      const wsUrl = `${proto}//${window.location.host}/ws`;
       const ws = new WebSocket(wsUrl);
 
       ws.onmessage = (e) => {
