@@ -1,6 +1,7 @@
-import { mockSnapshot, parties } from "./mockData";
+import { parties } from "./mockData";
 import { useElectionStore } from "./store/electionStore";
 import type { PartyKey } from "./mockData";
+import type { Snapshot } from "./api";
 import { SummaryCardsSkeleton } from "./Skeleton";
 
 function seatsToMajority(totalSeats: number) {
@@ -27,13 +28,22 @@ function ChangePill({ delta }: { delta: number }) {
   );
 }
 
-export default function SummaryCards({ isLoading }: { isLoading?: boolean }) {
+export default function SummaryCards({
+  isLoading,
+  snapshot,
+}: {
+  isLoading?: boolean;
+  snapshot?: Snapshot;
+}) {
+  // seatTally is always derived from constituency results in the store
+  // so that changes in the constituency table are reflected here.
   const seatTally = useElectionStore((s) => s.seatTally);
   const baselineTally = useElectionStore((s) => s.baselineTally);
 
   if (isLoading) return <SummaryCardsSkeleton />;
 
-  const majority = seatsToMajority(mockSnapshot.totalSeats);
+  const totalSeats = snapshot?.totalSeats ?? 275;
+  const majority = seatsToMajority(totalSeats);
 
   const totals = Object.entries(seatTally).map(([key, v]) => {
     const k = key as PartyKey;

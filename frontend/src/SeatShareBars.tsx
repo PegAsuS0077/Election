@@ -1,14 +1,17 @@
-import { mockSnapshot, parties } from "./mockData";
+import { parties } from "./mockData";
 import { useElectionStore } from "./store/electionStore";
+import type { Snapshot } from "./api";
 import Tooltip from "./Tooltip";
 
 function seatsToMajority(totalSeats: number) {
   return Math.floor(totalSeats / 2) + 1;
 }
 
-export default function SeatShareBars() {
+export default function SeatShareBars({ snapshot }: { snapshot?: Snapshot }) {
+  // seatTally is always derived from constituency results in the store
+  // so that changes in the constituency table are reflected here.
   const seatTally = useElectionStore((s) => s.seatTally);
-  const totalSeats = mockSnapshot.totalSeats;
+  const totalSeats = snapshot?.totalSeats ?? 275;
   const majority = seatsToMajority(totalSeats);
   const majorityPct = (majority / totalSeats) * 100;
 
