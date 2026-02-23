@@ -13,7 +13,10 @@
       "WebFetch(domain:api.github.com)",
       "Bash(gh api:*)",
       "Bash(node -e:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(pip show:*)",
+      "Bash(pip3 show:*)",
+      "Bash(pip install:*)"
     ]
   }
 }
