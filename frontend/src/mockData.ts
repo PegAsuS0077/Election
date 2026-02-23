@@ -55,6 +55,7 @@ export type ConstituencyResult = {
   lastUpdated: string;
   candidates: Candidate[];
   votesCast: number;      // sum of candidate votes (no total-voters in upstream)
+  totalVoters?: number;   // optional — not provided by upstream pre-election
 };
 
 export const provinces: Province[] = [

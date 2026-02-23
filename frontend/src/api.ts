@@ -5,8 +5,8 @@
 // configured (VITE_API_URL is unset/blank), so callers must handle null and
 // fall back to mock data.  This prevents 404 errors on static deployments.
 
-import type { Province, PartyKey } from "./mockData";
-export type { Province, PartyKey };
+import type { Province, PartyKey, ConstituencyResult, Candidate } from "./mockData";
+export type { Province, PartyKey, ConstituencyResult, Candidate };
 
 export type SeatTally = Record<PartyKey, { fptp: number; pr: number }>;
 
@@ -15,24 +15,6 @@ export type Snapshot = {
   declaredSeats: number;
   lastUpdated: string;
   seatTally: SeatTally;
-};
-
-export type Candidate = {
-  name: string;
-  party: PartyKey;
-  votes: number;
-};
-
-export type ConstituencyResult = {
-  province: Province;
-  district: string;
-  code: string;
-  name: string;
-  status: "DECLARED" | "COUNTING";
-  lastUpdated: string;
-  candidates: Candidate[];
-  totalVoters: number;
-  votesCast: number;
 };
 
 export type WsMessage =

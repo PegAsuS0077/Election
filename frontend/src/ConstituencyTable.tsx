@@ -567,17 +567,25 @@ const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en" }: { r
             <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Voter Turnout</div>
             <div className="mt-2 flex items-center justify-between text-sm text-slate-700 dark:text-slate-200">
               <span>Votes cast</span>
-              <span className="font-semibold tabular-nums">{number(r.votesCast)} / {number(r.totalVoters)}</span>
+              <span className="font-semibold tabular-nums">
+                {r.totalVoters ? `${number(r.votesCast)} / ${number(r.totalVoters)}` : number(r.votesCast)}
+              </span>
             </div>
-            <div className="mt-2 h-2 w-full rounded-full bg-slate-200 overflow-hidden dark:bg-slate-700">
-              <div
-                className="h-2 bg-slate-900 dark:bg-slate-100 transition-[width] duration-700 ease-out"
-                style={{ width: `${Math.min(100, (r.votesCast / r.totalVoters) * 100).toFixed(1)}%` }}
-              />
-            </div>
-            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {r.totalVoters > 0 ? `${((r.votesCast / r.totalVoters) * 100).toFixed(1)}% turnout` : "—"}
-            </div>
+            {r.totalVoters ? (
+              <>
+                <div className="mt-2 h-2 w-full rounded-full bg-slate-200 overflow-hidden dark:bg-slate-700">
+                  <div
+                    className="h-2 bg-slate-900 dark:bg-slate-100 transition-[width] duration-700 ease-out"
+                    style={{ width: `${Math.min(100, (r.votesCast / r.totalVoters) * 100).toFixed(1)}%` }}
+                  />
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {`${((r.votesCast / r.totalVoters) * 100).toFixed(1)}% turnout`}
+                </div>
+              </>
+            ) : (
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">—</div>
+            )}
           </div>
 
           <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
