@@ -106,6 +106,19 @@ export const UI: Record<string, { np: string; en: string }> = {
   lightMode:          { np: "☀️ उज्यालो",                      en: "☀️ Light" },
   darkMode:           { np: "🌙 अँध्यारो",                     en: "🌙 Dark" },
   stillCounting:      { np: "निर्वाचन क्षेत्र मतगणना गर्दैछ।", en: "constituencies still counting." },
+  hotSeats:           { np: "तातो सिटहरू",                        en: "Hot Seats" },
+  hotSeatsDesc:       { np: "नजिकको प्रतिस्पर्धाका निर्वाचन क्षेत्र", en: "Closely contested constituencies" },
+  closelyContested:   { np: "🔥 नजिकको प्रतिस्पर्धा",           en: "🔥 Closely Contested" },
+  statsConstituencies:{ np: "निर्वाचन क्षेत्र",                   en: "Constituencies" },
+  statsProvinces:     { np: "प्रदेशहरू",                           en: "Provinces" },
+  statsParties:       { np: "दलहरू",                               en: "Parties" },
+  statsTotalSeats:    { np: "कुल सिट",                             en: "Total Seats" },
+  electionDate:       { np: "मार्च ५, २०२६",                      en: "March 5, 2026" },
+  daysUntilElection:  { np: "निर्वाचनसम्म दिन",                   en: "days until election" },
+  preElection:        { np: "पूर्व-निर्वाचन",                      en: "Pre-Election" },
+  footerDisclaimer:   { np: "यो साइट शैक्षिक उद्देश्यका लागि मात्र हो। नेपाल निर्वाचन आयोगसँग सम्बद्ध छैन।", en: "This site is for educational purposes only. Not affiliated with the Election Commission of Nepal." },
+  dataSource:         { np: "डेटा स्रोत",                          en: "Data source" },
+  hotSeatsEmpty:      { np: "निर्वाचन राति नतिजा आउँदा यहाँ देखिनेछ।", en: "Hot seat results will appear here on election night." },
 };
 
 /** Get a label in the current language. Falls back to English key if missing. */
