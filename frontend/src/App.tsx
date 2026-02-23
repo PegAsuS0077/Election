@@ -16,6 +16,7 @@ import NepalMap from "./NepalMap";
 import HotSeats from "./HotSeats";
 import Footer from "./Footer";
 import { SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
+import { AuroraBackground } from "./components/ui/aurora-background";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString();
@@ -173,8 +174,11 @@ export default function App() {
       )}
 
       {/* ── Hero banner ────────────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-red-800 via-red-700 to-indigo-800 dark:from-red-950 dark:via-red-900 dark:to-indigo-950 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+      <AuroraBackground
+        className="h-auto bg-gradient-to-br from-red-800 via-red-700 to-indigo-800 dark:from-red-950 dark:via-red-900 dark:to-indigo-950 text-white items-start justify-start"
+        showRadialGradient
+      >
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div className="flex-1">
               {/* Pre-election / Live badge */}
@@ -227,7 +231,7 @@ export default function App() {
             </div>
           </div>
         </div>
-      </div>
+      </AuroraBackground>
 
       {/* ── Stats strip ───────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">

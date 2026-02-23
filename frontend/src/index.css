@@ -5,3 +5,29 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* Aurora background: CSS colour tokens (mirrors Tailwind palette names) */
+:root {
+  --white: #ffffff;
+  --black: #000000;
+  --transparent: transparent;
+  --blue-300: theme(--color-blue-300);
+  --blue-400: theme(--color-blue-400);
+  --blue-500: theme(--color-blue-500);
+  --indigo-300: theme(--color-indigo-300);
+  --violet-200: theme(--color-violet-200);
+}
+
+/* Aurora keyframe + utility */
+@keyframes aurora {
+  from {
+    background-position: 50% 50%, 50% 50%;
+  }
+  to {
+    background-position: 350% 50%, 350% 50%;
+  }
+}
+
+@theme {
+  --animate-aurora: aurora 60s linear infinite;
+}
