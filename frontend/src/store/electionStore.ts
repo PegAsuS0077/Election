@@ -71,10 +71,33 @@ interface ElectionStore {
 
 const BASELINE_KEY = "election_baseline_tally";
 
+/** All keys that must be present in a valid SeatTally. */
+const ALL_PARTY_KEYS: PartyKey[] = ["NC", "CPN-UML", "NCP", "RSP", "RPP", "JSP", "IND", "OTH"];
+
+/**
+ * Merge a stored (potentially stale/partial) tally with the current tally so
+ * that every party key is always present.  New keys get { fptp: 0, pr: 0 }.
+ * This prevents "Cannot read properties of undefined (reading 'fptp')" when
+ * the stored baseline was saved before new party keys were added.
+ */
+function migrateBaseline(stored: Partial<SeatTally>, current: SeatTally): SeatTally {
+  const result = { ...current };
+  for (const key of ALL_PARTY_KEYS) {
+    if (stored[key]) result[key] = stored[key] as { fptp: number; pr: number };
+  }
+  return result;
+}
+
 function loadOrCreateBaseline(currentTally: SeatTally): SeatTally {
   try {
-    const stored = localStorage.getItem(BASELINE_KEY);
-    if (stored) return JSON.parse(stored) as SeatTally;
+    const raw = localStorage.getItem(BASELINE_KEY);
+    if (raw) {
+      const stored = JSON.parse(raw) as Partial<SeatTally>;
+      const migrated = migrateBaseline(stored, currentTally);
+      // Persist the migrated (complete) baseline so the next load is clean
+      localStorage.setItem(BASELINE_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
   } catch {
     // corrupted — fall through and overwrite
   }

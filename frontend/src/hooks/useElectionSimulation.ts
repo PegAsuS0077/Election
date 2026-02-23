@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { constituencyResults } from "../mockData";
 import type { ConstituencyResult } from "../mockData";
 import { useElectionStore } from "../store/electionStore";
-import { fetchConstituencies } from "../api";
+import { fetchConstituencies, getWsUrl } from "../api";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -12,14 +12,17 @@ export function useElectionSimulation() {
 
   useEffect(() => {
     if (API_BASE) {
-      // Initial fetch via Vite proxy (/api/constituencies → localhost:8000)
+      // Initial fetch from live backend
       fetchConstituencies()
-        .then((data) => { resultsRef.current = data; setResults(data); })
+        .then((data) => {
+          if (data) { resultsRef.current = data; setResults(data); }
+        })
         .catch(console.error);
 
-      // WebSocket via Vite proxy (/ws → ws://localhost:8000)
-      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${proto}//${window.location.host}/ws`;
+      // WebSocket live updates
+      const wsUrl = getWsUrl();
+      if (!wsUrl) return;
+
       const ws = new WebSocket(wsUrl);
 
       ws.onmessage = (e) => {
@@ -39,8 +42,7 @@ export function useElectionSimulation() {
         const interval = setInterval(async () => {
           try {
             const data = await fetchConstituencies();
-            resultsRef.current = data;
-            setResults(data);
+            if (data) { resultsRef.current = data; setResults(data); }
           } catch (err) {
             console.error("[api] poll error:", err);
           }
@@ -51,7 +53,7 @@ export function useElectionSimulation() {
       return () => ws.close();
     }
 
-    // Mock simulation (no API configured)
+    // Mock simulation (no API configured — Vercel / local without backend)
     const interval = setInterval(() => {
       const next = resultsRef.current.map((r) => {
         if (r.status === "DECLARED") return r;

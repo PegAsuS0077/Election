@@ -4,6 +4,7 @@ import { useElectionStore } from "./store/electionStore";
 import { useElectionSimulation } from "./hooks/useElectionSimulation";
 import { t, provinceName } from "./i18n";
 import type { PartyKey } from "./mockData";
+import { getWsUrl } from "./api";
 import type { WsMessage } from "./api";
 
 import ProgressBar from "./ProgressBar";
@@ -48,11 +49,13 @@ export default function App() {
   const seatTally = useElectionStore((s) => s.seatTally);
   const declaredSeats = useElectionStore((s) => s.declaredSeats);
 
-  // Also subscribe to live snapshot updates (seat tally + lastUpdated) over WebSocket
+  // Subscribe to live snapshot updates over WebSocket (only when backend is configured)
   const setResults = useElectionStore((s) => s.setResults);
   useEffect(() => {
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${proto}//${window.location.host}/ws`);
+    const wsUrl = getWsUrl();
+    if (!wsUrl) return; // no backend configured — mock simulation handles updates
+
+    const ws = new WebSocket(wsUrl);
 
     ws.onmessage = (e: MessageEvent) => {
       try {
