@@ -4,12 +4,15 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import (
     init_db,
     get_constituencies,
+    get_constituency_by_id,
+    get_parties,
+    get_candidate_by_id,
     get_latest_snapshot,
     save_constituency_results,
     save_snapshot,
@@ -79,6 +82,24 @@ def create_app(db=None, start_scraper: bool = True) -> FastAPI:
     @app.get("/api/constituencies")
     def constituencies():
         return get_constituencies(db)
+
+    @app.get("/api/constituencies/{code:path}")
+    def constituency_detail(code: str):
+        result = get_constituency_by_id(db, code)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Constituency not found")
+        return result
+
+    @app.get("/api/parties")
+    def parties():
+        return get_parties(db)
+
+    @app.get("/api/candidates/{candidate_id}")
+    def candidate_detail(candidate_id: int):
+        result = get_candidate_by_id(db, candidate_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        return result
 
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):

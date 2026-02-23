@@ -146,3 +146,93 @@ def get_constituencies(conn: sqlite3.Connection) -> list[dict[str, Any]]:
             ],
         })
     return out
+
+
+def get_constituency_by_id(
+    conn: sqlite3.Connection, code: str
+) -> dict[str, Any] | None:
+    """Return a single constituency with full candidate list, or None if not found."""
+    row = conn.execute(
+        "SELECT * FROM constituencies WHERE code=?", (code,)
+    ).fetchone()
+    if not row:
+        return None
+    cands = conn.execute(
+        "SELECT id, name, party, votes FROM candidates "
+        "WHERE constituency_code=? ORDER BY votes DESC",
+        (code,),
+    ).fetchall()
+    return {
+        "province":    row["province"],
+        "district":    row["district"],
+        "code":        row["code"],
+        "name":        row["name"],
+        "status":      row["status"],
+        "lastUpdated": row["last_updated"],
+        "candidates":  [
+            {"id": c["id"], "name": c["name"], "party": c["party"], "votes": c["votes"]}
+            for c in cands
+        ],
+    }
+
+
+def get_parties(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Aggregate seat counts and total votes per party across all constituencies."""
+    cands = conn.execute("SELECT party, votes FROM candidates").fetchall()
+    constits = conn.execute(
+        "SELECT code, status FROM constituencies"
+    ).fetchall()
+
+    # Build winner per declared constituency
+    winners: dict[str, str] = {}
+    for row in constits:
+        if row["status"] == "DECLARED":
+            top = conn.execute(
+                "SELECT party FROM candidates WHERE constituency_code=? "
+                "ORDER BY votes DESC LIMIT 1",
+                (row["code"],),
+            ).fetchone()
+            if top:
+                winners[row["code"]] = top["party"]
+
+    seat_counts: dict[str, int] = {}
+    total_votes: dict[str, int] = {}
+    for party in winners.values():
+        seat_counts[party] = seat_counts.get(party, 0) + 1
+    for c in cands:
+        total_votes[c["party"]] = total_votes.get(c["party"], 0) + c["votes"]
+
+    all_parties = set(list(seat_counts.keys()) + list(total_votes.keys()))
+    return [
+        {
+            "party":       p,
+            "seatsWon":    seat_counts.get(p, 0),
+            "totalVotes":  total_votes.get(p, 0),
+        }
+        for p in sorted(all_parties)
+    ]
+
+
+def get_candidate_by_id(
+    conn: sqlite3.Connection, candidate_id: int
+) -> dict[str, Any] | None:
+    """Return a single candidate with their constituency context."""
+    row = conn.execute(
+        "SELECT c.*, con.name AS const_name, con.province, con.district "
+        "FROM candidates c "
+        "JOIN constituencies con ON con.code = c.constituency_code "
+        "WHERE c.id=?",
+        (candidate_id,),
+    ).fetchone()
+    if not row:
+        return None
+    return {
+        "id":               row["id"],
+        "name":             row["name"],
+        "party":            row["party"],
+        "votes":            row["votes"],
+        "constituencyCode": row["constituency_code"],
+        "constituencyName": row["const_name"],
+        "province":         row["province"],
+        "district":         row["district"],
+    }
