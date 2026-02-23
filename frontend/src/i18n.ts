@@ -85,6 +85,8 @@ export const UI: Record<string, { np: string; en: string }> = {
   showing:            { np: "देखाउँदै",                       en: "Showing" },
   constituenciesCount:{ np: "निर्वाचन क्षेत्रहरू",           en: "constituencies" },
   mockSubset:         { np: "(नमुना डेटा)",                   en: "(mock subset)" },
+  filterByDistrict:   { np: "जिल्ला अनुसार फिल्टर",          en: "Filter by district" },
+  allDistricts:       { np: "सबै जिल्ला",                     en: "All districts" },
   districtMap:        { np: "जिल्ला नक्सा",                   en: "District Map" },
   mapDesc:            { np: "७७ जिल्ला · दल रंगमा · क्लिक गर्नुस्", en: "77 districts · shaded by leading party · click to filter" },
   clearFilter:        { np: "फिल्टर हटाउनुस्",               en: "Clear filter" },

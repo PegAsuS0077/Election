@@ -101,14 +101,37 @@ export default function ConstituencyTable({
 }) {
   const [query, setQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("All");
   const sortBy = useElectionStore((s) => s.sortBy);
   const setSortBy = useElectionStore((s) => s.setSortBy);
+
+  // Reset district when province changes
+  useEffect(() => {
+    setSelectedDistrict("All");
+  }, [selectedProvince]);
+
+  // Available districts for the selected province (sorted)
+  const availableDistricts = useMemo(() => {
+    const provinceFiltered = selectedProvince === "All"
+      ? results
+      : results.filter((r) => r.province === selectedProvince);
+    const seen = new Set<string>();
+    const districts: { en: string; np: string }[] = [];
+    for (const r of provinceFiltered) {
+      if (!seen.has(r.district)) {
+        seen.add(r.district);
+        districts.push({ en: r.district, np: r.districtNp });
+      }
+    }
+    return districts.sort((a, b) => a.en.localeCompare(b.en));
+  }, [results, selectedProvince]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
     const base = results
       .filter((r) => (selectedProvince === "All" ? true : r.province === selectedProvince))
+      .filter((r) => (selectedDistrict === "All" ? true : r.district === selectedDistrict))
       .filter((r) => {
         if (!q) return true;
         const names = Array.isArray(r.candidates) ? r.candidates.map((c) => c.name).join(" ") : "";
@@ -140,7 +163,7 @@ export default function ConstituencyTable({
         }
       }
     });
-  }, [query, selectedProvince, sortBy, results]);
+  }, [query, selectedProvince, selectedDistrict, sortBy, results]);
 
   const selected = useMemo(() => {
     if (!selectedCode) return null;
@@ -181,6 +204,21 @@ export default function ConstituencyTable({
               {translatedProvinces.map(({ key, label }) => (
                 <option key={key} value={key}>
                   {label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              aria-label={i18n("filterByDistrict", lang)}
+              value={selectedDistrict}
+              onChange={(e) => setSelectedDistrict(e.target.value)}
+              className="w-full sm:w-44 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
+                         focus:ring-2 focus:ring-slate-200 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-slate-700"
+            >
+              <option value="All">{i18n("allDistricts", lang)}</option>
+              {availableDistricts.map(({ en, np }) => (
+                <option key={en} value={en}>
+                  {lang === "np" ? np : en}
                 </option>
               ))}
             </select>
