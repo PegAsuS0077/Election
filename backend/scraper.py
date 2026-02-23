@@ -54,14 +54,21 @@ def constituency_id(record: dict[str, Any]) -> str:
     return f"{record['STATE_ID']}-{record['DistrictName']}-{record['SCConstID']}"
 
 
+# Confirmed winner value from live upstream JSON (validated 2026-02-23).
+# Update if the site uses a different string on election day.
+_WINNER_STATUS = {"W"}
+
+
 def is_winner(record: dict[str, Any]) -> bool:
     """
     Determine winner status from available fields.
-    Pre-election: E_STATUS is null for all records.
-    On election day, update logic as actual E_STATUS values appear.
+    Pre-election: E_STATUS is null for all records → fallback to rank+votes.
+    On election day: E_STATUS == "W" for the declared winner of each seat.
     """
-    if record.get("E_STATUS") is not None:
-        return True  # any non-null status = declared
+    status = record.get("E_STATUS")
+    if status is not None:
+        return status in _WINNER_STATUS
+    # Fallback for partial counts before official declaration
     if record.get("R") == 1 and record.get("TotalVoteReceived", 0) > 0:
         return True
     return False

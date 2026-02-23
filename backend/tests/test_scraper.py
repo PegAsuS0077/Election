@@ -70,6 +70,11 @@ def test_is_winner_with_e_status_set():
     assert is_winner({"E_STATUS": "W", "R": 1, "TotalVoteReceived": 5000}) is True
 
 
+def test_is_winner_non_winner_e_status_is_false():
+    # A loser could have a non-null E_STATUS (e.g. "L") — must NOT count as winner
+    assert is_winner({"E_STATUS": "L", "R": 2, "TotalVoteReceived": 4000}) is False
+
+
 def test_is_winner_rank1_with_votes():
     assert is_winner({"E_STATUS": None, "R": 1, "TotalVoteReceived": 1000}) is True
 

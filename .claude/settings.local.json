@@ -16,7 +16,9 @@
       "Bash(npm run lint:*)",
       "Bash(pip show:*)",
       "Bash(pip3 show:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)"
     ]
   }
 }
