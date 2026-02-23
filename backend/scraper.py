@@ -1,84 +1,135 @@
-import re
+"""
+scraper.py — Fetch and parse election results from result.election.gov.np.
+
+Discovery (2026-02-23): The site serves a flat JSON file, not HTML.
+Primary endpoint: GET /JSONFiles/ElectionResultCentral2082.txt
+  - Returns a UTF-8 (BOM-prefixed) JSON array of 3,406 candidate records.
+  - No authentication, no pagination — always returns full dataset.
+  - Update frequency: every ~30 s on election day.
+
+No Playwright required — plain httpx async client is sufficient.
+"""
+
+import json
+import httpx
 from datetime import datetime, timezone
 from typing import Any
 
-from playwright.async_api import async_playwright
 
-
-# ── Party name → frontend PartyKey mapping ────────────────────────────────────
-# Update this dict with actual party name strings from result.election.gov.np
-PARTY_MAP: dict[str, str] = {
-    "nepali congress": "NC",
-    "nc": "NC",
-    "cpn-uml": "CPN-UML",
-    "uml": "CPN-UML",
-    "nepali communist party": "NCP",
-    "ncp": "NCP",
-    "rastriya swatantra party": "RSP",
-    "rsp": "RSP",
+# ── Upstream endpoint ────────────────────────────────────────────────────────
+UPSTREAM_URL = (
+    "https://result.election.gov.np/JSONFiles/ElectionResultCentral2082.txt"
+)
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (compatible; NepalElectionBot/1.0; +https://localhost)"
+    ),
+    "Accept": "application/json, text/plain, */*",
 }
 
 
-def map_party_key(raw: str) -> str:
-    """Map a raw party name string to a frontend PartyKey (NC/CPN-UML/NCP/RSP/OTH)."""
-    return PARTY_MAP.get(raw.strip().lower(), "OTH")
+# ── Party name → frontend PartyKey mapping ───────────────────────────────────
+# Exact Nepali strings from the upstream JSON field "PoliticalPartyName".
+# All other parties → "OTH".
+# NOTE: Verify the NCP string on election day — two similar names exist.
+PARTY_MAP: dict[str, str] = {
+    "नेपाली काँग्रेस":                                                    "NC",
+    "नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी लेनिनवादी)":          "CPN-UML",
+    "नेपाल कम्युनिस्ट पार्टी (माओवादी)":                                 "NCP",
+    "नेपाल कम्युनिष्ट पार्टी (माओवादी)":                                 "NCP",   # alternate spelling
+    "राष्ट्रिय स्वतन्त्र पार्टी":                                         "RSP",
+    "राष्ट्रिय प्रजातन्त्र पार्टी":                                       "RPP",
+    "जनता समाजवादी पार्टी, नेपाल":                                        "JSP",
+    "स्वतन्त्र":                                                           "IND",
+}
 
 
-def parse_fptp_html(html: str) -> list[dict[str, Any]]:
+def map_party_key(party_name: str) -> str:
+    """Map upstream PoliticalPartyName to a frontend PartyKey."""
+    return PARTY_MAP.get(party_name.strip(), "OTH")
+
+
+def constituency_id(record: dict[str, Any]) -> str:
+    """Derive a stable global constituency key from the composite fields."""
+    return f"{record['STATE_ID']}-{record['DistrictName']}-{record['SCConstID']}"
+
+
+def is_winner(record: dict[str, Any]) -> bool:
     """
-    Parse FPTP constituency results from raw HTML.
-
-    IMPORTANT: The regex selectors below match the placeholder fixture in
-    tests/fixtures/fptp_results.html.  On election day, inspect the real
-    page HTML at https://result.election.gov.np and update the patterns here.
+    Determine winner status from available fields.
+    Pre-election: E_STATUS is null for all records.
+    On election day, update logic as actual E_STATUS values appear.
     """
-    results: list[dict[str, Any]] = []
+    if record.get("E_STATUS") is not None:
+        return True  # any non-null status = declared
+    if record.get("R") == 1 and record.get("TotalVoteReceived", 0) > 0:
+        return True
+    return False
 
-    rows = re.findall(
-        r'<tr[^>]*data-code="([^"]+)"[^>]*>(.*?)</tr>',
-        html, re.DOTALL,
-    )
 
-    for code, row_html in rows:
-        cells = re.findall(r'<td[^>]*>(.*?)</td>', row_html, re.DOTALL)
-        if len(cells) < 5:
-            continue
+def parse_candidates_json(raw_candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Transform the raw upstream candidate records into constituency-grouped results
+    matching the shape consumed by the frontend API.
 
-        def strip(s: str) -> str:
-            return re.sub(r'<[^>]+>', '', s).strip()
+    Returns a list of constituency dicts, each with:
+      code, name, province, district, status, last_updated, candidates[]
+    """
+    # Group candidates by composite constituency key
+    constituencies: dict[str, dict[str, Any]] = {}
 
-        status_raw = strip(cells[4]).upper()
-        status = "DECLARED" if "DECLARED" in status_raw else "COUNTING"
+    for rec in raw_candidates:
+        cid = constituency_id(rec)
+        if cid not in constituencies:
+            state_id = rec.get("STATE_ID", 0)
+            district = rec.get("DistrictName", "")
+            const_num = rec.get("SCConstID", 0)
+            # Build a human-readable name; on election day the site may supply one
+            name = f"Constituency {const_num}"
 
-        cand_block = re.search(
-            rf'<div[^>]*class="candidate-list"[^>]*data-code="{re.escape(code)}"[^>]*>(.*?)'
-            r'(?=<div[^>]*class="candidate-list"|$)',
-            html, re.DOTALL,
-        )
-        candidates: list[dict[str, Any]] = []
-        if cand_block:
-            for party_raw, votes_str, cand_name in re.findall(
-                r'<div[^>]*class="candidate"[^>]*data-party="([^"]+)"'
-                r'[^>]*data-votes="(\d+)"[^>]*>([^<]+)</div>',
-                cand_block.group(1),
-            ):
-                candidates.append({
-                    "name":  cand_name.strip(),
-                    "party": map_party_key(party_raw),
-                    "votes": int(votes_str),
-                })
+            constituencies[cid] = {
+                "code":         cid,
+                "name":         name,
+                "province":     _state_id_to_province_key(state_id),
+                "province_np":  rec.get("StateName", ""),
+                "district":     district,
+                "state_id":     state_id,
+                "status":       "COUNTING",
+                "last_updated": datetime.now(timezone.utc).isoformat(),
+                "candidates":   [],
+            }
 
-        results.append({
-            "code":         code,
-            "name":         strip(cells[1]),
-            "province":     strip(cells[2]),
-            "district":     strip(cells[3]),
-            "status":       status,
-            "last_updated": datetime.now(timezone.utc).isoformat(),
-            "candidates":   candidates,
-        })
+        candidate = {
+            "id":    rec.get("CandidateID"),
+            "name":  rec.get("CandidateName", ""),
+            "party": map_party_key(rec.get("PoliticalPartyName", "")),
+            "votes": rec.get("TotalVoteReceived", 0),
+            "rank":  rec.get("R", 1),
+            "status": rec.get("E_STATUS"),
+        }
+        constituencies[cid]["candidates"].append(candidate)
 
-    return results
+    # Determine DECLARED status per constituency
+    for c in constituencies.values():
+        if any(is_winner(
+            {"E_STATUS": cand["status"], "R": cand["rank"], "TotalVoteReceived": cand["votes"]}
+        ) for cand in c["candidates"]):
+            c["status"] = "DECLARED"
+
+    return list(constituencies.values())
+
+
+def _state_id_to_province_key(state_id: int) -> str:
+    """Map STATE_ID (1–7) to the English province key used by the frontend."""
+    return {
+        1: "Koshi",
+        2: "Madhesh",
+        3: "Bagmati",
+        4: "Gandaki",
+        5: "Lumbini",
+        6: "Karnali",
+        7: "Sudurpashchim",
+    }.get(state_id, "Unknown")
 
 
 def build_snapshot_from_constituencies(
@@ -86,14 +137,19 @@ def build_snapshot_from_constituencies(
 ) -> dict[str, Any]:
     """Derive a snapshot dict from a list of constituency results."""
     seat_tally: dict[str, dict[str, int]] = {
-        k: {"fptp": 0, "pr": 0} for k in ["NC", "CPN-UML", "NCP", "RSP", "OTH"]
+        k: {"fptp": 0, "pr": 0}
+        for k in ["NC", "CPN-UML", "NCP", "RSP", "RPP", "JSP", "IND", "OTH"]
     }
     declared = 0
     for c in constituencies:
         if c["status"] == "DECLARED" and c.get("candidates"):
             declared += 1
             winner = max(c["candidates"], key=lambda x: x["votes"])
-            seat_tally[winner["party"]]["fptp"] += 1
+            party = winner["party"]
+            if party in seat_tally:
+                seat_tally[party]["fptp"] += 1
+            else:
+                seat_tally["OTH"]["fptp"] += 1
 
     return {
         "taken_at":       datetime.now(timezone.utc).isoformat(),
@@ -103,23 +159,35 @@ def build_snapshot_from_constituencies(
     }
 
 
-async def scrape_results(url: str) -> tuple[list[dict], dict]:
+async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
     """
-    Use Playwright to load the election results page and return
-    (constituency_results, snapshot_data).
+    Fetch the full candidate+results array from the upstream static JSON file.
 
-    IMPORTANT: On election day, open the site in a browser, inspect the DOM,
-    and update parse_fptp_html() selectors to match the real structure.
+    The file is served as text/plain with a UTF-8 BOM prefix.
+    httpx handles TLS; no browser/Playwright required.
     """
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        try:
-            await page.goto(url, wait_until="networkidle", timeout=30_000)
-            html = await page.content()
-        finally:
-            await browser.close()
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        resp = await client.get(url, headers=HEADERS)
+        resp.raise_for_status()
+        raw = resp.content
+        if raw.startswith(b"\xef\xbb\xbf"):   # strip UTF-8 BOM
+            raw = raw[3:]
+        return json.loads(raw.decode("utf-8"))
 
-    constituencies = parse_fptp_html(html)
+
+async def scrape_results(url: str = UPSTREAM_URL) -> tuple[list[dict], dict]:
+    """
+    Main entry point for the background scraper loop.
+
+    Returns (constituency_results, snapshot_data).
+
+    On election day:
+    1. Confirm UPSTREAM_URL still returns live data (TotalVoteReceived > 0).
+    2. Update PARTY_MAP with any corrected NCP / Maoist party name strings.
+    3. Update is_winner() based on observed E_STATUS values.
+    4. Check for a PR results file: /JSONFiles/ElectionResultPR2082.txt
+    """
+    raw_candidates = await fetch_candidates(url)
+    constituencies = parse_candidates_json(raw_candidates)
     snapshot = build_snapshot_from_constituencies(constituencies)
     return constituencies, snapshot

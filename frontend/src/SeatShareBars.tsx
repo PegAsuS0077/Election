@@ -1,5 +1,7 @@
 import { parties } from "./mockData";
 import { useElectionStore } from "./store/electionStore";
+import { partyName } from "./i18n";
+import type { Lang } from "./i18n";
 import type { Snapshot } from "./api";
 import Tooltip from "./Tooltip";
 
@@ -7,7 +9,13 @@ function seatsToMajority(totalSeats: number) {
   return Math.floor(totalSeats / 2) + 1;
 }
 
-export default function SeatShareBars({ snapshot }: { snapshot?: Snapshot }) {
+export default function SeatShareBars({
+  snapshot,
+  lang = "en",
+}: {
+  snapshot?: Snapshot;
+  lang?: Lang;
+}) {
   // seatTally is always derived from constituency results in the store
   // so that changes in the constituency table are reflected here.
   const seatTally = useElectionStore((s) => s.seatTally);
@@ -15,20 +23,28 @@ export default function SeatShareBars({ snapshot }: { snapshot?: Snapshot }) {
   const majority = seatsToMajority(totalSeats);
   const majorityPct = (majority / totalSeats) * 100;
 
-  const PARTY_ORDER = ["NC", "CPN-UML", "NCP", "RSP", "OTH"];
+  const PARTY_ORDER = ["NC", "CPN-UML", "NCP", "RSP", "RPP", "JSP", "IND", "OTH"];
   const rows = Object.entries(seatTally)
     .map(([key, v]) => {
       const total = v.fptp + v.pr;
+      const pInfo = parties[key as keyof typeof parties];
       return {
         key,
         total,
-        color:   parties[key as keyof typeof parties].color,
-        name:    parties[key as keyof typeof parties].name,
-        symbol:  parties[key as keyof typeof parties].symbol,
+        color:   pInfo.color,
+        name:    partyName(key, lang),
+        symbol:  pInfo.symbol,
         percent: (total / totalSeats) * 100,
       };
     })
     .sort((a, b) => b.total - a.total || PARTY_ORDER.indexOf(a.key) - PARTY_ORDER.indexOf(b.key));
+
+  const headingEN = `Seat Share (Out of ${totalSeats})`;
+  const headingNP = `सिट बाँडफाँट (${totalSeats} मध्ये)`;
+  const majorityLabelEN = `Majority needed: ${majority}`;
+  const majorityLabelNP = `बहुमत चाहिने: ${majority}`;
+  const majorityLineEN = `Majority line (${majority})`;
+  const majorityLineNP = `बहुमत रेखा (${majority})`;
 
   return (
     <section
@@ -38,13 +54,10 @@ export default function SeatShareBars({ snapshot }: { snapshot?: Snapshot }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Seat Share (Out of {totalSeats})
+            {lang === "np" ? headingNP : headingEN}
           </h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            Majority needed:{" "}
-            <span className="font-semibold text-slate-900 dark:text-slate-100">
-              {majority}
-            </span>
+            {lang === "np" ? majorityLabelNP : majorityLabelEN}
           </p>
         </div>
 
@@ -55,7 +68,7 @@ export default function SeatShareBars({ snapshot }: { snapshot?: Snapshot }) {
         <Tooltip text="A party needs this many seats to form a majority government.">
           <span className="inline-flex items-center gap-2 cursor-default">
             <span className="inline-block h-3 w-[2px] bg-slate-900/60 dark:bg-slate-100/60" />
-            <span>Majority line ({majority})</span>
+            <span>{lang === "np" ? majorityLineNP : majorityLineEN}</span>
           </span>
         </Tooltip>
       </div>

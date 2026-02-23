@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { constituencyResults } from "../mockData";
 import type { ConstituencyResult, Province, PartyKey } from "../mockData";
+import type { Lang } from "../i18n";
 
 type SortKey = "margin" | "province" | "alpha" | "status";
 type ViewMode = "table" | "map";
@@ -13,6 +14,9 @@ function deriveSeatTally(results: ConstituencyResult[]): SeatTally {
     "CPN-UML": { fptp: 0, pr: 0 },
     NCP: { fptp: 0, pr: 0 },
     RSP: { fptp: 0, pr: 0 },
+    RPP: { fptp: 0, pr: 0 },
+    JSP: { fptp: 0, pr: 0 },
+    IND: { fptp: 0, pr: 0 },
     OTH: { fptp: 0, pr: 0 },
   };
   for (const r of results) {
@@ -23,7 +27,7 @@ function deriveSeatTally(results: ConstituencyResult[]): SeatTally {
   // PR seats are fixed allocation (110 seats across parties) — not derived from FPTP winners
   // Distribute PR proportional to FPTP vote share across all results
   const voteShare: Record<PartyKey, number> = {
-    NC: 0, "CPN-UML": 0, NCP: 0, RSP: 0, OTH: 0,
+    NC: 0, "CPN-UML": 0, NCP: 0, RSP: 0, RPP: 0, JSP: 0, IND: 0, OTH: 0,
   };
   let totalVotes = 0;
   for (const r of results) {
@@ -52,6 +56,7 @@ interface ElectionStore {
   isLoading: boolean;
   viewMode: ViewMode;
   sortBy: SortKey;
+  lang: Lang;
 
   // Actions
   setResults: (r: ConstituencyResult[]) => void;
@@ -61,6 +66,7 @@ interface ElectionStore {
   setViewMode: (v: ViewMode) => void;
   setSortBy: (s: SortKey) => void;
   resetBaseline: () => void;
+  toggleLang: () => void;
 }
 
 const BASELINE_KEY = "election_baseline_tally";
@@ -92,6 +98,7 @@ export const useElectionStore = create<ElectionStore>((set) => ({
   isLoading: true,
   viewMode: "table",
   sortBy: "status",
+  lang: (localStorage.getItem("lang") as Lang | null) ?? "en",
 
   setResults: (results) =>
     set({
@@ -115,5 +122,11 @@ export const useElectionStore = create<ElectionStore>((set) => ({
       localStorage.removeItem(BASELINE_KEY);
       localStorage.setItem(BASELINE_KEY, JSON.stringify(state.seatTally));
       return { baselineTally: state.seatTally };
+    }),
+  toggleLang: () =>
+    set((state) => {
+      const next: Lang = state.lang === "en" ? "np" : "en";
+      localStorage.setItem("lang", next);
+      return { lang: next };
     }),
 }));

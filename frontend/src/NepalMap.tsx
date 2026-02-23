@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { parties } from "./mockData";
 import type { ConstituencyResult, Province } from "./mockData";
 import { DISTRICT_PATHS } from "./districtPaths";
+import { t as i18n, provinceName, partyName } from "./i18n";
+import type { Lang } from "./i18n";
 
 // Province stroke colors — each province has a distinct border color
 const PROVINCE_STROKE: Record<string, string> = {
@@ -89,10 +91,12 @@ export default function NepalMap({
   results,
   selectedProvince,
   onSelect,
+  lang = "en",
 }: {
   results: ConstituencyResult[];
   selectedProvince: "All" | Province;
   onSelect: (p: "All" | Province) => void;
+  lang?: Lang;
 }) {
   const districtStatuses = useMemo(() => {
     const map: Record<string, DistrictStatus> = {};
@@ -108,9 +112,9 @@ export default function NepalMap({
     <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">District Map</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{i18n("districtMap", lang)}</h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            77 districts · shaded by leading party · click to filter
+            {i18n("mapDesc", lang)}
           </p>
         </div>
         {selectedProvince !== "All" && (
@@ -121,7 +125,7 @@ export default function NepalMap({
                        text-slate-700 transition hover:bg-slate-50 active:scale-95
                        dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            Clear filter
+            {i18n("clearFilter", lang)}
           </button>
         )}
       </div>
@@ -190,44 +194,60 @@ export default function NepalMap({
         {provinceNames.map((prov) => {
           const { x, y } = PROVINCE_LABELS[prov];
           const isSelected = selectedProvince === prov;
+          const primaryLabel = provinceName(prov, lang);
+          // Show the other script as a small secondary line
+          const secondaryLabel = lang === "np" ? provinceName(prov, "en") : provinceName(prov, "np");
           return (
-            <text
-              key={prov}
-              x={x}
-              y={y}
-              textAnchor="middle"
-              fontSize={isSelected ? "12" : "10"}
-              fontWeight={isSelected ? "800" : "600"}
-              fill={isSelected ? "#0f172a" : "#1e293b"}
-              stroke="white"
-              strokeWidth="3"
-              paintOrder="stroke"
-              className="pointer-events-none select-none"
-            >
-              {prov}
-            </text>
+            <g key={prov} className="pointer-events-none select-none">
+              <text
+                x={x}
+                y={y}
+                textAnchor="middle"
+                fontSize={isSelected ? "11" : "9"}
+                fontWeight={isSelected ? "800" : "600"}
+                fill={isSelected ? "#0f172a" : "#1e293b"}
+                stroke="white"
+                strokeWidth="3"
+                paintOrder="stroke"
+              >
+                {primaryLabel}
+              </text>
+              <text
+                x={x}
+                y={y + 11}
+                textAnchor="middle"
+                fontSize="7"
+                fontWeight="400"
+                fill={isSelected ? "#334155" : "#475569"}
+                stroke="white"
+                strokeWidth="2"
+                paintOrder="stroke"
+              >
+                {secondaryLabel}
+              </text>
+            </g>
           );
         })}
       </svg>
 
       {/* Legend */}
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-        {Object.entries(parties).map(([key, { name, color }]) => (
+        {Object.entries(parties).map(([key, { color }]) => (
           <div key={key} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
             <span
               className="h-3 w-3 rounded-sm flex-shrink-0"
               style={{ backgroundColor: PARTY_FILL[color] ?? "#94a3b8" }}
             />
-            {name}
+            {partyName(key, lang)}
           </div>
         ))}
         <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
           <span className="h-3 w-3 rounded-sm flex-shrink-0" style={{ backgroundColor: CONTESTED_FILL }} />
-          Contested
+          {lang === "np" ? "विवादित" : "Contested"}
         </div>
         <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           <span className="h-3 w-3 rounded-sm flex-shrink-0 opacity-30 bg-slate-400" />
-          Faint = counting (no declared yet)
+          {lang === "np" ? "फिका = मतगणना जारी" : "Faint = counting (no declared yet)"}
         </div>
       </div>
     </section>

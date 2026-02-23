@@ -1,6 +1,8 @@
 import { parties } from "./mockData";
 import { useElectionStore } from "./store/electionStore";
+import { t, partyName } from "./i18n";
 import type { PartyKey } from "./mockData";
+import type { Lang } from "./i18n";
 import type { Snapshot } from "./api";
 import { SummaryCardsSkeleton } from "./Skeleton";
 
@@ -31,9 +33,11 @@ function ChangePill({ delta }: { delta: number }) {
 export default function SummaryCards({
   isLoading,
   snapshot,
+  lang = "en",
 }: {
   isLoading?: boolean;
   snapshot?: Snapshot;
+  lang?: Lang;
 }) {
   // seatTally is always derived from constituency results in the store
   // so that changes in the constituency table are reflected here.
@@ -53,28 +57,32 @@ export default function SummaryCards({
   });
 
   // Stable sort: by total desc, then by fixed party order as tiebreaker
-  const PARTY_ORDER: PartyKey[] = ["NC", "CPN-UML", "NCP", "RSP", "OTH"];
+  const PARTY_ORDER: PartyKey[] = ["NC", "CPN-UML", "NCP", "RSP", "RPP", "JSP", "IND", "OTH"];
   totals.sort((a, b) => b.total - a.total || PARTY_ORDER.indexOf(a.key) - PARTY_ORDER.indexOf(b.key));
   const leader = totals[0];
   const runnerUp = totals[1];
 
   return (
     <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <Card title="Majority" big={`${majority}`} sub="Seats needed to form government" />
+      <Card
+        title={t("majority", lang)}
+        big={`${majority}`}
+        sub={t("majorityDesc", lang)}
+      />
 
       <Card
-        title="Leading party"
-        big={parties[leader.key].name.split(" (")[0]}
-        sub={`${leader.total} seats`}
+        title={t("leadingParty", lang)}
+        big={partyName(leader.key, lang).split(" (")[0]}
+        sub={`${leader.total} ${t("seats", lang)}`}
         dotColor={parties[leader.key].color}
         symbol={parties[leader.key].symbol}
         right={<ChangePill delta={leader.delta} />}
       />
 
       <Card
-        title="Runner-up"
-        big={parties[runnerUp.key].name.split(" (")[0]}
-        sub={`${runnerUp.total} seats`}
+        title={t("runnerUp", lang)}
+        big={partyName(runnerUp.key, lang).split(" (")[0]}
+        sub={`${runnerUp.total} ${t("seats", lang)}`}
         dotColor={parties[runnerUp.key].color}
         symbol={parties[runnerUp.key].symbol}
         right={<ChangePill delta={runnerUp.delta} />}

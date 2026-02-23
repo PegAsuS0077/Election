@@ -5,6 +5,8 @@ import type { Candidate, ConstituencyResult, Province } from "./mockData";
 import { TableRowsSkeleton } from "./Skeleton";
 import Tooltip from "./Tooltip";
 import { useElectionStore } from "./store/electionStore";
+import { t as i18n, provinceName, partyName, statusLabel } from "./i18n";
+import type { Lang } from "./i18n";
 
 type SortKey = "margin" | "province" | "alpha" | "status";
 
@@ -83,16 +85,19 @@ function useCountUp(target: number, durationMs = 550) {
 
 export default function ConstituencyTable({
   results,
-  provinces,
+  translatedProvinces,
   selectedProvince,
   onProvinceChange,
   isLoading,
+  lang = "en",
 }: {
   results: ConstituencyResult[];
-  provinces: Province[];
+  /** Pass provinces as { key, label } so the dropdown shows the translated name */
+  translatedProvinces: { key: Province; label: string }[];
   selectedProvince: "All" | Province;
   onProvinceChange: (p: "All" | Province) => void;
   isLoading?: boolean;
+  lang?: Lang;
 }) {
   const [query, setQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -148,49 +153,49 @@ export default function ConstituencyTable({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Constituency Results
+              {i18n("constituencyResults", lang)}
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              Click a row to view details · Search and filter by province
+              {i18n("clickRowDetails", lang)}
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <input
-              aria-label="Search constituencies"
+              aria-label={i18n("searchAria", lang)}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search…"
+              placeholder={i18n("search", lang)}
               className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
                          focus:ring-2 focus:ring-slate-200 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-slate-700"
             />
 
             <select
-              aria-label="Filter by province"
+              aria-label={i18n("filterByProvince", lang)}
               value={selectedProvince}
               onChange={(e) => onProvinceChange(e.target.value as "All" | Province)}
               className="w-full sm:w-52 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
                          focus:ring-2 focus:ring-slate-200 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-slate-700"
             >
-              <option value="All">All provinces</option>
-              {provinces.map((p) => (
-                <option key={p} value={p}>
-                  {p}
+              <option value="All">{i18n("allProvinces", lang)}</option>
+              {translatedProvinces.map(({ key, label }) => (
+                <option key={key} value={key}>
+                  {label}
                 </option>
               ))}
             </select>
 
             <select
-              aria-label="Sort constituencies"
+              aria-label={i18n("sortBy", lang)}
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
               className="w-full sm:w-44 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
                          focus:ring-2 focus:ring-slate-200 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-slate-700"
             >
-              <option value="status">Sort: Status</option>
-              <option value="margin">Sort: Margin ↓</option>
-              <option value="province">Sort: Province A–Z</option>
-              <option value="alpha">Sort: Name A–Z</option>
+              <option value="status">{i18n("sortStatus", lang)}</option>
+              <option value="margin">{i18n("sortMargin", lang)}</option>
+              <option value="province">{i18n("sortProvinceAZ", lang)}</option>
+              <option value="alpha">{i18n("sortNameAZ", lang)}</option>
             </select>
           </div>
         </div>
@@ -199,13 +204,13 @@ export default function ConstituencyTable({
           <table className="min-w-full border-separate border-spacing-0">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                <th className="py-3 pr-4">Constituency</th>
-                <th className="py-3 pr-4">Province</th>
-                <th className="py-3 pr-4">Leading</th>
-                <th className="py-3 pr-4">Runner-up</th>
-                <th className="py-3 pr-4">Margin</th>
-                <th className="py-3 pr-4">Status</th>
-                <th className="py-3">Updated</th>
+                <th className="py-3 pr-4">{i18n("constituency", lang)}</th>
+                <th className="py-3 pr-4">{i18n("province", lang)}</th>
+                <th className="py-3 pr-4">{i18n("leading", lang)}</th>
+                <th className="py-3 pr-4">{i18n("runnerUpCol", lang)}</th>
+                <th className="py-3 pr-4">{i18n("margin", lang)}</th>
+                <th className="py-3 pr-4">{i18n("status", lang)}</th>
+                <th className="py-3">{i18n("updated", lang)}</th>
               </tr>
             </thead>
 
@@ -215,12 +220,12 @@ export default function ConstituencyTable({
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-sm text-slate-600 dark:text-slate-300">
-                    No rows match your search.
+                    {i18n("noRows", lang)}
                   </td>
                 </tr>
               ) : (
                 filtered.map((r) => (
-                  <Row key={r.code} r={r} onClick={() => setSelectedCode(r.code)} />
+                  <Row key={r.code} r={r} onClick={() => setSelectedCode(r.code)} lang={lang} />
                 ))
               )}
             </tbody>
@@ -228,17 +233,18 @@ export default function ConstituencyTable({
         </div>
 
         <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-          Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{filtered.length}</span>{" "}
-          constituencies (mock subset)
+          {i18n("showing", lang)}{" "}
+          <span className="font-semibold text-slate-700 dark:text-slate-200">{filtered.length}</span>{" "}
+          {i18n("constituenciesCount", lang)} {i18n("mockSubset", lang)}
         </div>
       </section>
 
-      {selected ? <DetailsModal r={selected} onClose={() => setSelectedCode(null)} /> : null}
+      {selected ? <DetailsModal r={selected} onClose={() => setSelectedCode(null)} lang={lang} /> : null}
     </>
   );
 }
 
-const Row = memo(function Row({ r, onClick }: { r: ConstituencyResult; onClick: () => void }) {
+const Row = memo(function Row({ r, onClick, lang = "en" }: { r: ConstituencyResult; onClick: () => void; lang?: Lang }) {
   const t = topCandidates(r.candidates);
   const leader = t.leader;
   const runnerUp = t.runnerUp;
@@ -278,17 +284,17 @@ const Row = memo(function Row({ r, onClick }: { r: ConstituencyResult; onClick: 
               <div className="flex items-center gap-1 shrink-0">
                 {flashing && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800 ring-1 ring-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-200 dark:ring-yellow-800">
-                    ↕ Updated
+                    {i18n("liveUpdated", lang)}
                   </span>
                 )}
                 {r.status === "COUNTING" && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700 ring-1 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-900">
                     <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
-                    LIVE
+                    {i18n("live", lang)}
                   </span>
                 )}
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ring-1 ${statusClass}`}>
-                  {r.status === "DECLARED" ? "Declared" : "Counting"}
+                  {statusLabel(r.status, lang)}
                 </span>
               </div>
             </div>
@@ -314,7 +320,7 @@ const Row = memo(function Row({ r, onClick }: { r: ConstituencyResult; onClick: 
               </div>
             </div>
 
-            <div className="py-3 pr-4 text-sm text-slate-700 dark:text-slate-200">{r.province}</div>
+            <div className="py-3 pr-4 text-sm text-slate-700 dark:text-slate-200">{provinceName(r.province, lang)}</div>
 
             <div className="py-3 pr-4">
               {leader && leadParty ? (
@@ -323,7 +329,7 @@ const Row = memo(function Row({ r, onClick }: { r: ConstituencyResult; onClick: 
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{leader.name}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {leadParty.name} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(leader.votes)}</span>{" "}
+                      {partyName(leader.party, lang)} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(leader.votes)}</span>{" "}
                       <span className="text-slate-400 dark:text-slate-500">({votePct(leader.votes, r.candidates)})</span>
                     </div>
                   </div>
@@ -338,7 +344,7 @@ const Row = memo(function Row({ r, onClick }: { r: ConstituencyResult; onClick: 
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{runnerUp.name}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {runParty.name} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(runnerUp.votes)}</span>{" "}
+                      {partyName(runnerUp.party, lang)} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(runnerUp.votes)}</span>{" "}
                       <span className="text-slate-400 dark:text-slate-500">({votePct(runnerUp.votes, r.candidates)})</span>
                     </div>
                   </div>
@@ -358,12 +364,12 @@ const Row = memo(function Row({ r, onClick }: { r: ConstituencyResult; onClick: 
                   <Tooltip text="Counting in progress — votes are still being tallied">
                     <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 ring-1 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-900">
                       <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
-                      LIVE
+                      {i18n("live", lang)}
                     </span>
                   </Tooltip>
                 )}
                 <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass}`}>
-                  {r.status === "DECLARED" ? "Declared" : "Counting"}
+                  {statusLabel(r.status, lang)}
                 </span>
               </div>
             </div>
@@ -376,7 +382,7 @@ const Row = memo(function Row({ r, onClick }: { r: ConstituencyResult; onClick: 
   );
 });
 
-const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: ConstituencyResult; onClose: () => void }) {
+const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en" }: { r: ConstituencyResult; onClose: () => void; lang?: Lang }) {
   // open animation
   const [open, setOpen] = useState(false);
 
@@ -398,13 +404,13 @@ const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: Constituenc
     setTimeout(onClose, 160);
   };
 
-  const t = topCandidates(r.candidates);
-  const leader = t.leader;
-  const runnerUp = t.runnerUp;
+  const cands = topCandidates(r.candidates);
+  const leader = cands.leader;
+  const runnerUp = cands.runnerUp;
 
   const leadParty = leader ? parties[leader.party] : null;
 
-  const totalAllVotes = t.sorted.reduce((s, c) => s + c.votes, 0);
+  const totalAllVotes = cands.sorted.reduce((s, c) => s + c.votes, 0);
   const topTwoTotal = (leader?.votes ?? 0) + (runnerUp?.votes ?? 0);
   const leadPct = pct(leader?.votes ?? 0, topTwoTotal);
   const runPct = pct(runnerUp?.votes ?? 0, topTwoTotal);
@@ -462,7 +468,7 @@ const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: Constituenc
                        transition-transform duration-150 hover:bg-slate-50 active:scale-95
                        dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            Close
+            {i18n("close", lang)}
           </button>
         </div>
 
@@ -539,11 +545,11 @@ const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: Constituenc
           <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">All candidates</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">{t.sorted.length} total</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">{cands.sorted.length} total</div>
             </div>
 
             <div className="mt-3 space-y-2">
-              {t.sorted.map((c, idx) => {
+              {cands.sorted.map((c, idx) => {
                 const party = parties[c.party];
                 const isTop2 = idx < 2;
                 return (
@@ -559,7 +565,7 @@ const DetailsModal = memo(function DetailsModal({ r, onClose }: { r: Constituenc
                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                           {c.name}
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{party.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{partyName(c.party, lang)}</div>
                       </div>
                     </div>
 

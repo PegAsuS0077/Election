@@ -1,11 +1,14 @@
-export type PartyKey = "NC" | "CPN-UML" | "NCP" | "RSP" | "OTH";
+export type PartyKey = "NC" | "CPN-UML" | "NCP" | "RSP" | "RPP" | "JSP" | "IND" | "OTH";
 
 export const parties: Record<PartyKey, { name: string; color: string; symbol: string }> = {
-  NC:        { name: "Nepali Congress (NC)",           color: "bg-red-600",     symbol: "🌳" },
-  "CPN-UML": { name: "CPN-UML",                        color: "bg-blue-600",    symbol: "☀️" },
-  NCP:       { name: "Nepali Communist Party (NCP)",   color: "bg-orange-600",  symbol: "🌙" },
-  RSP:       { name: "Rastriya Swatantra Party (RSP)", color: "bg-emerald-600", symbol: "⚡" },
-  OTH:       { name: "Others/Ind.",                    color: "bg-slate-500",   symbol: "🏳️" },
+  NC:        { name: "Nepali Congress (NC)",                   color: "bg-red-600",     symbol: "🌳" },
+  "CPN-UML": { name: "CPN-UML",                                color: "bg-blue-600",    symbol: "☀️" },
+  NCP:       { name: "Nepali Communist Party (NCP)",           color: "bg-orange-600",  symbol: "🌙" },
+  RSP:       { name: "Rastriya Swatantra Party (RSP)",         color: "bg-emerald-600", symbol: "⚡" },
+  RPP:       { name: "Rastriya Prajatantra Party (RPP)",       color: "bg-yellow-600",  symbol: "👑" },
+  JSP:       { name: "Janata Samajwadi Party (JSP)",           color: "bg-cyan-600",    symbol: "⚙️" },
+  IND:       { name: "Independent",                            color: "bg-violet-500",  symbol: "🧑" },
+  OTH:       { name: "Others",                                 color: "bg-slate-500",   symbol: "🏳️" },
 };
 
 // Mock "change vs previous election" (positive = gain, negative = loss)
@@ -14,6 +17,9 @@ export const seatChange: Record<PartyKey, number> = {
   "CPN-UML": -2,
   NCP: +1,
   RSP: +6,
+  RPP: 0,
+  JSP: 0,
+  IND: 0,
   OTH: -1,
 };
 
