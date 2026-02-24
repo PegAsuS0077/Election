@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { t } from "./i18n";
 import type { Lang } from "./i18n";
 
@@ -40,6 +41,19 @@ export default function Footer({ lang = "en" }: { lang?: Lang }) {
 
         <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 dark:text-slate-600">
           <span>© 2026 nepalvotes.live</span>
+          <nav className="flex items-center gap-3">
+            <Link to="/about" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              {lang === "np" ? "हाम्रोबारे" : "About"}
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/privacy-policy" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              {lang === "np" ? "गोपनीयता नीति" : "Privacy Policy"}
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/contact" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              {lang === "np" ? "सम्पर्क" : "Contact"}
+            </Link>
+          </nav>
           <span>
             {lang === "np"
               ? "निर्वाचन आयोग नेपालको आधिकारिक डेटा"
