@@ -273,7 +273,7 @@ function HotSeatModal({
                     const cpHex = PARTY_HEX[cp.color] ?? "#888";
                     const sharePct = totalVotes > 0 ? ((c.votes / totalVotes) * 100).toFixed(1) : "0.0";
                     return (
-                      <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+                      <div key={c.candidateId} className="flex items-center gap-3 px-4 py-2.5">
                         <span className="text-xs text-slate-400 dark:text-slate-500 w-4 shrink-0 tabular-nums">{i + 1}</span>
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: cpHex }} />
                         <div className="flex-1 min-w-0">
@@ -298,7 +298,7 @@ function HotSeatModal({
             )}
 
             {/* Turnout */}
-            {result.totalVoters > 0 && (
+            {result.totalVoters != null && result.totalVoters > 0 && (
               <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/40 px-4 py-3 text-sm">
                 <span className="text-slate-600 dark:text-slate-300">
                   {lang === "np" ? "मतदाता संख्या" : "Voter Turnout"}
