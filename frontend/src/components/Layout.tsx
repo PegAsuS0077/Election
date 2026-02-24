@@ -6,15 +6,6 @@ import { AuroraBackground } from "./ui/aurora-background";
 import Footer from "../Footer";
 import { t } from "../i18n";
 
-// ── SVG mark ──────────────────────────────────────────────────────────────────
-function NepalFlagMark({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size * 1.22} viewBox="0 0 50 61" fill="none" aria-hidden="true">
-      <polygon points="0,0 50,20 28,20 50,61 0,61" fill="#dc2626" />
-      <polygon points="0,0 50,20 28,20 50,61 0,61" fill="none" stroke="#1e3a8a" strokeWidth="3" />
-    </svg>
-  );
-}
 
 function SunIcon() {
   return (
@@ -128,13 +119,24 @@ export default function Layout({
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           {/* Brand */}
-          <Link to="/" className="flex items-center gap-2.5 min-w-0 shrink-0">
-            <NepalFlagMark size={22} />
+          <Link to="/" className="flex items-center gap-2 min-w-0 shrink-0">
+            <img
+              src="https://flagcdn.com/w40/np.png"
+              srcSet="https://flagcdn.com/w80/np.png 2x"
+              width="28"
+              height="auto"
+              alt="Nepal flag"
+              className="rounded-sm shrink-0"
+            />
             <span
-              className="font-bold text-[15px] tracking-tight text-slate-900 dark:text-slate-100 leading-none"
+              className="font-bold text-[13px] sm:text-[14px] tracking-tight text-slate-900 dark:text-slate-100 leading-tight"
               style={{ fontFamily: "'Sora', sans-serif" }}
             >
-              nepalvotes<span className="text-[#2563eb]">.live</span>
+              Nepal Election Results 2082{" "}
+              <span className="text-[#2563eb]">(2026)</span>
+              <span className="hidden sm:inline text-slate-400 dark:text-slate-500 font-normal">
+                {" "}– Live Vote Count
+              </span>
             </span>
           </Link>
 
