@@ -7,7 +7,6 @@ import type { PartyKey } from "./mockData";
 import { getWsUrl } from "./api";
 import type { WsMessage } from "./api";
 
-import ProgressBar from "./ProgressBar";
 import SummaryCards from "./SummaryCards";
 import SeatShareBars from "./SeatShareBars";
 import ProvinceSummary from "./ProvinceSummary";
@@ -191,30 +190,12 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards lang={lang} />}
-        {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
-
-        <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 uppercase tracking-widest">
-                {t("seatsDeclaredProg", lang)}
-              </h2>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                <span className="font-medium text-slate-700 dark:text-slate-300 tabular-nums" style={{ fontFamily: "'DM Mono', monospace" }}>
-                  {declaredSeats}
-                </span>{" "}/ 165 {lang === "np" ? "निर्वाचन क्षेत्र घोषित" : "constituencies declared"}
-              </p>
-            </div>
-            <span className="text-2xl font-bold text-[#2563eb] dark:text-[#3b82f6] tabular-nums leading-none" style={{ fontFamily: "'DM Mono', monospace" }}>
-              {declaredPct}%
-            </span>
-          </div>
-          <ProgressBar declared={declaredSeats} total={totalSeats} />
-        </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <HotSeats results={results} lang={lang} />
         </section>
+
+        {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
 
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest mr-1">{t("view", lang)}</span>
