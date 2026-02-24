@@ -2,32 +2,115 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ── Design tokens ───────────────────────────────────────────────────────── */
+:root {
+  /* Blue accent system (matches #2563eb = blue-600) */
+  --accent:        #2563eb;
+  --accent-light:  #3b82f6;
+  --accent-dim:    #1d4ed8;
+  --accent-muted:  rgba(37, 99, 235, 0.12);
+
+  /* Neutrals */
+  --surface:       #ffffff;
+  --surface-2:     #f8fafc;
+  --border:        #e2e8f0;
+  --text-primary:  #0f172a;
+  --text-muted:    #64748b;
+
+  /* Aurora colour tokens */
+  --white:         #ffffff;
+  --black:         #000000;
+  --transparent:   transparent;
+  --blue-300:      theme(--color-blue-300);
+  --blue-400:      theme(--color-blue-400);
+  --blue-500:      theme(--color-blue-500);
+  --indigo-300:    theme(--color-indigo-300);
+  --violet-200:    theme(--color-violet-200);
+}
+
+.dark {
+  --surface:       #0f172a;
+  --surface-2:     #1e293b;
+  --border:        #1e293b;
+  --text-primary:  #f1f5f9;
+  --text-muted:    #94a3b8;
+}
+
+/* ── Global base ─────────────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Aurora background: CSS colour tokens (mirrors Tailwind palette names) */
-:root {
-  --white: #ffffff;
-  --black: #000000;
-  --transparent: transparent;
-  --blue-300: theme(--color-blue-300);
-  --blue-400: theme(--color-blue-400);
-  --blue-500: theme(--color-blue-500);
-  --indigo-300: theme(--color-indigo-300);
-  --violet-200: theme(--color-violet-200);
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
 }
 
-/* Aurora keyframe + utility */
+/* Mono / tabular data */
+.font-mono, [data-tabular] {
+  font-family: 'DM Mono', 'Fira Mono', monospace;
+}
+
+/* Display / hero headings */
+.font-display {
+  font-family: 'Sora', 'DM Sans', sans-serif;
+}
+
+/* ── Aurora keyframe ─────────────────────────────────────────────────────── */
 @keyframes aurora {
-  from {
-    background-position: 50% 50%, 50% 50%;
-  }
-  to {
-    background-position: 350% 50%, 350% 50%;
-  }
+  from { background-position: 50% 50%, 50% 50%; }
+  to   { background-position: 350% 50%, 350% 50%; }
 }
 
 @theme {
   --animate-aurora: aurora 60s linear infinite;
+}
+
+/* ── Pulse dot for LIVE indicator ────────────────────────────────────────── */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* ── Top progress bar shimmer ────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.progress-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--accent-light) 40%,
+    var(--accent) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* ── Stat number odometer feel ───────────────────────────────────────────── */
+.stat-num {
+  font-family: 'DM Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ── Smooth section reveals ──────────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease both;
+}
+
+/* ── Card glass surface ──────────────────────────────────────────────────── */
+.glass {
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.13);
 }
