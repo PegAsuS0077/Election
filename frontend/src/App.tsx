@@ -1,17 +1,14 @@
-import { useEffect, useMemo } from "react";
-import { parties, provinces } from "./mockData";
+import { useEffect } from "react";
+import { parties } from "./mockData";
 import { useElectionStore } from "./store/electionStore";
 import { useElectionSimulation } from "./hooks/useElectionSimulation";
-import { t, provinceName } from "./i18n";
+import { t } from "./i18n";
 import type { PartyKey } from "./mockData";
 import { getWsUrl } from "./api";
 import type { WsMessage } from "./api";
 
 import SummaryCards from "./SummaryCards";
 import SeatShareBars from "./SeatShareBars";
-import ProvinceSummary from "./ProvinceSummary";
-import ConstituencyTable from "./ConstituencyTable";
-import NepalMap from "./NepalMap";
 import HotSeats from "./HotSeats";
 import { SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
 import Layout from "./components/Layout";
@@ -37,7 +34,7 @@ function useCountdown(targetDate: string) {
 }
 
 export default function App() {
-  const { isLoading, setIsLoading, selectedProvince, setSelectedProvince, viewMode, setViewMode, lang } = useElectionStore();
+  const { isLoading, setIsLoading, lang } = useElectionStore();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 1500);
@@ -74,11 +71,6 @@ export default function App() {
     .sort((a, b) => b.total - a.total);
   const lead      = tallyRows[0];
   const projected = lead && lead.total >= majority ? lead : null;
-
-  const translatedProvinces = useMemo(
-    () => provinces.map((p) => ({ key: p, label: provinceName(p, lang) })),
-    [lang]
-  );
 
   const hasLiveData    = results.some((r) => r.status !== "PENDING" && r.votesCast > 0);
   const lastUpdatedStr = results.length > 0 ? formatTime(results[0].lastUpdated) : "—";
@@ -196,33 +188,6 @@ export default function App() {
         </section>
 
         {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
-
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest mr-1">{t("view", lang)}</span>
-          {(["table", "map"] as const).map((mode) => (
-            <button key={mode} type="button" onClick={() => setViewMode(mode)}
-              className={"h-8 px-3 rounded-lg text-xs font-semibold transition-all active:scale-95 border " +
-                (viewMode === mode
-                  ? "bg-[#2563eb] border-[#2563eb] text-white shadow-sm"
-                  : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:border-[#2563eb]/40 hover:text-[#2563eb]"
-                )}
-            >
-              {mode === "table" ? t("viewTable", lang) : t("viewMap", lang)}
-            </button>
-          ))}
-        </div>
-
-        {viewMode === "map" ? (
-          <>
-            <NepalMap results={results} selectedProvince={selectedProvince} onSelect={setSelectedProvince} lang={lang} />
-            <ConstituencyTable results={results} translatedProvinces={translatedProvinces} selectedProvince={selectedProvince} onProvinceChange={setSelectedProvince} isLoading={isLoading} lang={lang} />
-          </>
-        ) : (
-          <>
-            <ProvinceSummary results={results} selectedProvince={selectedProvince} onSelect={setSelectedProvince} lang={lang} />
-            <ConstituencyTable results={results} translatedProvinces={translatedProvinces} selectedProvince={selectedProvince} onProvinceChange={setSelectedProvince} isLoading={isLoading} lang={lang} />
-          </>
-        )}
 
         <div aria-live="polite" aria-atomic="false" className="sr-only">
           {results.filter((r) => r.status === "COUNTING").length} {t("stillCounting", lang)}

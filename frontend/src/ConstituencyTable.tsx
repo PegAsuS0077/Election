@@ -420,7 +420,7 @@ const Row = memo(function Row({ r, onClick, lang = "en" }: { r: ConstituencyResu
   );
 });
 
-const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en" }: { r: ConstituencyResult; onClose: () => void; lang?: Lang }) {
+export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en" }: { r: ConstituencyResult; onClose: () => void; lang?: Lang }) {
   // open animation
   const [open, setOpen] = useState(false);
 
