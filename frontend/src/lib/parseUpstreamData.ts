@@ -144,16 +144,27 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
         ? "COUNTING"
         : "PENDING";
 
-    const candidates: Candidate[] = recs.map((rec) => ({
-      candidateId: rec.CandidateID,
-      nameNp:      rec.CandidateName,
-      name:        rec.CandidateName, // same until English transliteration is available
-      partyName:   rec.PoliticalPartyName,
-      partyId:     derivePartyId(rec),
-      votes:       rec.TotalVoteReceived,
-      gender:      mapGender(rec.Gender),
-      isWinner:    isWinner(rec),
-    }));
+    const candidates: Candidate[] = recs.map((rec) => {
+      const c: Candidate = {
+        candidateId: rec.CandidateID,
+        nameNp:      rec.CandidateName,
+        name:        rec.CandidateName, // same until English transliteration is available
+        partyName:   rec.PoliticalPartyName,
+        partyId:     derivePartyId(rec),
+        votes:       rec.TotalVoteReceived,
+        gender:      mapGender(rec.Gender),
+        isWinner:    isWinner(rec),
+      };
+      // Biographical fields — include only when present and meaningful
+      if (rec.AGE_YR)                                    c.age          = rec.AGE_YR;
+      if (rec.FATHER_NAME && rec.FATHER_NAME !== "-")    c.fatherName   = rec.FATHER_NAME;
+      if (rec.SPOUCE_NAME  && rec.SPOUCE_NAME  !== "-")  c.spouseName   = rec.SPOUCE_NAME;
+      if (rec.QUALIFICATION && rec.QUALIFICATION !== "0") c.qualification = rec.QUALIFICATION;
+      if (rec.NAMEOFINST   && rec.NAMEOFINST   !== "0")  c.institution  = rec.NAMEOFINST;
+      if (rec.EXPERIENCE   && rec.EXPERIENCE   !== "0")  c.experience   = rec.EXPERIENCE;
+      if (rec.ADDRESS      && rec.ADDRESS      !== "0")  c.address      = rec.ADDRESS;
+      return c;
+    });
 
     const votesCast = candidates.reduce((s, c) => s + c.votes, 0);
 

@@ -61,6 +61,14 @@ export type Candidate = {
   gender: "M" | "F";
   /** Whether this candidate has won their seat (E_STATUS == "W") */
   isWinner: boolean;
+  // ── Biographical fields (optional — present when parsed from upstream JSON) ──
+  age?: number;
+  fatherName?: string;
+  spouseName?: string;
+  qualification?: string;
+  institution?: string;
+  experience?: string;
+  address?: string;
 };
 
 // ── Constituency ─────────────────────────────────────────────────────────────
@@ -177,4 +185,12 @@ export type UpstreamRecord = {
   /** null pre-election; "W" when elected */
   E_STATUS: string | null;
   Gender?: string;
+  // ── Biographical fields (present in upstream, optional) ──────────────────
+  AGE_YR?: number;
+  FATHER_NAME?: string;
+  SPOUCE_NAME?: string;
+  QUALIFICATION?: string;
+  NAMEOFINST?: string;
+  EXPERIENCE?: string;
+  ADDRESS?: string;
 };
