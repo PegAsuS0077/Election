@@ -118,7 +118,7 @@ function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onC
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
             <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">
-              {c.partyName.split(" (")[0]}
+              {partyName(c.partyId, lang)}
             </span>
           </div>
         </div>
