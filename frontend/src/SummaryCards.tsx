@@ -1,10 +1,9 @@
-import { parties } from "./mockData";
 import { useElectionStore } from "./store/electionStore";
-import { t, partyName } from "./i18n";
-import type { PartyKey } from "./mockData";
+import { t } from "./i18n";
 import type { Lang } from "./i18n";
 import type { Snapshot } from "./api";
 import { SummaryCardsSkeleton } from "./Skeleton";
+import { getParty } from "./lib/partyRegistry";
 
 function seatsToMajority(totalSeats: number) {
   return Math.floor(totalSeats / 2) + 1;
@@ -13,19 +12,15 @@ function seatsToMajority(totalSeats: number) {
 function ChangePill({ delta }: { delta: number }) {
   const up = delta > 0;
   const down = delta < 0;
-
   const cls = up
     ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
     : down
     ? "bg-rose-50 text-rose-800 ring-rose-200"
     : "bg-slate-50 text-slate-700 ring-slate-200";
-
   const sign = up ? "+" : "";
-  const label = `${sign}${delta}`;
-
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-bold ring-1 ${cls}`}>
-      {up ? "▲" : down ? "▼" : "•"} {label}
+      {up ? "▲" : down ? "▼" : "•"} {sign}{delta}
     </span>
   );
 }
@@ -39,52 +34,56 @@ export default function SummaryCards({
   snapshot?: Snapshot;
   lang?: Lang;
 }) {
-  // seatTally is always derived from constituency results in the store
-  // so that changes in the constituency table are reflected here.
-  const seatTally = useElectionStore((s) => s.seatTally);
+  const seatTally    = useElectionStore((s) => s.seatTally);
   const baselineTally = useElectionStore((s) => s.baselineTally);
 
   if (isLoading) return <SummaryCardsSkeleton />;
 
   const totalSeats = snapshot?.totalSeats ?? 275;
-  const majority = seatsToMajority(totalSeats);
+  const majority   = seatsToMajority(totalSeats);
 
-  const totals = Object.entries(seatTally).map(([key, v]) => {
-    const k = key as PartyKey;
-    const current = v.fptp + v.pr;
-    const baseline = baselineTally[k].fptp + baselineTally[k].pr;
-    return { key: k, total: current, delta: current - baseline };
+  const totals = Object.entries(seatTally).map(([partyId, v]) => {
+    const current   = v.fptp + v.pr;
+    const base      = baselineTally[partyId];
+    const baseTotal = base ? base.fptp + base.pr : 0;
+    return { partyId, total: current, delta: current - baseTotal };
   });
 
-  // Stable sort: by total desc, then by fixed party order as tiebreaker
-  const PARTY_ORDER: PartyKey[] = ["NC", "CPN-UML", "NCP", "RSP", "RPP", "JSP", "IND", "OTH"];
-  totals.sort((a, b) => b.total - a.total || PARTY_ORDER.indexOf(a.key) - PARTY_ORDER.indexOf(b.key));
-  const leader = totals[0];
-  const runnerUp = totals[1];
+  totals.sort((a, b) => b.total - a.total);
+  const namedTotals = totals.filter((t) => t.partyId !== "IND");
+  const leader   = namedTotals[0];
+  const runnerUp = namedTotals[1];
+
+  if (!leader || !runnerUp) {
+    return (
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card title={t("majority", lang)} big={`${majority}`} sub={t("majorityDesc", lang)} />
+        <Card title={t("leadingParty", lang)} big="—" sub={t("preElection", lang)} />
+        <Card title={t("runnerUp", lang)} big="—" sub={t("preElection", lang)} />
+      </section>
+    );
+  }
+
+  const leaderInfo   = getParty(leader.partyId);
+  const runnerUpInfo = getParty(runnerUp.partyId);
 
   return (
     <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <Card
-        title={t("majority", lang)}
-        big={`${majority}`}
-        sub={t("majorityDesc", lang)}
-      />
-
+      <Card title={t("majority", lang)} big={`${majority}`} sub={t("majorityDesc", lang)} />
       <Card
         title={t("leadingParty", lang)}
-        big={partyName(leader.key, lang).split(" (")[0]}
+        big={leaderInfo.nameEn.split(" (")[0]}
         sub={`${leader.total} ${t("seats", lang)}`}
-        dotColor={parties[leader.key].color}
-        symbol={parties[leader.key].symbol}
+        dotColor={leaderInfo.color}
+        symbol={leaderInfo.symbol}
         right={<ChangePill delta={leader.delta} />}
       />
-
       <Card
         title={t("runnerUp", lang)}
-        big={partyName(runnerUp.key, lang).split(" (")[0]}
+        big={runnerUpInfo.nameEn.split(" (")[0]}
         sub={`${runnerUp.total} ${t("seats", lang)}`}
-        dotColor={parties[runnerUp.key].color}
-        symbol={parties[runnerUp.key].symbol}
+        dotColor={runnerUpInfo.color}
+        symbol={runnerUpInfo.symbol}
         right={<ChangePill delta={runnerUp.delta} />}
       />
     </section>
@@ -92,19 +91,10 @@ export default function SummaryCards({
 }
 
 function Card({
-  title,
-  big,
-  sub,
-  dotColor,
-  symbol,
-  right,
+  title, big, sub, dotColor, symbol, right,
 }: {
-  title: string;
-  big: string;
-  sub: string;
-  dotColor?: string;
-  symbol?: string;
-  right?: React.ReactNode;
+  title: string; big: string; sub: string;
+  dotColor?: string; symbol?: string; right?: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
@@ -115,7 +105,6 @@ function Card({
         </div>
         {right}
       </div>
-
       <div className="mt-2 flex items-center gap-2">
         {symbol && <span className="text-2xl leading-none">{symbol}</span>}
         <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{big}</span>

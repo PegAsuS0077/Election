@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useElectionStore } from "../store/electionStore";
-import type { ConstituencyResult } from "../mockData";
+import type { ConstituencyResult } from "../types";
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? "admin2026";
 

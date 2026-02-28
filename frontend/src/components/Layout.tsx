@@ -5,7 +5,7 @@ import { useElectionStore } from "../store/electionStore";
 import { AuroraBackground } from "./ui/aurora-background";
 import Footer from "../Footer";
 import { t } from "../i18n";
-
+export { PROVINCE_COLORS, PARTY_HEX } from "../lib/constants";
 
 function SunIcon() {
   return (
@@ -36,28 +36,6 @@ const NAV_LINKS: NavLink[] = [
   { path: "/parties",    labelEn: "Parties",     labelNp: "दलहरू",            icon: "◉" },
   { path: "/candidates", labelEn: "Candidates",  labelNp: "उम्मेद्वारहरू",   icon: "👤" },
 ];
-
-// ── Province colors (shared across pages) ─────────────────────────────────────
-export const PROVINCE_COLORS: Record<string, string> = {
-  Koshi:          "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300",
-  Madhesh:        "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-  Bagmati:        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-  Gandaki:        "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
-  Lumbini:        "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300",
-  Karnali:        "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300",
-  Sudurpashchim:  "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300",
-};
-
-export const PARTY_HEX: Record<string, string> = {
-  "bg-red-600":     "#dc2626",
-  "bg-blue-600":    "#2563eb",
-  "bg-orange-600":  "#ea580c",
-  "bg-emerald-600": "#059669",
-  "bg-yellow-600":  "#ca8a04",
-  "bg-cyan-600":    "#0891b2",
-  "bg-violet-500":  "#8b5cf6",
-  "bg-slate-500":   "#64748b",
-};
 
 // ── Layout props ──────────────────────────────────────────────────────────────
 interface LayoutProps {

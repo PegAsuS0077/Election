@@ -2,43 +2,27 @@
  * Parses raw candidate records from the Nepal Election Commission upstream JSON:
  *   https://result.election.gov.np/JSONFiles/ElectionResultCentral2082.txt
  *
- * Mirrors the logic in backend/scraper.py so the frontend can work with real
- * data even when the backend is not running.
+ * Key rules:
+ *  - partyId = String(SYMBOLCODE) for all parties, or "IND" when PoliticalPartyName
+ *    is "स्वतन्त्र" (independent). Never invented or hardcoded.
+ *  - partyName = raw PoliticalPartyName — passed through unchanged.
+ *  - constituencyId = `${STATE_ID}-${DistrictName}-${SCConstID}`
+ *  - votes = TotalVoteReceived (may be 0 pre-election)
+ *  - isWinner = E_STATUS === "W" (or rank-1 fallback during partial counting)
+ *
+ * Mirrors backend/scraper.py logic so the frontend can work with real data
+ * even when the backend is not running.
  */
 
-import type { ConstituencyResult, Candidate, PartyKey, Province } from "../mockData";
-
-// ── Upstream record shape (subset of fields we use) ───────────────────────────
-export type UpstreamRecord = {
-  CandidateID: number;
-  CandidateName: string;   // Nepali Devanagari
-  PoliticalPartyName: string;
-  STATE_ID: number;        // 1–7
-  DistrictName: string;    // Nepali Devanagari
-  SCConstID: number;       // constituency number within district
-  TotalVoteReceived: number;
-  R: number;               // rank (1 = first pre-election; winner post-election)
-  E_STATUS: string | null; // null pre-election; "W" for winner on election day
-  Gender?: string;         // "पुरुष" | "महिला" | "अन्य"
-};
-
-// ── Party mapping (mirrors backend/scraper.py PARTY_MAP) ──────────────────────
-const PARTY_MAP: Record<string, PartyKey> = {
-  "नेपाली काँग्रेस":                                                    "NC",
-  "नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी लेनिनवादी)":          "CPN-UML",
-  "नेपाल कम्युनिस्ट पार्टी (माओवादी)":                                 "NCP",
-  "नेपाल कम्युनिष्ट पार्टी (माओवादी केन्द्र)":                         "NCP",
-  "राष्ट्रिय स्वतन्त्र पार्टी":                                         "RSP",
-  "राष्ट्रिय प्रजातन्त्र पार्टी":                                       "RPP",
-  "जनता समाजवादी पार्टी, नेपाल":                                        "JSP",
-  "स्वतन्त्र":                                                           "IND",
-};
-
-function mapParty(name: string): PartyKey {
-  return PARTY_MAP[name] ?? "OTH";
-}
+import type {
+  ConstituencyResult,
+  Candidate,
+  Province,
+  UpstreamRecord,
+} from "../types";
 
 // ── Province mapping ──────────────────────────────────────────────────────────
+
 const STATE_TO_PROVINCE: Record<number, Province> = {
   1: "Koshi",
   2: "Madhesh",
@@ -49,28 +33,46 @@ const STATE_TO_PROVINCE: Record<number, Province> = {
   7: "Sudurpashchim",
 };
 
-// Province names in English (for generating the district English name fallback)
 const PROVINCE_EN: Record<number, string> = {
   1: "Koshi", 2: "Madhesh", 3: "Bagmati",
   4: "Gandaki", 5: "Lumbini", 6: "Karnali", 7: "Sudurpashchim",
 };
 
-// ── Winner detection (mirrors scraper.py is_winner()) ────────────────────────
+// ── Party ID derivation ───────────────────────────────────────────────────────
+
+const INDEPENDENT_NP = "स्वतन्त्र";
+
+/**
+ * Derives a stable partyId from a raw candidate record.
+ * Rule: if PoliticalPartyName is "स्वतन्त्र" → "IND"
+ *       else String(SYMBOLCODE)
+ * SYMBOLCODE is the Election Commission's own numeric party identifier.
+ */
+function derivePartyId(rec: UpstreamRecord): string {
+  if (rec.PoliticalPartyName === INDEPENDENT_NP) return "IND";
+  // SYMBOLCODE is always present and numeric in the upstream data
+  return String(rec.SYMBOLCODE);
+}
+
+// ── Winner detection ──────────────────────────────────────────────────────────
+
 function isWinner(rec: UpstreamRecord): boolean {
   if (rec.E_STATUS === "W") return true;
-  // Fallback: rank 1 with votes — used during partial counting
+  // Fallback: rank 1 with votes > 0 — used during partial counting before
+  // E_STATUS is set
   if (rec.R === 1 && rec.TotalVoteReceived > 0) return true;
   return false;
 }
 
 // ── Gender normalisation ──────────────────────────────────────────────────────
+
 function mapGender(g: string | undefined): "M" | "F" {
   if (g === "महिला") return "F";
   return "M"; // "पुरुष" or anything else
 }
 
-// ── Transliterate common Nepali district names to English ─────────────────────
-// This is a best-effort lookup. The upstream data provides Nepali district names only.
+// ── English district name lookup ──────────────────────────────────────────────
+
 const DISTRICT_EN: Record<string, string> = {
   "ताप्लेजुङ": "Taplejung",     "पाँचथर": "Panchthar",       "इलाम": "Ilam",
   "सङ्खुवासभा": "Sankhuwasabha","भोजपुर": "Bhojpur",          "धनकुटा": "Dhankuta",
@@ -107,12 +109,15 @@ function districtEn(np: string, stateId: number): string {
 }
 
 // ── Main parser ───────────────────────────────────────────────────────────────
+
 /**
- * Converts the flat upstream candidate array into our ConstituencyResult[] shape.
- * Groups by (STATE_ID, DistrictName, SCConstID) — exactly 165 constituencies.
+ * Converts the flat upstream candidate array into ConstituencyResult[].
+ * Groups by composite key (STATE_ID, DistrictName, SCConstID) — exactly 165 constituencies.
+ *
+ * Vote counts are preserved as-is from the upstream data.
+ * Call zeroVotes (from archiveData.ts) if you need archive mode behaviour.
  */
 export function parseUpstreamCandidates(records: UpstreamRecord[]): ConstituencyResult[] {
-  // Group records by composite constituency key
   const grouped = new Map<string, UpstreamRecord[]>();
   for (const rec of records) {
     const key = `${rec.STATE_ID}-${rec.DistrictName}-${rec.SCConstID}`;
@@ -125,29 +130,29 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
   for (const [key, recs] of grouped) {
     const first = recs[0];
     const province = STATE_TO_PROVINCE[first.STATE_ID];
-    if (!province) continue; // safety — ignore unknown provinces
+    if (!province) continue;
 
     const districtNp = first.DistrictName;
     const district   = districtEn(districtNp, first.STATE_ID);
     const constNum   = first.SCConstID;
 
-    // Determine constituency status
-    const hasWinner  = recs.some(isWinner);
-    const hasVotes   = recs.some((r) => r.TotalVoteReceived > 0);
+    const hasWinner = recs.some(isWinner);
+    const hasVotes  = recs.some((r) => r.TotalVoteReceived > 0);
     const status: ConstituencyResult["status"] = hasWinner
       ? "DECLARED"
       : hasVotes
         ? "COUNTING"
         : "PENDING";
 
-    // Build candidates array
     const candidates: Candidate[] = recs.map((rec) => ({
       candidateId: rec.CandidateID,
-      name:   rec.CandidateName, // will be Nepali — we use nameNp = same
-      nameNp: rec.CandidateName,
-      party:  mapParty(rec.PoliticalPartyName),
-      votes:  rec.TotalVoteReceived,
-      gender: mapGender(rec.Gender),
+      nameNp:      rec.CandidateName,
+      name:        rec.CandidateName, // same until English transliteration is available
+      partyName:   rec.PoliticalPartyName,
+      partyId:     derivePartyId(rec),
+      votes:       rec.TotalVoteReceived,
+      gender:      mapGender(rec.Gender),
+      isWinner:    isWinner(rec),
     }));
 
     const votesCast = candidates.reduce((s, c) => s + c.votes, 0);
@@ -166,7 +171,6 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
     });
   }
 
-  // Sort: by province (state id) then district then constituency number
   results.sort((a, b) => {
     if (a.province !== b.province) return a.province.localeCompare(b.province);
     if (a.district !== b.district) return a.district.localeCompare(b.district);
@@ -177,6 +181,7 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
 }
 
 // ── Photo URL helper ──────────────────────────────────────────────────────────
+
 const UPSTREAM_BASE = "https://result.election.gov.np";
 
 /** Returns the upstream photo URL for a candidate. May 404 pre-election. */
@@ -185,20 +190,17 @@ export function candidatePhotoUrl(candidateId: number): string {
 }
 
 // ── Upstream fetch (with BOM stripping) ──────────────────────────────────────
-const UPSTREAM_URL =
-  `${UPSTREAM_BASE}/JSONFiles/ElectionResultCentral2082.txt`;
 
+const UPSTREAM_URL = `${UPSTREAM_BASE}/JSONFiles/ElectionResultCentral2082.txt`;
 const CORS_PROXY = "https://corsproxy.io/?url=";
 
 async function fetchWithFallback(url: string): Promise<string> {
-  // Try direct first
   try {
     const res = await fetch(url, { mode: "cors" });
     if (res.ok) return res.text();
   } catch {
-    // likely CORS — fall through to proxy
+    // CORS blocked — fall through to proxy
   }
-  // Try CORS proxy
   const res = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
   if (!res.ok) throw new Error(`Upstream fetch failed: ${res.status}`);
   return res.text();
@@ -206,13 +208,15 @@ async function fetchWithFallback(url: string): Promise<string> {
 
 /**
  * Fetches real candidate data from the Election Commission and parses it.
- * Returns null on any error so callers can fall back to mock data silently.
+ * Returns null on any error so callers can fall back gracefully.
+ *
+ * NOTE: Use archiveData.loadArchiveData() for archive mode — it zeroes votes
+ * and caches the result. This function preserves raw vote counts.
  */
 export async function fetchRealConstituencies(): Promise<ConstituencyResult[] | null> {
   try {
     let text = await fetchWithFallback(UPSTREAM_URL);
-    // Strip UTF-8 BOM if present
-    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
     const records: UpstreamRecord[] = JSON.parse(text);
     if (!Array.isArray(records) || records.length === 0) return null;
     return parseUpstreamCandidates(records);

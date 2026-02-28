@@ -1,12 +1,12 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { FocusTrap } from "focus-trap-react";
-import { parties } from "./mockData";
-import type { Candidate, ConstituencyResult, Province } from "./mockData";
+import type { Candidate, ConstituencyResult, Province } from "./types";
 import { TableRowsSkeleton } from "./Skeleton";
 import Tooltip from "./Tooltip";
 import { useElectionStore } from "./store/electionStore";
-import { t as i18n, provinceName, partyName, statusLabel } from "./i18n";
+import { t as i18n, provinceName, statusLabel } from "./i18n";
 import type { Lang } from "./i18n";
+import { partyColor, partyHex, getParty } from "./lib/partyRegistry";
 
 type SortKey = "margin" | "province" | "alpha" | "status";
 
@@ -48,9 +48,9 @@ function useFlash(trigger: string) {
   useEffect(() => {
     if (prevRef.current !== trigger) {
       prevRef.current = trigger;
-      setFlashing(true);
-      const t = setTimeout(() => setFlashing(false), 900);
-      return () => clearTimeout(t);
+      const t1 = setTimeout(() => setFlashing(true), 0);
+      const t2 = setTimeout(() => setFlashing(false), 900);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [trigger]);
 
@@ -101,14 +101,16 @@ export default function ConstituencyTable({
 }) {
   const [query, setQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState<string>("All");
+  const [filter, setFilter] = useState<{ province: typeof selectedProvince; district: string }>({
+    province: selectedProvince,
+    district: "All",
+  });
+  // Derive effective district: reset to "All" when the external province prop changes
+  const selectedDistrict = filter.province === selectedProvince ? filter.district : "All";
+  const setSelectedDistrict = (district: string) =>
+    setFilter({ province: selectedProvince, district });
   const sortBy = useElectionStore((s) => s.sortBy);
   const setSortBy = useElectionStore((s) => s.setSortBy);
-
-  // Reset district when province changes
-  useEffect(() => {
-    setSelectedDistrict("All");
-  }, [selectedProvince]);
 
   // Available districts for the selected province (sorted)
   const availableDistricts = useMemo(() => {
@@ -286,11 +288,11 @@ const Row = memo(function Row({ r, onClick, lang = "en" }: { r: ConstituencyResu
   const t = topCandidates(r.candidates);
   const leader = t.leader;
   const runnerUp = t.runnerUp;
-  const leadParty = leader ? parties[leader.party] : null;
-  const runParty = runnerUp ? parties[runnerUp.party] : null;
+  const leadParty = leader ? getParty(leader.partyId) : null;
+  const runParty = runnerUp ? getParty(runnerUp.partyId) : null;
   const margin = (leader?.votes ?? 0) - (runnerUp?.votes ?? 0);
 
-  const currentLeaderParty = leader?.party ?? "";
+  const currentLeaderParty = leader?.partyId ?? "";
   const flashing = useFlash(currentLeaderParty);
   const flashClass = flashing ? "bg-yellow-50 dark:bg-yellow-900/20" : "";
 
@@ -340,7 +342,7 @@ const Row = memo(function Row({ r, onClick, lang = "en" }: { r: ConstituencyResu
             {leader && leadParty && (
               <div className="flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 rounded-full ${leadParty.color}`} />
-                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{leader.name}</span>
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{lang === "np" ? leader.nameNp : leader.name}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">{number(leader.votes)}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
                   Margin: <span className="font-semibold text-slate-700 dark:text-slate-200">{number(margin)}</span>
@@ -365,9 +367,9 @@ const Row = memo(function Row({ r, onClick, lang = "en" }: { r: ConstituencyResu
                 <div className="flex items-center gap-2">
                   <span className={`h-3 w-3 rounded-full ${leadParty.color}`} />
                   <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{leader.name}</div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{lang === "np" ? leader.nameNp : leader.name}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {partyName(leader.party, lang)} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(leader.votes)}</span>{" "}
+                      {leader.partyName.split(" (")[0]} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(leader.votes)}</span>{" "}
                       <span className="text-slate-400 dark:text-slate-500">({votePct(leader.votes, r.candidates)})</span>
                     </div>
                   </div>
@@ -380,9 +382,9 @@ const Row = memo(function Row({ r, onClick, lang = "en" }: { r: ConstituencyResu
                 <div className="flex items-center gap-2">
                   <span className={`h-3 w-3 rounded-full ${runParty.color}`} />
                   <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{runnerUp.name}</div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{lang === "np" ? runnerUp.nameNp : runnerUp.name}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {partyName(runnerUp.party, lang)} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(runnerUp.votes)}</span>{" "}
+                      {runnerUp.partyName.split(" (")[0]} · <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{number(runnerUp.votes)}</span>{" "}
                       <span className="text-slate-400 dark:text-slate-500">({votePct(runnerUp.votes, r.candidates)})</span>
                     </div>
                   </div>
@@ -446,7 +448,7 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
   const leader = cands.leader;
   const runnerUp = cands.runnerUp;
 
-  const leadParty = leader ? parties[leader.party] : null;
+  const leadParty = leader ? getParty(leader.partyId) : null;
 
   const totalAllVotes = cands.sorted.reduce((s, c) => s + c.votes, 0);
   const topTwoTotal = (leader?.votes ?? 0) + (runnerUp?.votes ?? 0);
@@ -514,9 +516,9 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
           {r.status === "DECLARED" && leader && leadParty ? (
             <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 dark:bg-emerald-900/30 dark:border-emerald-900">
               <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Result declared</div>
-              <div className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">Winner: {leader.name}</div>
+              <div className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">Winner: {lang === "np" ? leader.nameNp : leader.name}</div>
               <div className="mt-1 text-sm text-slate-700 dark:text-slate-200">
-                {leadParty.name} · {number(leader.votes)} votes · Margin{" "}
+                {leader.partyName} · {number(leader.votes)} votes · Margin{" "}
                 <span className="font-semibold">{number(margin)}</span>
               </div>
             </div>
@@ -544,16 +546,16 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
 
             <div className="mt-3 space-y-3">
               <BarRow
-                label={leader ? `${leader.name} (${leadPct}%)` : "—"}
+                label={leader ? `${lang === "np" ? leader.nameNp : leader.name} (${leadPct}%)` : "—"}
                 value={leader?.votes ?? 0}
                 total={topTwoTotal}
-                barClass={leader ? parties[leader.party].color : "bg-slate-400"}
+                barClass={leader ? partyColor(leader.partyId) : "bg-slate-400"}
               />
               <BarRow
-                label={runnerUp ? `${runnerUp.name} (${runPct}%)` : "—"}
+                label={runnerUp ? `${lang === "np" ? runnerUp.nameNp : runnerUp.name} (${runPct}%)` : "—"}
                 value={runnerUp?.votes ?? 0}
                 total={topTwoTotal}
-                barClass={runnerUp ? parties[runnerUp.party].color : "bg-slate-400"}
+                barClass={runnerUp ? partyColor(runnerUp.partyId) : "bg-slate-400"}
               />
             </div>
 
@@ -596,22 +598,22 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
 
             <div className="mt-3 space-y-2">
               {cands.sorted.map((c, idx) => {
-                const party = parties[c.party];
+                const cPartyColor = partyColor(c.partyId);
                 const isTop2 = idx < 2;
                 return (
                   <div
-                    key={`${c.name}-${c.party}`}
+                    key={`${c.candidateId}`}
                     className={`flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2
                       dark:border-slate-800
                       ${isTop2 ? "bg-slate-50 dark:bg-slate-800/60" : "bg-white dark:bg-slate-900"}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className={`h-3 w-3 rounded-full ${party.color}`} />
+                      <span className={`h-3 w-3 rounded-full ${cPartyColor}`} />
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-                          {c.name}
+                          {lang === "np" ? c.nameNp : c.name}
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{partyName(c.party, lang)}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{c.partyName}</div>
                       </div>
                     </div>
 
@@ -646,20 +648,20 @@ function CandidateCard({
   candidate: Candidate | null;
   percent: number;
 }) {
-  const party = candidate ? parties[candidate.party] : null;
+  const cPartyColor = candidate ? partyColor(candidate.partyId) : null;
   const animatedVotes = useCountUp(candidate?.votes ?? 0, 650);
 
   return (
     <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-slate-600 dark:text-slate-300">{title}</div>
-        {party ? <span className={`h-3 w-3 rounded-full ${party.color}`} /> : null}
+        {cPartyColor ? <span className={`h-3 w-3 rounded-full ${cPartyColor}`} /> : null}
       </div>
 
       <div className="mt-2 text-base font-bold text-slate-900 dark:text-slate-100">
-        {candidate ? candidate.name : "—"}
+        {candidate ? candidate.nameNp : "—"}
       </div>
-      <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{party ? party.name : "—"}</div>
+      <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{candidate ? candidate.partyName : "—"}</div>
 
       <div className="mt-2 flex items-baseline justify-between">
         <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 tabular-nums">

@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { useElectionStore } from "../store/electionStore";
-import { parties, provinces } from "../mockData";
-import type { ConstituencyResult, Province, PartyKey } from "../mockData";
+import { PROVINCES as provinces } from "../types";
+import type { ConstituencyResult, Province } from "../types";
+import { partyHex } from "../lib/partyRegistry";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import Layout from "../components/Layout";
-import { PROVINCE_COLORS, PARTY_HEX } from "../components/Layout";
+import { PROVINCE_COLORS } from "../components/Layout";
 import { DetailsModal } from "../ConstituencyTable";
 
 const STATUS_TABS = ["all", "DECLARED", "COUNTING", "PENDING"] as const;
@@ -75,15 +76,14 @@ function ConstituencyCard({
       {/* Top candidates */}
       <div className="space-y-1.5">
         {top3.map((c) => {
-          const pInfo = parties[c.party as PartyKey];
-          const hex   = PARTY_HEX[pInfo?.color ?? ""] ?? "#888";
+          const hex   = partyHex(c.partyId);
           return (
             <div key={c.candidateId} className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
               <span className="text-xs text-slate-700 dark:text-slate-300 truncate flex-1">
                 {lang === "np" ? c.nameNp : c.name}
                 <span className="text-[10px] text-slate-400 ml-1">
-                  ({pInfo?.name ?? c.party})
+                  ({c.partyName.split(" (")[0]})
                 </span>
               </span>
               {c.votes > 0 && (
@@ -106,7 +106,7 @@ function ConstituencyCard({
         const top = sorted[0];
         const sec = sorted[1];
         const total = top.votes + sec.votes;
-        const pHex = PARTY_HEX[parties[top.party as PartyKey]?.color ?? ""] ?? "#888";
+        const pHex = partyHex(top.partyId);
         return (
           <div className="h-1.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
             <div

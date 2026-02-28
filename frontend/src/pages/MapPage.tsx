@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useElectionStore } from "../store/electionStore";
-import { provinces } from "../mockData";
-import type { Province } from "../mockData";
+import { PROVINCES as provinces } from "../types";
+import type { Province } from "../types";
 import { provinceName } from "../i18n";
 import Layout from "../components/Layout";
 import NepalMap from "../NepalMap";

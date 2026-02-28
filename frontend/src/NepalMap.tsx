@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { parties } from "./mockData";
-import type { ConstituencyResult, Province } from "./mockData";
+import type { ConstituencyResult, Province } from "./types";
 import { DISTRICT_PATHS } from "./districtPaths";
-import { t as i18n, provinceName, partyName } from "./i18n";
+import { t as i18n, provinceName } from "./i18n";
 import type { Lang } from "./i18n";
+import { getParties, partyHex } from "./lib/partyRegistry";
 
 // Province stroke colors — each province has a distinct border color
 const PROVINCE_STROKE: Record<string, string> = {
@@ -27,15 +27,6 @@ const PROVINCE_TINT: Record<string, string> = {
   Sudurpashchim:  "#ffedd5",
 };
 
-// Map Tailwind bg-* classes to hex for SVG fill
-const PARTY_FILL: Record<string, string> = {
-  "bg-red-600":     "#dc2626",
-  "bg-blue-600":    "#2563eb",
-  "bg-orange-600":  "#ea580c",
-  "bg-emerald-600": "#059669",
-  "bg-slate-500":   "#64748b",
-};
-
 const CONTESTED_FILL = "#a855f7";
 
 type DistrictStatus =
@@ -57,7 +48,7 @@ function getDistrictStatus(
     const tally: Record<string, number> = {};
     for (const r of declared) {
       const winner = [...r.candidates].sort((a, b) => b.votes - a.votes)[0];
-      tally[winner.party] = (tally[winner.party] ?? 0) + 1;
+      tally[winner.partyId] = (tally[winner.partyId] ?? 0) + 1;
     }
     const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1]);
     const [first, second] = sorted;
@@ -69,7 +60,7 @@ function getDistrictStatus(
   const voteShare: Record<string, number> = {};
   for (const r of rows) {
     for (const c of r.candidates) {
-      voteShare[c.party] = (voteShare[c.party] ?? 0) + c.votes;
+      voteShare[c.partyId] = (voteShare[c.partyId] ?? 0) + c.votes;
     }
   }
   const top = Object.entries(voteShare).sort((a, b) => b[1] - a[1])[0];
@@ -148,7 +139,7 @@ export default function NepalMap({
             const declared = results.filter(
               (r) => r.district === districtName && r.status === "DECLARED"
             );
-            fillHex = PARTY_FILL[parties[status.party as keyof typeof parties]?.color] ?? "#94a3b8";
+            fillHex = partyHex(status.party);
             // Lighter if only vote-leading (no declared seats yet)
             fillOpacity = declared.length > 0 ? 0.75 : 0.30;
           } else if (status.kind === "contested") {
@@ -232,13 +223,13 @@ export default function NepalMap({
 
       {/* Legend */}
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-        {Object.entries(parties).map(([key, { color }]) => (
-          <div key={key} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+        {getParties().map((p) => (
+          <div key={p.partyId} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
             <span
               className="h-3 w-3 rounded-sm flex-shrink-0"
-              style={{ backgroundColor: PARTY_FILL[color] ?? "#94a3b8" }}
+              style={{ backgroundColor: p.hex }}
             />
-            {partyName(key, lang)}
+            {lang === "np" ? p.partyName : p.nameEn}
           </div>
         ))}
         <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">

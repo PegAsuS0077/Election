@@ -236,3 +236,82 @@ def get_candidate_by_id(
         "province":         row["province"],
         "district":         row["district"],
     }
+
+
+def get_candidates(
+    conn: sqlite3.Connection,
+    *,
+    party: str | None = None,
+    constituency: str | None = None,
+    q: str | None = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> dict[str, Any]:
+    """Return a paginated list of candidates with optional filters."""
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    if party:
+        clauses.append("c.party = ?")
+        params.append(party)
+    if constituency:
+        clauses.append("c.constituency_code = ?")
+        params.append(constituency)
+    if q:
+        clauses.append("c.name LIKE ?")
+        params.append(f"%{q}%")
+
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    base_sql = (
+        "SELECT c.id, c.name, c.party, c.votes, "
+        "c.constituency_code, con.name AS const_name, con.province, con.district, "
+        "con.status AS const_status "
+        "FROM candidates c "
+        "JOIN constituencies con ON con.code = c.constituency_code "
+        f"{where}"
+    )
+
+    total_row = conn.execute(
+        f"SELECT COUNT(*) AS n FROM candidates c "
+        f"JOIN constituencies con ON con.code = c.constituency_code {where}",
+        params,
+    ).fetchone()
+    total = total_row["n"] if total_row else 0
+
+    offset = (page - 1) * page_size
+    rows = conn.execute(
+        base_sql + " ORDER BY c.votes DESC LIMIT ? OFFSET ?",
+        params + [page_size, offset],
+    ).fetchall()
+
+    # Determine winners: top-vote-getter in DECLARED constituencies
+    declared_winners: dict[str, int] = {}
+    for row in rows:
+        code = row["constituency_code"]
+        if row["const_status"] == "DECLARED" and code not in declared_winners:
+            top = conn.execute(
+                "SELECT id FROM candidates WHERE constituency_code=? ORDER BY votes DESC LIMIT 1",
+                (code,),
+            ).fetchone()
+            if top:
+                declared_winners[code] = top["id"]
+
+    return {
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "items": [
+            {
+                "id":               row["id"],
+                "name":             row["name"],
+                "party":            row["party"],
+                "votes":            row["votes"],
+                "isWinner":         declared_winners.get(row["constituency_code"]) == row["id"],
+                "constituencyCode": row["constituency_code"],
+                "constituencyName": row["const_name"],
+                "province":         row["province"],
+                "district":         row["district"],
+            }
+            for row in rows
+        ],
+    }

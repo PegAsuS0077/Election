@@ -1,52 +1,64 @@
 import { create } from "zustand";
-import { constituencyResults } from "../mockData";
-import type { ConstituencyResult, Province, PartyKey } from "../mockData";
+import type { ConstituencyResult, Province, SeatTally, SeatEntry } from "../types";
 import type { Lang } from "../i18n";
+import { buildRegistry, getParties } from "../lib/partyRegistry";
 
 type SortKey = "margin" | "province" | "alpha" | "status";
 type ViewMode = "table" | "map";
 
-export type SeatTally = Record<PartyKey, { fptp: number; pr: number }>;
+// ── Seat tally derivation ─────────────────────────────────────────────────────
+
+function emptyTally(partyIds: string[]): SeatTally {
+  return Object.fromEntries(partyIds.map((k) => [k, { fptp: 0, pr: 0 }]));
+}
 
 function deriveSeatTally(results: ConstituencyResult[]): SeatTally {
-  const tally: SeatTally = {
-    NC: { fptp: 0, pr: 0 },
-    "CPN-UML": { fptp: 0, pr: 0 },
-    NCP: { fptp: 0, pr: 0 },
-    RSP: { fptp: 0, pr: 0 },
-    RPP: { fptp: 0, pr: 0 },
-    JSP: { fptp: 0, pr: 0 },
-    IND: { fptp: 0, pr: 0 },
-    OTH: { fptp: 0, pr: 0 },
-  };
+  // Collect all partyIds present in results
+  const partyIds = Array.from(
+    new Set(results.flatMap((r) => r.candidates.map((c) => c.partyId)))
+  );
+  const tally = emptyTally(partyIds);
+
+  // FPTP: winner of each declared constituency gets +1
   for (const r of results) {
     if (r.status !== "DECLARED") continue;
-    const winner = r.candidates.reduce((a, b) => (a.votes > b.votes ? a : b));
-    tally[winner.party].fptp += 1;
+    const declared = r.candidates.filter((c) => c.isWinner);
+    const winner =
+      declared.length > 0
+        ? declared[0]
+        : r.candidates.reduce((a, b) => (a.votes > b.votes ? a : b));
+    if (tally[winner.partyId]) {
+      (tally[winner.partyId] as SeatEntry).fptp += 1;
+    } else {
+      tally[winner.partyId] = { fptp: 1, pr: 0 };
+    }
   }
-  // PR seats are fixed allocation (110 seats across parties) — not derived from FPTP winners
-  // Distribute PR proportional to FPTP vote share across all results
-  const voteShare: Record<PartyKey, number> = {
-    NC: 0, "CPN-UML": 0, NCP: 0, RSP: 0, RPP: 0, JSP: 0, IND: 0, OTH: 0,
-  };
+
+  // PR: distribute 110 seats proportionally by total vote share
   let totalVotes = 0;
+  const voteShare: Record<string, number> = {};
   for (const r of results) {
     for (const c of r.candidates) {
-      voteShare[c.party] += c.votes;
+      voteShare[c.partyId] = (voteShare[c.partyId] ?? 0) + c.votes;
       totalVotes += c.votes;
     }
   }
   const PR_SEATS = 110;
   if (totalVotes > 0) {
-    for (const key of Object.keys(tally) as PartyKey[]) {
-      tally[key].pr = Math.round((voteShare[key] / totalVotes) * PR_SEATS);
+    for (const pid of partyIds) {
+      if (tally[pid]) {
+        (tally[pid] as SeatEntry).pr = Math.round(
+          ((voteShare[pid] ?? 0) / totalVotes) * PR_SEATS
+        );
+      }
     }
   }
   return tally;
 }
 
+// ── Store interface ───────────────────────────────────────────────────────────
+
 interface ElectionStore {
-  // State
   results: ConstituencyResult[];
   seatTally: SeatTally;
   baselineTally: SeatTally;
@@ -58,7 +70,6 @@ interface ElectionStore {
   sortBy: SortKey;
   lang: Lang;
 
-  // Actions
   setResults: (r: ConstituencyResult[]) => void;
   setSelectedProvince: (p: "All" | Province) => void;
   toggleDark: () => void;
@@ -69,21 +80,12 @@ interface ElectionStore {
   toggleLang: () => void;
 }
 
-const BASELINE_KEY = "election_baseline_tally";
+const BASELINE_KEY = "election_baseline_tally_v2";
 
-/** All keys that must be present in a valid SeatTally. */
-const ALL_PARTY_KEYS: PartyKey[] = ["NC", "CPN-UML", "NCP", "RSP", "RPP", "JSP", "IND", "OTH"];
-
-/**
- * Merge a stored (potentially stale/partial) tally with the current tally so
- * that every party key is always present.  New keys get { fptp: 0, pr: 0 }.
- * This prevents "Cannot read properties of undefined (reading 'fptp')" when
- * the stored baseline was saved before new party keys were added.
- */
 function migrateBaseline(stored: Partial<SeatTally>, current: SeatTally): SeatTally {
   const result = { ...current };
-  for (const key of ALL_PARTY_KEYS) {
-    if (stored[key]) result[key] = stored[key] as { fptp: number; pr: number };
+  for (const key of Object.keys(current)) {
+    if (stored[key]) result[key] = stored[key] as SeatEntry;
   }
   return result;
 }
@@ -94,42 +96,45 @@ function loadOrCreateBaseline(currentTally: SeatTally): SeatTally {
     if (raw) {
       const stored = JSON.parse(raw) as Partial<SeatTally>;
       const migrated = migrateBaseline(stored, currentTally);
-      // Persist the migrated (complete) baseline so the next load is clean
       localStorage.setItem(BASELINE_KEY, JSON.stringify(migrated));
       return migrated;
     }
   } catch {
     // corrupted — fall through and overwrite
   }
-  // First visit: persist current tally as the baseline
   localStorage.setItem(BASELINE_KEY, JSON.stringify(currentTally));
   return currentTally;
 }
 
-const initialResults = constituencyResults;
-const initialTally = deriveSeatTally(initialResults);
-const initialDeclared = initialResults.filter((r) => r.status === "DECLARED").length;
+// Start with empty results — data is loaded asynchronously by useElectionSimulation
+const initialResults: ConstituencyResult[] = [];
+const initialTally: SeatTally = {};
 const initialBaseline = loadOrCreateBaseline(initialTally);
 
 export const useElectionStore = create<ElectionStore>((set) => ({
-  results: initialResults,
-  seatTally: initialTally,
-  baselineTally: initialBaseline,
-  declaredSeats: initialDeclared,
+  results:          initialResults,
+  seatTally:        initialTally,
+  baselineTally:    initialBaseline,
+  declaredSeats:    0,
   selectedProvince: "All",
-  dark: localStorage.getItem("theme") === "dark",
-  isLoading: true,
-  viewMode: "table",
-  sortBy: "status",
-  lang: (localStorage.getItem("lang") as Lang | null) ?? "en",
+  dark:             localStorage.getItem("theme") === "dark",
+  isLoading:        true,
+  viewMode:         "table",
+  sortBy:           "status",
+  lang:             (localStorage.getItem("lang") as Lang | null) ?? "en",
 
-  setResults: (results) =>
+  setResults: (results) => {
+    // Rebuild party registry whenever new data arrives
+    buildRegistry(results);
     set({
       results,
-      seatTally: deriveSeatTally(results),
+      seatTally:     deriveSeatTally(results),
       declaredSeats: results.filter((r) => r.status === "DECLARED").length,
-    }),
+    });
+  },
+
   setSelectedProvince: (selectedProvince) => set({ selectedProvince }),
+
   toggleDark: () =>
     set((state) => {
       const next = !state.dark;
@@ -137,15 +142,18 @@ export const useElectionStore = create<ElectionStore>((set) => ({
       localStorage.setItem("theme", next ? "dark" : "light");
       return { dark: next };
     }),
+
   setIsLoading: (isLoading) => set({ isLoading }),
-  setViewMode: (viewMode) => set({ viewMode }),
-  setSortBy: (sortBy) => set({ sortBy }),
+  setViewMode:  (viewMode)  => set({ viewMode }),
+  setSortBy:    (sortBy)    => set({ sortBy }),
+
   resetBaseline: () =>
     set((state) => {
       localStorage.removeItem(BASELINE_KEY);
       localStorage.setItem(BASELINE_KEY, JSON.stringify(state.seatTally));
       return { baselineTally: state.seatTally };
     }),
+
   toggleLang: () =>
     set((state) => {
       const next: Lang = state.lang === "en" ? "np" : "en";
@@ -153,3 +161,6 @@ export const useElectionStore = create<ElectionStore>((set) => ({
       return { lang: next };
     }),
 }));
+
+// Re-export for consumers that need party info
+export { getParties };

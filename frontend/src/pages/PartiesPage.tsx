@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useElectionStore } from "../store/electionStore";
-import { parties, seatChange, provinces } from "../mockData";
-import type { PartyKey, Province } from "../mockData";
+import { PROVINCES } from "../types";
+import { getParties, getParty, partyHex } from "../lib/partyRegistry";
+import { getPartyMeta } from "../lib/db";
 import { provinceName } from "../i18n";
 import Layout from "../components/Layout";
-import { PARTY_HEX, PROVINCE_COLORS } from "../components/Layout";
+import { PROVINCE_COLORS } from "../components/Layout";
 import { DetailsModal } from "../ConstituencyTable";
 import { candidatePhotoUrl } from "../lib/parseUpstreamData";
 
@@ -47,7 +48,7 @@ type CandidateRow = {
   constName: string;
   constNameNp: string;
   district: string;
-  province: Province;
+  province: string;
   constStatus: "DECLARED" | "COUNTING" | "PENDING";
   isWinner: boolean;
 };
@@ -60,14 +61,14 @@ function PartyCandidatesPanel({
   onClose,
   onSelectConst,
 }: {
-  partyKey: PartyKey;
+  partyKey: string;
   candidates: CandidateRow[];
   lang: "en" | "np";
   onClose: () => void;
   onSelectConst: (code: string) => void;
 }) {
-  const p   = parties[partyKey];
-  const hex = PARTY_HEX[p.color] ?? "#888";
+  const p   = getParty(partyKey);
+  const hex = partyHex(partyKey);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ function PartyCandidatesPanel({
 
   // Group by province
   const byProvince = useMemo(() => {
-    const map = new Map<Province, CandidateRow[]>();
+    const map = new Map<string, CandidateRow[]>();
     for (const c of candidates) {
       if (!map.has(c.province)) map.set(c.province, []);
       map.get(c.province)!.push(c);
@@ -101,7 +102,7 @@ function PartyCandidatesPanel({
             <span className="text-3xl leading-none">{p.symbol}</span>
             <div>
               <h3 className="font-bold text-slate-900 dark:text-slate-100 text-lg">
-                {lang === "np" ? p.nameNp : p.name}
+                {lang === "np" ? p.partyName : p.nameEn}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 {candidates.length} {lang === "np" ? "उम्मेद्वार" : "candidates"}
@@ -208,16 +209,16 @@ export default function PartiesPage() {
   const seatTally = useElectionStore((s) => s.seatTally);
   const lang      = useElectionStore((s) => s.lang);
 
-  const [selectedParty, setSelectedParty] = useState<PartyKey | null>(null);
+  const [selectedParty, setSelectedParty] = useState<string | null>(null);
   const [selectedCode,  setSelectedCode]  = useState<string | null>(null);
 
   const totalSeats = 275;
 
   // Build enriched party data for the cards
   const partyData = useMemo(() => {
-    return (Object.keys(parties) as PartyKey[]).map((key) => {
-      const p      = parties[key];
-      const tally  = seatTally[key];
+    return getParties().map((pInfo) => {
+      const key    = pInfo.partyId;
+      const tally  = seatTally[key] ?? { fptp: 0, pr: 0 };
       const total  = tally.fptp + tally.pr;
       const pct    = (total / totalSeats) * 100;
 
@@ -226,7 +227,7 @@ export default function PartiesPage() {
       for (const r of results) {
         for (const c of r.candidates) {
           totalVotes += c.votes;
-          if (c.party === key) partyVotes += c.votes;
+          if (c.partyId === key) partyVotes += c.votes;
         }
       }
       const voteSharePct = totalVotes > 0 ? (partyVotes / totalVotes) * 100 : 0;
@@ -235,7 +236,7 @@ export default function PartiesPage() {
         .filter((r) => r.status === "DECLARED")
         .filter((r) => {
           const w = [...r.candidates].sort((a, b) => b.votes - a.votes)[0];
-          return w?.party === key;
+          return w?.partyId === key;
         })
         .sort((a, b) => {
           const wa = [...a.candidates].sort((x, y) => y.votes - x.votes)[0];
@@ -245,21 +246,20 @@ export default function PartiesPage() {
         .slice(0, 3);
 
       const provBreakdown: Record<string, number> = {};
-      for (const prov of provinces) {
+      for (const prov of PROVINCES) {
         const ct = results
           .filter((r) => r.province === prov && r.status === "DECLARED")
-          .filter((r) => [...r.candidates].sort((a, b) => b.votes - a.votes)[0]?.party === key)
+          .filter((r) => [...r.candidates].sort((a, b) => b.votes - a.votes)[0]?.partyId === key)
           .length;
         if (ct > 0) provBreakdown[prov] = ct;
       }
 
-      const change         = seatChange[key] ?? 0;
-      const hex            = PARTY_HEX[p.color] ?? "#888";
+      const hex            = partyHex(key);
       const candidateCount = results.reduce(
-        (s, r) => s + r.candidates.filter((c) => c.party === key).length, 0
+        (s, r) => s + r.candidates.filter((c) => c.partyId === key).length, 0
       );
 
-      return { key, p, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, change, hex, candidateCount };
+      return { key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount };
     }).sort((a, b) => b.total - a.total);
   }, [results, seatTally]);
 
@@ -270,12 +270,12 @@ export default function PartiesPage() {
     for (const r of results) {
       const sorted   = [...r.candidates].sort((a, b) => b.votes - a.votes);
       const topVotes = sorted[0]?.votes ?? 0;
-      const topParty = sorted[0]?.party;
+      const topParty = sorted[0]?.partyId;
       for (const c of r.candidates) {
-        if (c.party !== selectedParty) continue;
+        if (c.partyId !== selectedParty) continue;
         const isWinner =
           r.status === "DECLARED" &&
-          c.party === topParty &&
+          c.partyId === topParty &&
           c.votes === topVotes &&
           topVotes > 0;
         flat.push({
@@ -318,7 +318,7 @@ export default function PartiesPage() {
     >
       {/* ── Party cards grid ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-2">
-        {partyData.map(({ key, p, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, change, hex, candidateCount }) => (
+        {partyData.map(({ key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount }) => (
           <div
             key={key}
             className={
@@ -334,14 +334,23 @@ export default function PartiesPage() {
               {/* Header */}
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl leading-none">{p.symbol}</span>
+                  <span className="text-3xl leading-none">{pInfo.symbol}</span>
                   <div>
                     <h2 className="font-bold text-slate-900 dark:text-slate-100 text-base leading-tight" style={{ fontFamily: "'Sora', sans-serif" }}>
-                      {lang === "np" ? p.nameNp : p.name}
+                      {lang === "np" ? pInfo.partyName : pInfo.nameEn}
                     </h2>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                      {lang === "np" ? p.name : p.nameNp}
+                      {lang === "np" ? pInfo.nameEn : pInfo.partyName}
                     </p>
+                    {(() => {
+                      const meta = getPartyMeta(key);
+                      if (!meta || meta.founded === 0) return null;
+                      return (
+                        <p className="text-[10px] text-slate-300 dark:text-slate-600 mt-0.5">
+                          {meta.ideology} · Est. {meta.founded}
+                        </p>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="text-right shrink-0">
@@ -380,11 +389,6 @@ export default function PartiesPage() {
                   <span className="font-bold text-slate-800 dark:text-slate-200 tabular-nums">{fmt(partyVotes)}</span>
                   <span className="text-slate-400 ml-1">({voteSharePct.toFixed(1)}%)</span>
                 </div>
-                {change !== 0 && (
-                  <div className={"ml-auto font-bold tabular-nums " + (change > 0 ? "text-emerald-600" : "text-red-500")}>
-                    {change > 0 ? "+" : ""}{change}
-                  </div>
-                )}
               </div>
 
               {/* Top winners */}

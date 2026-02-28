@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import (
@@ -13,6 +13,7 @@ from database import (
     get_constituency_by_id,
     get_parties,
     get_candidate_by_id,
+    get_candidates,
     get_latest_snapshot,
     save_constituency_results,
     save_snapshot,
@@ -24,6 +25,10 @@ load_dotenv()
 DB_PATH = os.getenv("DB_PATH", "election.db")
 SCRAPE_URL = os.getenv("SCRAPE_URL", "https://result.election.gov.np")
 SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL_SECONDS", "30"))
+
+# Comma-separated list of allowed CORS origins; defaults to localhost dev server.
+_cors_env = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+CORS_ORIGINS: list[str] = [o.strip() for o in _cors_env.split(",") if o.strip()]
 
 
 class ConnectionManager:
@@ -70,7 +75,7 @@ def create_app(db=None, start_scraper: bool = True) -> FastAPI:
     app = FastAPI(lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],
+        allow_origins=CORS_ORIGINS,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -93,6 +98,15 @@ def create_app(db=None, start_scraper: bool = True) -> FastAPI:
     @app.get("/api/parties")
     def parties():
         return get_parties(db)
+
+    @app.get("/api/candidates")
+    def candidates_list(
+        party: str | None = Query(default=None),
+        constituency: str | None = Query(default=None),
+        q: str | None = Query(default=None),
+        page: int = Query(default=1, ge=1),
+    ):
+        return get_candidates(db, party=party, constituency=constituency, q=q, page=page)
 
     @app.get("/api/candidates/{candidate_id}")
     def candidate_detail(candidate_id: int):

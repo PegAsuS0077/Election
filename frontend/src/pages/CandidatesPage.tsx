@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { useElectionStore } from "../store/electionStore";
-import { parties, provinces } from "../mockData";
-import type { PartyKey, Province } from "../mockData";
+import { PROVINCES as provinces } from "../types";
+import type { Province } from "../types";
+import { getParties, partyHex } from "../lib/partyRegistry";
 import { partyName, provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import Layout from "../components/Layout";
-import { PARTY_HEX, PROVINCE_COLORS } from "../components/Layout";
+import { PROVINCE_COLORS } from "../components/Layout";
 import { DetailsModal } from "../ConstituencyTable";
 import { candidatePhotoUrl } from "../lib/parseUpstreamData";
 
@@ -18,7 +19,8 @@ type FlatCandidate = {
   candidateId: number;
   name: string;
   nameNp: string;
-  party: PartyKey;
+  partyId: string;
+  partyName: string;
   votes: number;
   gender: "M" | "F";
   constCode: string;
@@ -84,8 +86,7 @@ function StatusBadge({ status, isWinner, lang }: { status: string; isWinner: boo
 
 // ── Candidate card ────────────────────────────────────────────────────────────
 function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onClick: () => void }) {
-  const p   = parties[c.party];
-  const hex = PARTY_HEX[p?.color ?? ""] ?? "#888";
+  const hex = partyHex(c.partyId);
   const provCls = PROVINCE_COLORS[c.province] ?? "bg-slate-100 text-slate-700";
 
   return (
@@ -117,7 +118,7 @@ function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onC
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
             <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">
-              {partyName(c.party, lang).split(" (")[0]}
+              {c.partyName.split(" (")[0]}
             </span>
           </div>
         </div>
@@ -162,7 +163,7 @@ export default function CandidatesPage() {
   const lang    = useElectionStore((s) => s.lang);
 
   const [search, setSearch]         = useState("");
-  const [selParty, setSelParty]     = useState<PartyKey | "All">("All");
+  const [selParty, setSelParty]     = useState<string>("All");
   const [selProv, setSelProv]       = useState<Province | "All">("All");
   const [selGender, setSelGender]   = useState<"All" | "M" | "F">("All");
   const [sortKey, setSortKey]       = useState<SortKey>("votes");
@@ -174,18 +175,17 @@ export default function CandidatesPage() {
     for (const r of results) {
       const sorted  = [...r.candidates].sort((a, b) => b.votes - a.votes);
       const topVotes = sorted[0]?.votes ?? 0;
-      const topParty = sorted[0]?.party;
+      const topParty = sorted[0]?.partyId;
       for (const c of r.candidates) {
         const isWinner =
           r.status === "DECLARED" &&
-          c.party === topParty &&
-          c.votes === topVotes &&
-          topVotes > 0;
+          (c.isWinner || (c.partyId === topParty && c.votes === topVotes && topVotes > 0));
         flat.push({
           candidateId:  c.candidateId,
           name:         c.name,
           nameNp:       c.nameNp,
-          party:        c.party,
+          partyId:      c.partyId,
+          partyName:    c.partyName,
           votes:        c.votes,
           gender:       c.gender,
           constCode:    r.code,
@@ -203,7 +203,7 @@ export default function CandidatesPage() {
 
   const filtered = useMemo(() => {
     let list = allCandidates.filter((c) => {
-      if (selParty !== "All" && c.party !== selParty) return false;
+      if (selParty !== "All" && c.partyId !== selParty) return false;
       if (selProv !== "All" && c.province !== selProv) return false;
       if (selGender !== "All" && c.gender !== selGender) return false;
       if (search) {
@@ -268,20 +268,20 @@ export default function CandidatesPage() {
           >
             {lang === "np" ? "सबै दल" : "All Parties"}
           </button>
-          {(Object.keys(parties) as PartyKey[]).map((pk) => {
-            const hex = PARTY_HEX[parties[pk].color] ?? "#888";
+          {getParties().map((p) => {
+            const hex = p.hex;
             return (
               <button
-                key={pk}
-                onClick={() => setSelParty(selParty === pk ? "All" : pk)}
+                key={p.partyId}
+                onClick={() => setSelParty(selParty === p.partyId ? "All" : p.partyId)}
                 className={"h-7 px-3 rounded-full text-xs font-medium transition border flex items-center gap-1.5 " +
-                  (selParty === pk
+                  (selParty === p.partyId
                     ? "text-white border-transparent"
                     : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-[#2563eb]/50")}
-                style={selParty === pk ? { backgroundColor: hex, borderColor: hex } : {}}
+                style={selParty === p.partyId ? { backgroundColor: hex, borderColor: hex } : {}}
               >
                 <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: hex }} />
-                {partyName(pk, lang).split(" (")[0]}
+                {(lang === "np" ? p.partyName : p.nameEn).split(" (")[0]}
               </button>
             );
           })}

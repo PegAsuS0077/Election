@@ -15,16 +15,23 @@ export const PROVINCE_NAMES: Record<string, { np: string; en: string }> = {
   Sudurpashchim:  { np: "सुदूरपश्चिम प्रदेश", en: "Sudurpashchim Province" },
 };
 
-// Party names (Nepali full name → bilingual)
+// Party names — all real registered parties (no OTH catch-all)
 export const PARTY_NAMES: Record<string, { np: string; en: string }> = {
-  NC:        { np: "नेपाली काँग्रेस",                                                  en: "Nepali Congress (NC)" },
-  "CPN-UML": { np: "नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी लेनिनवादी)",       en: "CPN-UML" },
-  NCP:       { np: "नेपाल कम्युनिस्ट पार्टी (माओवादी)",                              en: "Nepali Communist Party (NCP)" },
-  RSP:       { np: "राष्ट्रिय स्वतन्त्र पार्टी",                                      en: "Rastriya Swatantra Party (RSP)" },
-  RPP:       { np: "राष्ट्रिय प्रजातन्त्र पार्टी",                                    en: "Rastriya Prajatantra Party (RPP)" },
-  JSP:       { np: "जनता समाजवादी पार्टी, नेपाल",                                    en: "Janata Samajwadi Party (JSP)" },
-  IND:       { np: "स्वतन्त्र",                                                        en: "Independent" },
-  OTH:       { np: "अन्य",                                                             en: "Others" },
+  NC:        { np: "नेपाली काँग्रेस",                                            en: "Nepali Congress" },
+  "CPN-UML": { np: "नेकपा (एमाले)",                                              en: "CPN-UML" },
+  NCP:       { np: "नेकपा (माओवादी केन्द्र)",                                    en: "NCP (Maoist Centre)" },
+  RSP:       { np: "राष्ट्रिय स्वतन्त्र पार्टी",                                 en: "Rastriya Swatantra Party" },
+  RPP:       { np: "राष्ट्रिय प्रजातन्त्र पार्टी",                               en: "Rastriya Prajatantra Party" },
+  JSP:       { np: "जनता समाजवादी पार्टी, नेपाल",                               en: "Janata Samajwadi Party Nepal" },
+  "CPN-US":  { np: "नेकपा (एकीकृत समाजवादी)",                                   en: "CPN (Unified Socialist)" },
+  LSP:       { np: "लोकतान्त्रिक समाजवादी पार्टी",                               en: "Loktantrik Samajwadi Party" },
+  NUP:       { np: "नागरिक उन्मुक्ति पार्टी",                                    en: "Nagarik Unmukti Party" },
+  RJM:       { np: "राष्ट्रिय जनमोर्चा",                                          en: "Rastriya Janamorcha" },
+  NMKP:      { np: "नेपाल मजदुर किसान पार्टी",                                  en: "Nepal Majdoor Kisan Party" },
+  JMP:       { np: "जनमत पार्टी",                                                 en: "Janamat Party" },
+  "CPN-ML":  { np: "नेकपा (मार्क्सवादी-लेनिनवादी)",                              en: "CPN (Marxist-Leninist)" },
+  NPD:       { np: "नेपाल परिवार दल",                                             en: "Nepal Parivar Dal" },
+  IND:       { np: "स्वतन्त्र",                                                    en: "Independent" },
 };
 
 // Gender field values from upstream

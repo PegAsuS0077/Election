@@ -1,4 +1,4 @@
-import type { ConstituencyResult, Province } from "./mockData";
+import type { ConstituencyResult, Province } from "./types";
 import { t, provinceName } from "./i18n";
 import type { Lang } from "./i18n";
 
