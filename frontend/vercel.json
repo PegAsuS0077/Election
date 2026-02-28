@@ -1,5 +1,9 @@
 {
   "rewrites": [
+    {
+      "source": "/upstream/:path*",
+      "destination": "https://result.election.gov.np/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -123,7 +123,12 @@ export async function loadArchiveData(
       if (API_BASE) {
         // Production with backend: fetch pre-parsed data from our own API.
         // Backend has CORS headers set and serves same canonical shape.
-        constituencies = await fetchFromBackend();
+        // Falls back to upstream if backend is unreachable (e.g. sleeping on free tier).
+        try {
+          constituencies = await fetchFromBackend();
+        } catch {
+          constituencies = await fetchFromUpstream();
+        }
       } else {
         // Dev (Vite proxy) or production with VITE_UPSTREAM_URL set.
         constituencies = await fetchFromUpstream();
