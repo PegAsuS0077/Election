@@ -1,7 +1,25 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import NepalMap from "../NepalMap";
-import { constituencyResults } from "../mockData";
+import type { ConstituencyResult } from "../types";
+
+const PROVINCES = [
+  "Koshi", "Madhesh", "Bagmati", "Gandaki", "Lumbini", "Karnali", "Sudurpashchim",
+] as const;
+
+// One dummy constituency per province so the map has something to render
+const constituencyResults: ConstituencyResult[] = PROVINCES.map((p, i) => ({
+  province: p,
+  district: p,
+  districtNp: p,
+  code: `${i + 1}-${p}-1`,
+  name: `${p}-1`,
+  nameNp: `${p}-1`,
+  status: "PENDING",
+  lastUpdated: new Date().toISOString(),
+  candidates: [],
+  votesCast: 0,
+}));
 
 describe("NepalMap", () => {
   it("renders all 7 province labels", () => {
@@ -12,8 +30,7 @@ describe("NepalMap", () => {
         onSelect={vi.fn()}
       />
     );
-    const provinces = ["Koshi", "Madhesh", "Bagmati", "Gandaki", "Lumbini", "Karnali", "Sudurpashchim"];
-    for (const p of provinces) {
+    for (const p of PROVINCES) {
       expect(screen.getByText(p)).toBeDefined();
     }
   });

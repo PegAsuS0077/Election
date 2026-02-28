@@ -3,8 +3,7 @@ import { FocusTrap } from "focus-trap-react";
 import type { ConstituencyResult } from "./types";
 import { t, provinceName } from "./i18n";
 import type { Lang } from "./i18n";
-import { PARTY_HEX } from "./lib/constants";
-import { partyColor, partyHex } from "./lib/partyRegistry";
+import { partyHex, getParty } from "./lib/partyRegistry";
 
 const PROVINCE_COLORS: Record<string, string> = {
   Koshi:          "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300",
@@ -92,8 +91,10 @@ function HotSeatModal({
   const backCls  = open ? "opacity-100" : "opacity-0";
   const panelCls = open ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-[0.98] translate-y-2";
 
-  // Display party name: use partyName (official Nepali) always; trim long names
-  function displayParty(partyName: string) { return partyName.split(" (")[0]; }
+  function displayParty(partyId: string, partyName: string) {
+    const name = lang === "np" ? partyName : getParty(partyId).nameEn;
+    return name.split(" (")[0];
+  }
 
   return (
     <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: false }}>
@@ -130,7 +131,7 @@ function HotSeatModal({
                   {lang === "np" ? "विजेता:" : "Winner:"} {lang === "np" ? leader.nameNp : leader.name}
                 </div>
                 <div className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
-                  {displayParty(leader.partyName)} · {numberFmt(leader.votes)} {lang === "np" ? "मत" : "votes"} · {lang === "np" ? "अन्तर" : "Margin"}{" "}
+                  {displayParty(leader.partyId, leader.partyName)} · {numberFmt(leader.votes)} {lang === "np" ? "मत" : "votes"} · {lang === "np" ? "अन्तर" : "Margin"}{" "}
                   <span className="font-semibold">{numberFmt(margin)}</span>
                 </div>
               </div>
@@ -155,7 +156,7 @@ function HotSeatModal({
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: leadHex }} />
                       <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{lang === "np" ? leader.nameNp : leader.name}</span>
-                      <span className="text-[11px] text-slate-400 shrink-0">{displayParty(leader.partyName)}</span>
+                      <span className="text-[11px] text-slate-400 shrink-0">{displayParty(leader.partyId, leader.partyName)}</span>
                     </div>
                     <span className="tabular-nums text-sm font-bold text-slate-800 dark:text-slate-100 shrink-0">{numberFmt(leader.votes)}</span>
                   </div>
@@ -168,7 +169,7 @@ function HotSeatModal({
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: runHex }} />
                       <span className="text-sm text-slate-700 dark:text-slate-300 truncate">{lang === "np" ? runnerUp.nameNp : runnerUp.name}</span>
-                      <span className="text-[11px] text-slate-400 shrink-0">{displayParty(runnerUp.partyName)}</span>
+                      <span className="text-[11px] text-slate-400 shrink-0">{displayParty(runnerUp.partyId, runnerUp.partyName)}</span>
                     </div>
                     <span className="tabular-nums text-sm text-slate-600 dark:text-slate-300 shrink-0">{numberFmt(runnerUp.votes)}</span>
                   </div>
@@ -202,7 +203,7 @@ function HotSeatModal({
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: cpHex }} />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{lang === "np" ? c.nameNp : c.name}</div>
-                          <div className="text-[11px] text-slate-400 dark:text-slate-500">{displayParty(c.partyName)}</div>
+                          <div className="text-[11px] text-slate-400 dark:text-slate-500">{displayParty(c.partyId, c.partyName)}</div>
                         </div>
                         <div className="text-right shrink-0">
                           <div className="tabular-nums text-sm font-semibold text-slate-800 dark:text-slate-100">{numberFmt(c.votes)}</div>
@@ -300,7 +301,7 @@ export default function HotSeats({
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: p1hex }} />
                       <span className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{lang === "np" ? top1.nameNp : top1.name}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{top1.partyName.split(" (")[0]}</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{(lang === "np" ? top1.partyName : getParty(top1.partyId).nameEn).split(" (")[0]}</span>
                     </div>
                     <span className="tabular-nums text-sm font-bold text-slate-800 dark:text-slate-100 shrink-0">{numberFmt(top1.votes)}</span>
                   </div>
@@ -314,7 +315,7 @@ export default function HotSeats({
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: p2hex }} />
                       <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{lang === "np" ? top2.nameNp : top2.name}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{top2.partyName.split(" (")[0]}</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{(lang === "np" ? top2.partyName : getParty(top2.partyId).nameEn).split(" (")[0]}</span>
                     </div>
                     <span className="tabular-nums text-sm text-slate-600 dark:text-slate-300 shrink-0">{numberFmt(top2.votes)}</span>
                   </div>
