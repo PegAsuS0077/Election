@@ -11,28 +11,23 @@ import { parseUpstreamCandidates } from "./parseUpstreamData";
 import type { ConstituencyResult, UpstreamRecord } from "../types";
 
 const CACHE_KEY = "archive_constituencies_v1";
-const UPSTREAM_URL =
-  "https://result.election.gov.np/JSONFiles/ElectionResultCentral2082.txt";
-const CORS_PROXY = "https://corsproxy.io/?url=";
+
+// In dev the Vite server proxies /upstream → result.election.gov.np (no CORS).
+// In production (VITE_API_URL set, or same-origin deploy) the backend serves
+// the data via /api/constituencies; archiveData is only used in archive mode
+// where the same proxy pattern applies via the production reverse-proxy config.
+const UPSTREAM_PATH = "/upstream/JSONFiles/ElectionResultCentral2082.txt";
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
 async function fetchText(url: string): Promise<string> {
-  // Try direct (works when backend proxy or server sets CORS headers)
-  try {
-    const res = await fetch(url, { mode: "cors" });
-    if (res.ok) return res.text();
-  } catch {
-    // CORS blocked — fall through to proxy
-  }
-  // CORS proxy fallback
-  const proxied = await fetch(`${CORS_PROXY}${encodeURIComponent(url)}`);
-  if (!proxied.ok) throw new Error(`Upstream fetch failed: ${proxied.status}`);
-  return proxied.text();
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Upstream fetch failed: ${res.status}`);
+  return res.text();
 }
 
 async function fetchUpstreamRecords(): Promise<UpstreamRecord[]> {
-  let text = await fetchText(UPSTREAM_URL);
+  let text = await fetchText(UPSTREAM_PATH);
   // Strip UTF-8 BOM (0xFEFF) present in the official file
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
   const parsed: unknown = JSON.parse(text);

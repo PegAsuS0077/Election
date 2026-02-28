@@ -17,6 +17,13 @@ export default defineConfig({
         target: 'ws://localhost:8000',
         ws: true,
       },
+      // Proxies the upstream election JSON to avoid browser CORS blocks in dev.
+      '/upstream': {
+        target: 'https://result.election.gov.np',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/upstream/, ''),
+        secure: true,
+      },
     },
   },
 })

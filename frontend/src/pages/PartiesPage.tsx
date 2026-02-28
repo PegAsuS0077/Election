@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES } from "../types";
-import { getParties, getParty, partyHex } from "../lib/partyRegistry";
+import { getParty, partyHex } from "../lib/partyRegistry";
 import { getPartyMeta } from "../lib/db";
 import { provinceName } from "../i18n";
 import Layout from "../components/Layout";
@@ -214,10 +214,20 @@ export default function PartiesPage() {
 
   const totalSeats = 275;
 
-  // Build enriched party data for the cards
+  // Build enriched party data for the cards.
+  // We derive party IDs from `results` directly so the memo re-runs whenever
+  // results change — getParties() reads a module-level variable and isn't reactive.
   const partyData = useMemo(() => {
-    return getParties().map((pInfo) => {
-      const key    = pInfo.partyId;
+    const seenIds = Array.from(
+      new Set(results.flatMap((r) => r.candidates.map((c) => c.partyId)))
+    ).sort((a, b) => {
+      if (a === "IND") return 1;
+      if (b === "IND") return -1;
+      return 0;
+    });
+
+    return seenIds.map((key) => {
+      const pInfo = getParty(key);
       const tally  = seatTally[key] ?? { fptp: 0, pr: 0 };
       const total  = tally.fptp + tally.pr;
       const pct    = (total / totalSeats) * 100;
