@@ -5,36 +5,48 @@
  *
  * Used when RESULTS_MODE === "archive" (pre-election browsing).
  * In "live" mode the backend API is used instead (see useElectionSimulation).
+ *
+ * Data source priority:
+ *  1. sessionStorage cache (same page session)
+ *  2. Backend /api/constituencies — when VITE_API_URL is set (production with backend)
+ *  3. /upstream proxy — when running under the Vite dev server
  */
 
 import { parseUpstreamCandidates } from "./parseUpstreamData";
 import type { ConstituencyResult, UpstreamRecord } from "../types";
 
 const CACHE_KEY = "archive_constituencies_v1";
+const JSON_FILE = "/JSONFiles/ElectionResultCentral2082.txt";
 
-// In dev the Vite server proxies /upstream → result.election.gov.np (no CORS).
-// In production (VITE_API_URL set, or same-origin deploy) the backend serves
-// the data via /api/constituencies; archiveData is only used in archive mode
-// where the same proxy pattern applies via the production reverse-proxy config.
-const UPSTREAM_PATH = "/upstream/JSONFiles/ElectionResultCentral2082.txt";
+const API_BASE  = (import.meta.env.VITE_API_URL  as string | undefined) ?? "";
+// In dev: blank → uses Vite proxy at /upstream.
+// In prod without backend: set VITE_UPSTREAM_URL=https://result.election.gov.np
+//   BUT note that direct browser fetches to that URL are CORS-blocked.
+//   Always prefer deploying with a backend (VITE_API_URL) in production.
+const _upstreamBase = (import.meta.env.VITE_UPSTREAM_URL as string | undefined) ?? "";
+const UPSTREAM_URL = _upstreamBase
+  ? `${_upstreamBase.replace(/\/$/, "")}${JSON_FILE}`
+  : `/upstream${JSON_FILE}`;
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
-async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Upstream fetch failed: ${res.status}`);
-  return res.text();
+async function fetchFromBackend(): Promise<ConstituencyResult[]> {
+  const res = await fetch(`${API_BASE}/api/constituencies`);
+  if (!res.ok) throw new Error(`Backend fetch failed: ${res.status}`);
+  return res.json() as Promise<ConstituencyResult[]>;
 }
 
-async function fetchUpstreamRecords(): Promise<UpstreamRecord[]> {
-  let text = await fetchText(UPSTREAM_PATH);
+async function fetchFromUpstream(): Promise<ConstituencyResult[]> {
+  const res = await fetch(UPSTREAM_URL);
+  if (!res.ok) throw new Error(`Upstream fetch failed: ${res.status}`);
+  let text = await res.text();
   // Strip UTF-8 BOM (0xFEFF) present in the official file
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
   const parsed: unknown = JSON.parse(text);
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new Error("Upstream returned empty or non-array data");
   }
-  return parsed as UpstreamRecord[];
+  return parseUpstreamCandidates(parsed as UpstreamRecord[]);
 }
 
 // ── Vote zeroing ──────────────────────────────────────────────────────────────
@@ -89,7 +101,7 @@ let _inFlight: Promise<ConstituencyResult[]> | null = null;
  * ConstituencyResult[] with all votes zeroed, and caches the result.
  *
  * Returns from sessionStorage cache on subsequent calls within the same page
- * session.  Throws if upstream is unreachable and no cache exists.
+ * session.  Throws if all sources are unreachable and no cache exists.
  *
  * @param forceRefresh  Bypass cache and re-fetch from upstream.
  */
@@ -106,8 +118,17 @@ export async function loadArchiveData(
 
   _inFlight = (async () => {
     try {
-      const records = await fetchUpstreamRecords();
-      const constituencies = parseUpstreamCandidates(records);
+      let constituencies: ConstituencyResult[];
+
+      if (API_BASE) {
+        // Production with backend: fetch pre-parsed data from our own API.
+        // Backend has CORS headers set and serves same canonical shape.
+        constituencies = await fetchFromBackend();
+      } else {
+        // Dev (Vite proxy) or production with VITE_UPSTREAM_URL set.
+        constituencies = await fetchFromUpstream();
+      }
+
       const zeroed = zeroVotes(constituencies);
       writeCache(zeroed);
       return zeroed;
