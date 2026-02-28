@@ -27,7 +27,7 @@ SCRAPE_URL = os.getenv("SCRAPE_URL", "https://result.election.gov.np")
 SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL_SECONDS", "30"))
 
 # Comma-separated list of allowed CORS origins; defaults to localhost dev server.
-_cors_env = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+_cors_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,https://nepalvotes.live")
 CORS_ORIGINS: list[str] = [o.strip() for o in _cors_env.split(",") if o.strip()]
 
 
