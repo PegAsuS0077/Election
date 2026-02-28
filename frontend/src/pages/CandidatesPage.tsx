@@ -157,16 +157,23 @@ function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onC
   );
 }
 
+// ── Shared dropdown style ──────────────────────────────────────────────────────
+const SELECT_CLS =
+  "h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] " +
+  "px-3 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition min-w-0";
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CandidatesPage() {
   const results = useElectionStore((s) => s.results);
   const lang    = useElectionStore((s) => s.lang);
 
-  const [search, setSearch]         = useState("");
-  const [selParty, setSelParty]     = useState<string>("All");
-  const [selProv, setSelProv]       = useState<Province | "All">("All");
-  const [selGender, setSelGender]   = useState<"All" | "M" | "F">("All");
-  const [sortKey, setSortKey]       = useState<SortKey>("votes");
+  const [search, setSearch]           = useState("");
+  const [selParty, setSelParty]       = useState<string>("All");
+  const [selProv, setSelProv]         = useState<Province | "All">("All");
+  const [selDistrict, setSelDistrict] = useState<string>("All");
+  const [selConst, setSelConst]       = useState<string>("All");
+  const [selGender, setSelGender]     = useState<"All" | "M" | "F">("All");
+  const [sortKey, setSortKey]         = useState<SortKey>("votes");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
   // Flatten all candidates from all results
@@ -201,11 +208,34 @@ export default function CandidatesPage() {
     return flat;
   }, [results]);
 
+  // Cascading options derived from data
+  const districtOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const c of allCandidates) {
+      if (selProv === "All" || c.province === selProv) seen.add(c.district);
+    }
+    return Array.from(seen).sort();
+  }, [allCandidates, selProv]);
+
+  const constOptions = useMemo(() => {
+    const seen = new Map<string, string>(); // code → name
+    for (const c of allCandidates) {
+      if (selProv !== "All" && c.province !== selProv) continue;
+      if (selDistrict !== "All" && c.district !== selDistrict) continue;
+      seen.set(c.constCode, c.constName);
+    }
+    return Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allCandidates, selProv, selDistrict]);
+
+  const partyOptions = useMemo(() => getParties(), []);
+
   const filtered = useMemo(() => {
     let list = allCandidates.filter((c) => {
-      if (selParty !== "All" && c.partyId !== selParty) return false;
-      if (selProv !== "All" && c.province !== selProv) return false;
-      if (selGender !== "All" && c.gender !== selGender) return false;
+      if (selProv     !== "All" && c.province  !== selProv)     return false;
+      if (selDistrict !== "All" && c.district  !== selDistrict) return false;
+      if (selConst    !== "All" && c.constCode !== selConst)    return false;
+      if (selParty    !== "All" && c.partyId   !== selParty)    return false;
+      if (selGender   !== "All" && c.gender    !== selGender)   return false;
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -225,7 +255,7 @@ export default function CandidatesPage() {
     });
 
     return list;
-  }, [allCandidates, selParty, selProv, selGender, search, sortKey]);
+  }, [allCandidates, selParty, selProv, selDistrict, selConst, selGender, search, sortKey]);
 
   const selectedResult = useMemo(
     () => (selectedCode ? results.find((r) => r.code === selectedCode) ?? null : null),
@@ -257,42 +287,17 @@ export default function CandidatesPage() {
           className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-4 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-[#2563eb] transition"
         />
 
-        {/* ── Party filter pills ── */}
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setSelParty("All")}
-            className={"h-7 px-3 rounded-full text-xs font-medium transition border " +
-              (selParty === "All"
-                ? "bg-[#2563eb] border-[#2563eb] text-white"
-                : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-[#2563eb]/50")}
-          >
-            {lang === "np" ? "सबै दल" : "All Parties"}
-          </button>
-          {getParties().map((p) => {
-            const hex = p.hex;
-            return (
-              <button
-                key={p.partyId}
-                onClick={() => setSelParty(selParty === p.partyId ? "All" : p.partyId)}
-                className={"h-7 px-3 rounded-full text-xs font-medium transition border flex items-center gap-1.5 " +
-                  (selParty === p.partyId
-                    ? "text-white border-transparent"
-                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-[#2563eb]/50")}
-                style={selParty === p.partyId ? { backgroundColor: hex, borderColor: hex } : {}}
-              >
-                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: hex }} />
-                {(lang === "np" ? p.partyName : p.nameEn).split(" (")[0]}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── Province + Gender + Sort row ── */}
-        <div className="flex flex-wrap gap-2 items-center">
+        {/* ── Cascading dropdowns: Province → District → Constituency → Party ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {/* Province */}
           <select
             value={selProv}
-            onChange={(e) => setSelProv(e.target.value as Province | "All")}
-            className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-2.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition"
+            onChange={(e) => {
+              setSelProv(e.target.value as Province | "All");
+              setSelDistrict("All");
+              setSelConst("All");
+            }}
+            className={SELECT_CLS}
           >
             <option value="All">{lang === "np" ? "सबै प्रदेश" : "All Provinces"}</option>
             {provinces.map((p) => (
@@ -300,6 +305,49 @@ export default function CandidatesPage() {
             ))}
           </select>
 
+          {/* District */}
+          <select
+            value={selDistrict}
+            onChange={(e) => { setSelDistrict(e.target.value); setSelConst("All"); }}
+            className={SELECT_CLS}
+            disabled={districtOptions.length === 0}
+          >
+            <option value="All">{lang === "np" ? "सबै जिल्ला" : "All Districts"}</option>
+            {districtOptions.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+
+          {/* Constituency */}
+          <select
+            value={selConst}
+            onChange={(e) => setSelConst(e.target.value)}
+            className={SELECT_CLS}
+            disabled={constOptions.length === 0}
+          >
+            <option value="All">{lang === "np" ? "सबै क्षेत्र" : "All Constituencies"}</option>
+            {constOptions.map(([code, name]) => (
+              <option key={code} value={code}>{name}</option>
+            ))}
+          </select>
+
+          {/* Party */}
+          <select
+            value={selParty}
+            onChange={(e) => setSelParty(e.target.value)}
+            className={SELECT_CLS}
+          >
+            <option value="All">{lang === "np" ? "सबै दल" : "All Parties"}</option>
+            {partyOptions.map((p) => (
+              <option key={p.partyId} value={p.partyId}>
+                {(lang === "np" ? p.partyName : p.nameEn).split(" (")[0]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* ── Gender + Sort row ── */}
+        <div className="flex flex-wrap gap-2 items-center">
           {(["All", "M", "F"] as const).map((g) => (
             <button
               key={g}
