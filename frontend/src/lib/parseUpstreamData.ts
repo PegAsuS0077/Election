@@ -49,7 +49,7 @@ const INDEPENDENT_NP = "स्वतन्त्र";
  * SYMBOLCODE is the Election Commission's own numeric party identifier.
  */
 function derivePartyId(rec: UpstreamRecord): string {
-  if (rec.PoliticalPartyName === INDEPENDENT_NP) return "IND";
+  if ((rec.PoliticalPartyName ?? "") === INDEPENDENT_NP) return "IND";
   // SYMBOLCODE is always present and numeric in the upstream data
   return String(rec.SYMBOLCODE);
 }
@@ -149,7 +149,7 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
         candidateId: rec.CandidateID,
         nameNp:      rec.CandidateName,
         name:        rec.CandidateName, // same until English transliteration is available
-        partyName:   rec.PoliticalPartyName,
+        partyName:   rec.PoliticalPartyName ?? "",
         partyId:     derivePartyId(rec),
         votes:       rec.TotalVoteReceived,
         gender:      mapGender(rec.Gender),

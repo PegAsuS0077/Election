@@ -83,7 +83,7 @@ function ConstituencyCard({
               <span className="text-xs text-slate-700 dark:text-slate-300 truncate flex-1">
                 {lang === "np" ? c.nameNp : c.name}
                 <span className="text-[10px] text-slate-400 ml-1">
-                  ({c.partyName.split(" (")[0]})
+                  ({(c.partyName ?? "").split(" (")[0]})
                 </span>
               </span>
               {c.votes > 0 && (
