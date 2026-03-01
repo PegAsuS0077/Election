@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
+import { useElectionSimulation } from "../hooks/useElectionSimulation";
 import { AuroraBackground } from "./ui/aurora-background";
 import Footer from "../Footer";
 import { t } from "../i18n";
@@ -59,6 +60,8 @@ export default function Layout({
   showStats = false,
   statsContent,
 }: LayoutProps) {
+  useElectionSimulation();
+
   const { dark, toggleDark, lang, toggleLang } = useElectionStore();
   const results = useElectionStore((s) => s.results);
   const location = useLocation();

@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useElectionStore } from "./store/electionStore";
-import { useElectionSimulation } from "./hooks/useElectionSimulation";
 import { t } from "./i18n";
 import { getParty, totalPartyCount } from "./lib/partyRegistry";
 import { RESULTS_MODE } from "./types";
@@ -39,8 +38,6 @@ export default function App() {
     const timer = setTimeout(() => setIsLoading(false), 8000);
     return () => clearTimeout(timer);
   }, [setIsLoading]);
-
-  useElectionSimulation();
 
   const results       = useElectionStore((s) => s.results);
   const seatTally     = useElectionStore((s) => s.seatTally);
