@@ -18,7 +18,9 @@
       "Bash(pip3 show:*)",
       "Bash(pip install:*)",
       "Bash(curl:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(pytest tests/test_scraper.py tests/test_worker.py -v --tb=short)"
     ]
   }
 }
