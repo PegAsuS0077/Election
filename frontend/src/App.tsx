@@ -2,8 +2,6 @@ import { useEffect } from "react";
 import { useElectionStore } from "./store/electionStore";
 import { useElectionSimulation } from "./hooks/useElectionSimulation";
 import { t } from "./i18n";
-import { getWsUrl } from "./api";
-import type { WsMessage } from "./api";
 import { getParty, totalPartyCount } from "./lib/partyRegistry";
 import { RESULTS_MODE } from "./types";
 
@@ -47,23 +45,7 @@ export default function App() {
   const results       = useElectionStore((s) => s.results);
   const seatTally     = useElectionStore((s) => s.seatTally);
   const declaredSeats = useElectionStore((s) => s.declaredSeats);
-  const setResults    = useElectionStore((s) => s.setResults);
 
-  // WebSocket connection in live mode only
-  useEffect(() => {
-    if (RESULTS_MODE !== "live") return;
-    const wsUrl = getWsUrl();
-    if (!wsUrl) return;
-    const ws = new WebSocket(wsUrl);
-    ws.onmessage = (e: MessageEvent) => {
-      try {
-        const msg = JSON.parse(e.data as string) as WsMessage;
-        if (msg.type === "constituencies" && Array.isArray(msg.data)) setResults(msg.data);
-      } catch { /* ignore */ }
-    };
-    ws.onerror = () => {};
-    return () => ws.close();
-  }, [setResults]);
 
   const totalSeats = 275;
   const majority   = seatsToMajority(totalSeats);

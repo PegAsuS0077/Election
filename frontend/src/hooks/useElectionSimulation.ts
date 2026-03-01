@@ -2,87 +2,71 @@
  * useElectionSimulation — data loading hook.
  *
  * ARCHIVE MODE (VITE_RESULTS_MODE=archive, default):
- *   - Fetches the official upstream JSON once.
+ *   - Fetches the official upstream JSON once (client-side, via Vite proxy in dev).
  *   - All vote counts are zeroed (pre-election archive browsing).
- *   - No polling, no WebSocket — data is static.
+ *   - No polling — data is static for the session.
  *   - On fetch failure, shows "data unavailable" state (empty results, isLoading=false).
  *
- * LIVE MODE (VITE_RESULTS_MODE=live, requires VITE_API_URL):
- *   - Fetches from backend /api/constituencies immediately.
- *   - Connects to WebSocket /ws for live push updates.
- *   - Falls back to HTTP polling every 30 s if WebSocket fails.
- *
- * The mock vote-increment simulation that was previously here has been removed.
- * Production never invents data.
+ * LIVE MODE (VITE_RESULTS_MODE=live, requires VITE_CDN_URL):
+ *   - Fetches constituencies.json from the R2 CDN immediately.
+ *   - Polls every 30 s for updates.
+ *   - No WebSocket — the CDN is a static file store with no push capability.
  */
 
 import { useEffect } from "react";
 import { useElectionStore } from "../store/electionStore";
-import { fetchConstituencies, getWsUrl } from "../api";
 import { loadArchiveData } from "../lib/archiveData";
 import { RESULTS_MODE } from "../types";
+import type { ConstituencyResult } from "../types";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "";
+const CDN_BASE = (import.meta.env.VITE_CDN_URL as string | undefined) ?? "";
+const POLL_INTERVAL_MS = 30_000;
+
+async function fetchConstituenciesFromCDN(): Promise<ConstituencyResult[]> {
+  const res = await fetch(`${CDN_BASE}/constituencies.json`);
+  if (!res.ok) throw new Error(`CDN fetch failed: ${res.status}`);
+  return res.json() as Promise<ConstituencyResult[]>;
+}
 
 export function useElectionSimulation() {
-  const setResults    = useElectionStore((s) => s.setResults);
-  const setIsLoading  = useElectionStore((s) => s.setIsLoading);
+  const setResults   = useElectionStore((s) => s.setResults);
+  const setIsLoading = useElectionStore((s) => s.setIsLoading);
 
   useEffect(() => {
     let cancelled = false;
 
     // ── LIVE MODE ─────────────────────────────────────────────────────────────
-    if (RESULTS_MODE === "live" && API_BASE) {
-      fetchConstituencies()
+    if (RESULTS_MODE === "live" && CDN_BASE) {
+      // Initial fetch
+      fetchConstituenciesFromCDN()
         .then((data) => {
-          if (cancelled || !data) return;
+          if (cancelled) return;
           setResults(data);
           setIsLoading(false);
         })
         .catch((err) => {
-          console.error("[api] initial fetch failed:", err);
+          console.error("[cdn] initial fetch failed:", err);
           if (!cancelled) setIsLoading(false);
         });
 
-      const wsUrl = getWsUrl();
-      if (!wsUrl) return;
-
-      const ws = new WebSocket(wsUrl);
-
-      ws.onmessage = (e) => {
+      // Poll every 30 s
+      const interval = setInterval(async () => {
         if (cancelled) return;
         try {
-          const msg = JSON.parse(e.data as string);
-          if (msg.type === "constituencies" && Array.isArray(msg.data)) {
-            setResults(msg.data);
-          }
-        } catch {
-          // ignore parse errors
+          const data = await fetchConstituenciesFromCDN();
+          if (!cancelled) setResults(data);
+        } catch (err) {
+          console.error("[cdn] poll error:", err);
         }
-      };
-
-      ws.onerror = () => {
-        // Fall back to polling if WebSocket connection fails
-        const interval = setInterval(async () => {
-          if (cancelled) return;
-          try {
-            const data = await fetchConstituencies();
-            if (data) setResults(data);
-          } catch (err) {
-            console.error("[api] poll error:", err);
-          }
-        }, 30_000);
-        return () => clearInterval(interval);
-      };
+      }, POLL_INTERVAL_MS);
 
       return () => {
         cancelled = true;
-        ws.close();
+        clearInterval(interval);
       };
     }
 
     // ── ARCHIVE MODE (default) ────────────────────────────────────────────────
-    // Load the official candidate list with all votes zeroed.
     loadArchiveData()
       .then((data) => {
         if (cancelled) return;
@@ -96,7 +80,6 @@ export function useElectionSimulation() {
       })
       .catch((err) => {
         console.error("[archive] upstream fetch failed:", err);
-        // Leave results as [] — UI should show "data unavailable" state
         if (!cancelled) setIsLoading(false);
       });
 

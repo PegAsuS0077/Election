@@ -12,11 +12,6 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/ws': {
-        target: 'ws://localhost:8000',
-        ws: true,
-      },
       // Proxies the upstream election JSON to avoid browser CORS blocks in dev.
       '/upstream': {
         target: 'https://result.election.gov.np',

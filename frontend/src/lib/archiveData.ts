@@ -4,12 +4,13 @@
  * result in sessionStorage so repeat navigation doesn't re-download ~3 MB.
  *
  * Used when RESULTS_MODE === "archive" (pre-election browsing).
- * In "live" mode the backend API is used instead (see useElectionSimulation).
+ * In "live" mode the R2 CDN is polled instead (see useElectionSimulation).
  *
  * Data source priority:
  *  1. sessionStorage cache (same page session)
- *  2. Backend /api/constituencies — when VITE_API_URL is set (production with backend)
- *  3. /upstream proxy — when running under the Vite dev server
+ *  2. /upstream proxy — Vite dev server
+ *     Set VITE_UPSTREAM_URL=https://result.election.gov.np for production
+ *     (serve via a CDN/proxy that adds CORS headers).
  */
 
 import { parseUpstreamCandidates } from "./parseUpstreamData";
@@ -18,23 +19,14 @@ import type { ConstituencyResult, UpstreamRecord } from "../types";
 const CACHE_KEY = "archive_constituencies_v1";
 const JSON_FILE = "/JSONFiles/ElectionResultCentral2082.txt";
 
-const API_BASE  = (import.meta.env.VITE_API_URL  as string | undefined) ?? "";
 // In dev: blank → uses Vite proxy at /upstream.
-// In prod without backend: set VITE_UPSTREAM_URL=https://result.election.gov.np
-//   BUT note that direct browser fetches to that URL are CORS-blocked.
-//   Always prefer deploying with a backend (VITE_API_URL) in production.
+// In prod: set VITE_UPSTREAM_URL=https://result.election.gov.np
 const _upstreamBase = (import.meta.env.VITE_UPSTREAM_URL as string | undefined) ?? "";
 const UPSTREAM_URL = _upstreamBase
   ? `${_upstreamBase.replace(/\/$/, "")}${JSON_FILE}`
   : `/upstream${JSON_FILE}`;
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
-
-async function fetchFromBackend(): Promise<ConstituencyResult[]> {
-  const res = await fetch(`${API_BASE}/api/constituencies`);
-  if (!res.ok) throw new Error(`Backend fetch failed: ${res.status}`);
-  return res.json() as Promise<ConstituencyResult[]>;
-}
 
 async function fetchFromUpstream(): Promise<ConstituencyResult[]> {
   const res = await fetch(UPSTREAM_URL);
@@ -118,22 +110,7 @@ export async function loadArchiveData(
 
   _inFlight = (async () => {
     try {
-      let constituencies: ConstituencyResult[];
-
-      if (API_BASE) {
-        // Production with backend: fetch pre-parsed data from our own API.
-        // Backend has CORS headers set and serves same canonical shape.
-        // Falls back to upstream if backend is unreachable (e.g. sleeping on free tier).
-        try {
-          constituencies = await fetchFromBackend();
-        } catch {
-          constituencies = await fetchFromUpstream();
-        }
-      } else {
-        // Dev (Vite proxy) or production with VITE_UPSTREAM_URL set.
-        constituencies = await fetchFromUpstream();
-      }
-
+      const constituencies = await fetchFromUpstream();
       const zeroed = zeroVotes(constituencies);
       writeCache(zeroed);
       return zeroed;
