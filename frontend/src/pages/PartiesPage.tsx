@@ -312,6 +312,18 @@ export default function PartiesPage() {
     [results, selectedCode]
   );
 
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredPartyData = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return partyData;
+    return partyData.filter(({ key, pInfo }) =>
+      pInfo.nameEn.toLowerCase().includes(q) ||
+      pInfo.partyName.toLowerCase().includes(q) ||
+      key.toLowerCase().includes(q)
+    );
+  }, [partyData, searchQuery]);
+
   const heroBadge = (
     <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1 text-xs font-semibold text-blue-400 uppercase tracking-widest">
       {lang === "np" ? "दलहरू · सामान्य निर्वाचन २०८२" : "Parties · General Election 2082"}
@@ -326,9 +338,53 @@ export default function PartiesPage() {
       subtitleNp="सबै प्रमुख दलहरूको सिट गणना, मत बांडफांट र उम्मेद्वार विवरण"
       badge={heroBadge}
     >
+      {/* ── Search bar ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2">
+        <div className="relative max-w-sm">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none"
+            width="15" height="15" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={lang === "np" ? "दल खोज्नुस्…" : "Search parties…"}
+            className="w-full h-9 pl-9 pr-4 rounded-xl border border-slate-200 dark:border-slate-700/80
+                       bg-white dark:bg-slate-800/60 text-sm text-slate-900 dark:text-slate-100
+                       placeholder:text-slate-400 dark:placeholder:text-slate-500
+                       focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb]
+                       transition-all"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              aria-label="Clear search"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+            {filteredPartyData.length === 0
+              ? (lang === "np" ? "कुनै दल फेला परेन" : "No parties found")
+              : `${filteredPartyData.length} ${lang === "np" ? "दल फेला पर्यो" : filteredPartyData.length === 1 ? "party found" : "parties found"}`}
+          </p>
+        )}
+      </div>
+
       {/* ── Party cards grid ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-2">
-        {partyData.map(({ key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount }) => (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-2">
+        {filteredPartyData.map(({ key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount }) => (
           <div
             key={key}
             className={
