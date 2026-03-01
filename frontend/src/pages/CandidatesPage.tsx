@@ -45,6 +45,7 @@ function CandidatePhoto({ id, name, size = "lg" }: { id: number; name: string; s
   const dim = size === "sm" ? "h-10 w-10 text-xs" : "h-20 w-20 text-lg";
   const initials = name
     .split(" ")
+    .filter((w) => w.length > 0)
     .map((w) => w[0])
     .join("")
     .slice(0, 2)

@@ -147,8 +147,8 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
     const candidates: Candidate[] = recs.map((rec) => {
       const c: Candidate = {
         candidateId: rec.CandidateID,
-        nameNp:      rec.CandidateName,
-        name:        rec.CandidateName, // same until English transliteration is available
+        nameNp:      rec.CandidateName ?? "",
+        name:        rec.CandidateName ?? "",
         partyName:   rec.PoliticalPartyName ?? "",
         partyId:     derivePartyId(rec),
         votes:       rec.TotalVoteReceived,

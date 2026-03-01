@@ -71,6 +71,13 @@ interface ElectionStore {
   lang: Lang;
 
   setResults: (r: ConstituencyResult[]) => void;
+  /**
+   * Merges only dynamic fields (votes, isWinner, status, votesCast,
+   * lastUpdated) from `incoming` into the existing results.
+   * Static fields (names, party, biographical data) are preserved unchanged.
+   * Matched by constituency `code`.
+   */
+  mergeResults: (incoming: ConstituencyResult[]) => void;
   setSelectedProvince: (p: "All" | Province) => void;
   toggleDark: () => void;
   setIsLoading: (v: boolean) => void;
@@ -132,6 +139,40 @@ export const useElectionStore = create<ElectionStore>((set) => ({
       declaredSeats: results.filter((r) => r.status === "DECLARED").length,
     });
   },
+
+  mergeResults: (incoming) =>
+    set((state) => {
+      // Build a lookup from code → incoming constituency
+      const byCode = new Map(incoming.map((c) => [c.code, c]));
+
+      const merged = state.results.map((existing) => {
+        const update = byCode.get(existing.code);
+        if (!update) return existing;
+
+        // Build a vote lookup from candidateId → { votes, isWinner }
+        const voteMap = new Map(
+          update.candidates.map((c) => [c.candidateId, { votes: c.votes, isWinner: c.isWinner }])
+        );
+
+        return {
+          ...existing,
+          status:      update.status,
+          votesCast:   update.votesCast,
+          lastUpdated: update.lastUpdated,
+          candidates:  existing.candidates.map((cand) => {
+            const v = voteMap.get(cand.candidateId);
+            if (!v) return cand;
+            return { ...cand, votes: v.votes, isWinner: v.isWinner };
+          }),
+        };
+      });
+
+      return {
+        results:      merged,
+        seatTally:    deriveSeatTally(merged),
+        declaredSeats: merged.filter((r) => r.status === "DECLARED").length,
+      };
+    }),
 
   setSelectedProvince: (selectedProvince) => set({ selectedProvince }),
 

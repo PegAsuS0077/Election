@@ -30,6 +30,7 @@ async function fetchConstituenciesFromCDN(): Promise<ConstituencyResult[]> {
 
 export function useElectionSimulation() {
   const setResults   = useElectionStore((s) => s.setResults);
+  const mergeResults = useElectionStore((s) => s.mergeResults);
   const setIsLoading = useElectionStore((s) => s.setIsLoading);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export function useElectionSimulation() {
 
     // ── LIVE MODE ─────────────────────────────────────────────────────────────
     if (RESULTS_MODE === "live" && CDN_BASE) {
-      // Initial fetch
+      // Initial fetch — full replace to seed static candidate data + party registry
       fetchConstituenciesFromCDN()
         .then((data) => {
           if (cancelled) return;
@@ -49,12 +50,12 @@ export function useElectionSimulation() {
           if (!cancelled) setIsLoading(false);
         });
 
-      // Poll every 30 s
+      // Poll every 30 s — merge only dynamic fields (votes, status, isWinner)
       const interval = setInterval(async () => {
         if (cancelled) return;
         try {
           const data = await fetchConstituenciesFromCDN();
-          if (!cancelled) setResults(data);
+          if (!cancelled) mergeResults(data);
         } catch (err) {
           console.error("[cdn] poll error:", err);
         }
