@@ -100,6 +100,22 @@ export default function Layout({
           }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          {/* Mobile hamburger — left side on mobile, hidden on desktop */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open navigation menu"
+            className="sm:hidden shrink-0 h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700/80
+                       bg-white dark:bg-slate-800/60 text-slate-500 dark:text-slate-400
+                       hover:border-[#2563eb]/50 hover:text-[#2563eb] transition-all active:scale-95"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+
           {/* Brand */}
           <Link to="/" className="flex items-center gap-2 min-w-0 shrink-0">
             <img
@@ -143,24 +159,8 @@ export default function Layout({
             })}
           </nav>
 
-          {/* Mobile hamburger (sm:hidden) */}
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open navigation menu"
-            className="sm:hidden h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700/80
-                       bg-white dark:bg-slate-800/60 text-slate-500 dark:text-slate-400
-                       hover:border-[#2563eb]/50 hover:text-[#2563eb] transition-all active:scale-95"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-
-          {/* Right controls */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          {/* Right controls — hidden on mobile (moved to drawer footer) */}
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
             {hasLiveData && (
               <span className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/60 px-2.5 py-1 text-[11px] font-semibold text-red-700 dark:text-red-400 tracking-wide uppercase mr-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-red-500" style={{ animation: "live-pulse 1.4s ease-in-out infinite" }} />
