@@ -108,19 +108,31 @@ def test_parse_candidates_json_constituency_fields():
 
     ktm = results["3-काठमाडौं-1"]
     assert ktm["province"] == "Bagmati"
-    assert ktm["district"] == "काठमाडौं"
-    assert ktm["state_id"] == 3
-    assert "last_updated" in ktm
+    assert ktm["district"] == "Kathmandu"           # English name
+    assert ktm["districtNp"] == "काठमाडौं"          # Devanagari name
+    assert ktm["name"] == "Kathmandu-1"
+    assert ktm["nameNp"] == "काठमाडौं क्षेत्र नं. 1"
+    assert "lastUpdated" in ktm                      # camelCase
+    assert "votesCast" in ktm
     assert len(ktm["candidates"]) == 3
 
 
-def test_parse_candidates_json_candidate_party_mapped():
+def test_parse_candidates_json_candidate_fields():
     raw = load_fixture()
     results = {r["code"]: r for r in parse_candidates_json(raw)}
-    cands = {c["name"]: c for c in results["3-काठमाडौं-1"]["candidates"]}
-    assert cands["राम श्रेष्ठ"]["party"] == "NC"
-    assert cands["सीता थापा"]["party"] == "CPN-UML"
-    assert cands["बिकास राई"]["party"] == "RSP"
+    cands = {c["nameNp"]: c for c in results["3-काठमाडौं-1"]["candidates"]}
+
+    ram = cands["राम श्रेष्ठ"]
+    assert ram["candidateId"] == 100001
+    assert ram["partyId"] == "1001"                  # str(SYMBOLCODE)
+    assert ram["partyName"] == "नेपाली काँग्रेस"
+    assert ram["votes"] == 12000
+    assert ram["gender"] == "M"
+    assert isinstance(ram["isWinner"], bool)
+
+    sita = cands["सीता थापा"]
+    assert sita["partyId"] == "2598"                 # str(SYMBOLCODE) for CPN-UML
+    assert sita["gender"] == "F"
 
 
 def test_parse_candidates_json_declared_when_winner_exists():
@@ -148,14 +160,19 @@ def test_build_snapshot_counts_declared_winners():
             "code": "3-काठमाडौं-1",
             "status": "DECLARED",
             "candidates": [
-                {"party": "NC",      "votes": 12000},
-                {"party": "CPN-UML", "votes": 9500},
+                {"partyId": "1001", "partyName": "नेपाली काँग्रेस",
+                 "votes": 12000, "isWinner": True},
+                {"partyId": "2598", "partyName": "नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी लेनिनवादी)",
+                 "votes": 9500, "isWinner": False},
             ],
         },
         {
             "code": "3-ललितपुर-1",
             "status": "COUNTING",
-            "candidates": [{"party": "CPN-UML", "votes": 5000}],
+            "candidates": [
+                {"partyId": "2598", "partyName": "नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी लेनिनवादी)",
+                 "votes": 5000, "isWinner": False},
+            ],
         },
     ]
     snap = build_snapshot_from_constituencies(constituencies)

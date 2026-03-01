@@ -74,56 +74,147 @@ def is_winner(record: dict[str, Any]) -> bool:
     return False
 
 
+def _derive_party_id(rec: dict[str, Any]) -> str:
+    """
+    Derive a stable partyId matching the frontend convention:
+      - "IND" for independent candidates (PoliticalPartyName == "स्वतन्त्र")
+      - str(SYMBOLCODE) for all other parties
+    Mirrors parseUpstreamData.ts derivePartyId().
+    """
+    if (rec.get("PoliticalPartyName") or "") == "स्वतन्त्र":
+        return "IND"
+    return str(rec.get("SYMBOLCODE", "0"))
+
+
+_DISTRICT_EN: dict[str, str] = {
+    "ताप्लेजुङ": "Taplejung",      "पाँचथर": "Panchthar",         "इलाम": "Ilam",
+    "सङ्खुवासभा": "Sankhuwasabha", "भोजपुर": "Bhojpur",           "धनकुटा": "Dhankuta",
+    "तेह्रथुम": "Terhathum",        "खोटाङ": "Khotang",            "सोलुखुम्बु": "Solukhumbu",
+    "ओखलढुङ्गा": "Okhaldhunga",    "झापा": "Jhapa",               "मोरङ": "Morang",
+    "सुनसरी": "Sunsari",            "उदयपुर": "Udayapur",          "सप्तरी": "Saptari",
+    "सिरहा": "Siraha",              "धनुषा": "Dhanusha",           "महोत्तरी": "Mahottari",
+    "सर्लाही": "Sarlahi",           "रौतहट": "Rautahat",           "बारा": "Bara",
+    "पर्सा": "Parsa",               "सिन्धुली": "Sindhuli",        "रामेछाप": "Ramechhap",
+    "दोलखा": "Dolakha",             "सिन्धुपाल्चोक": "Sindhupalchok",
+    "काभ्रेपलाञ्चोक": "Kavrepalanchok",
+    "भक्तपुर": "Bhaktapur",         "ललितपुर": "Lalitpur",         "काठमाडौँ": "Kathmandu",
+    "काठमाडौं": "Kathmandu",
+    "नुवाकोट": "Nuwakot",           "मकवानपुर": "Makwanpur",       "चितवन": "Chitwan",
+    "गोर्खा": "Gorkha",             "लमजुङ": "Lamjung",            "तनहुँ": "Tanahu",
+    "कास्की": "Kaski",              "स्याङ्जा": "Syangja",         "पर्वत": "Parbat",
+    "बाग्लुङ": "Baglung",           "म्याग्दी": "Myagdi",          "नवलपुर": "Nawalpur",
+    "मुस्ताङ": "Mustang",           "मनाङ": "Manang",
+    "रूपन्देही": "Rupandehi",       "कपिलवस्तु": "Kapilvastu",     "अर्घाखाँची": "Arghakhanchi",
+    "गुल्मी": "Gulmi",              "पाल्पा": "Palpa",             "दाङ": "Dang",
+    "बाँके": "Banke",               "बर्दिया": "Bardiya",           "रोल्पा": "Rolpa",
+    "रुकुम पश्चिम": "Rukum-West",  "प्युठान": "Pyuthan",
+    "डोल्पा": "Dolpa",              "मुगु": "Mugu",                "हुम्ला": "Humla",
+    "जुम्ला": "Jumla",              "कालिकोट": "Kalikot",          "दैलेख": "Dailekh",
+    "जाजरकोट": "Jajarkot",          "सल्यान": "Salyan",            "रुकुम पूर्व": "Rukum-East",
+    "सुर्खेत": "Surkhet",
+    "बाजुरा": "Bajura",             "बझाङ": "Bajhang",             "दार्चुला": "Darchula",
+    "बैतडी": "Baitadi",             "डडेलधुरा": "Dadeldhura",      "डोटी": "Doti",
+    "अछाम": "Achham",               "कैलाली": "Kailali",           "कञ्चनपुर": "Kanchanpur",
+}
+
+
+def _district_en(np_name: str, state_id: int) -> str:
+    province_en = _state_id_to_province_key(state_id)
+    return _DISTRICT_EN.get(np_name, f"{province_en}-District")
+
+
+def _gender(rec: dict[str, Any]) -> str:
+    return "F" if rec.get("Gender") == "महिला" else "M"
+
+
 def parse_candidates_json(raw_candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
-    Transform the raw upstream candidate records into constituency-grouped results
-    matching the shape consumed by the frontend API.
+    Transform the raw upstream candidate records into ConstituencyResult[] shape
+    as defined in frontend/src/types.ts.
 
-    Returns a list of constituency dicts, each with:
-      code, name, province, district, status, last_updated, candidates[]
+    Emits camelCase keys that match the TypeScript type exactly so
+    constituencies.json can be consumed by the frontend without transformation.
+
+    Each constituency dict:
+      code, province, district, districtNp, name, nameNp,
+      status, lastUpdated, votesCast, candidates[]
+
+    Each candidate dict:
+      candidateId, name, nameNp, partyId, partyName, votes, gender, isWinner
+      + optional: age, fatherName, spouseName, qualification, institution,
+                  experience, address
     """
-    # Group candidates by composite constituency key
-    constituencies: dict[str, dict[str, Any]] = {}
-
+    grouped: dict[str, list[dict[str, Any]]] = {}
     for rec in raw_candidates:
         cid = constituency_id(rec)
-        if cid not in constituencies:
-            state_id = rec.get("STATE_ID", 0)
-            district = rec.get("DistrictName", "")
-            const_num = rec.get("SCConstID", 0)
-            # Build a human-readable name; on election day the site may supply one
-            name = f"Constituency {const_num}"
+        grouped.setdefault(cid, []).append(rec)
 
-            constituencies[cid] = {
-                "code":         cid,
-                "name":         name,
-                "province":     _state_id_to_province_key(state_id),
-                "province_np":  rec.get("StateName", ""),
-                "district":     district,
-                "state_id":     state_id,
-                "status":       "COUNTING",
-                "last_updated": datetime.now(timezone.utc).isoformat(),
-                "candidates":   [],
+    results: list[dict[str, Any]] = []
+    now = datetime.now(timezone.utc).isoformat()
+
+    for cid, recs in grouped.items():
+        first = recs[0]
+        state_id    = first.get("STATE_ID", 0)
+        district_np = first.get("DistrictName", "")
+        district_en = _district_en(district_np, state_id)
+        const_num   = first.get("SCConstID", 0)
+        province    = _state_id_to_province_key(state_id)
+
+        candidates: list[dict[str, Any]] = []
+        for rec in recs:
+            cand: dict[str, Any] = {
+                "candidateId": rec.get("CandidateID"),
+                "name":        rec.get("CandidateName") or "",
+                "nameNp":      rec.get("CandidateName") or "",
+                "partyId":     _derive_party_id(rec),
+                "partyName":   rec.get("PoliticalPartyName") or "",
+                "votes":       rec.get("TotalVoteReceived", 0),
+                "gender":      _gender(rec),
+                "isWinner":    is_winner(rec),
             }
+            # Optional biographical fields — omit when absent or placeholder
+            age = rec.get("AGE_YR")
+            if age:
+                cand["age"] = age
+            father = rec.get("FATHER_NAME", "")
+            if father and father != "-":
+                cand["fatherName"] = father
+            spouse = rec.get("SPOUCE_NAME", "")
+            if spouse and spouse != "-":
+                cand["spouseName"] = spouse
+            qual = rec.get("QUALIFICATION", "")
+            if qual and qual != "0":
+                cand["qualification"] = qual
+            inst = rec.get("NAMEOFINST", "")
+            if inst and inst != "0":
+                cand["institution"] = inst
+            exp = rec.get("EXPERIENCE", "")
+            if exp and exp != "0":
+                cand["experience"] = exp
+            addr = rec.get("ADDRESS", "")
+            if addr and addr != "0":
+                cand["address"] = addr
+            candidates.append(cand)
 
-        candidate = {
-            "id":    rec.get("CandidateID"),
-            "name":  rec.get("CandidateName", ""),
-            "party": map_party_key(rec.get("PoliticalPartyName", "")),
-            "votes": rec.get("TotalVoteReceived", 0),
-            "rank":  rec.get("R", 1),
-            "status": rec.get("E_STATUS"),
-        }
-        constituencies[cid]["candidates"].append(candidate)
+        has_winner = any(c["isWinner"] for c in candidates)
+        has_votes  = any(c["votes"] > 0 for c in candidates)
+        status     = "DECLARED" if has_winner else ("COUNTING" if has_votes else "PENDING")
+        votes_cast = sum(c["votes"] for c in candidates)
 
-    # Determine DECLARED status per constituency
-    for c in constituencies.values():
-        if any(is_winner(
-            {"E_STATUS": cand["status"], "R": cand["rank"], "TotalVoteReceived": cand["votes"]}
-        ) for cand in c["candidates"]):
-            c["status"] = "DECLARED"
+        results.append({
+            "code":        cid,
+            "province":    province,
+            "district":    district_en,
+            "districtNp":  district_np,
+            "name":        f"{district_en}-{const_num}",
+            "nameNp":      f"{district_np} क्षेत्र नं. {const_num}",
+            "status":      status,
+            "lastUpdated": now,
+            "votesCast":   votes_cast,
+            "candidates":  candidates,
+        })
 
-    return list(constituencies.values())
+    return results
 
 
 def _state_id_to_province_key(state_id: int) -> str:
@@ -142,7 +233,7 @@ def _state_id_to_province_key(state_id: int) -> str:
 def build_snapshot_from_constituencies(
     constituencies: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Derive a snapshot dict from a list of constituency results."""
+    """Derive a snapshot dict from a list of ConstituencyResult dicts."""
     seat_tally: dict[str, dict[str, int]] = {
         k: {"fptp": 0, "pr": 0}
         for k in ["NC", "CPN-UML", "NCP", "RSP", "RPP", "JSP", "IND", "OTH"]
@@ -151,10 +242,16 @@ def build_snapshot_from_constituencies(
     for c in constituencies:
         if c["status"] == "DECLARED" and c.get("candidates"):
             declared += 1
-            winner = max(c["candidates"], key=lambda x: x["votes"])
-            party = winner["party"]
-            if party in seat_tally:
-                seat_tally[party]["fptp"] += 1
+            # Use isWinner flag first; fall back to highest vote-getter
+            winners = [cand for cand in c["candidates"] if cand.get("isWinner")]
+            winner = winners[0] if winners else max(c["candidates"], key=lambda x: x["votes"])
+            party_id = winner.get("partyId", "OTH")
+            # Map SYMBOLCODE-based partyId back to legacy key for snapshot tally.
+            # The snapshot uses the old NC/CPN-UML/… keys consumed by SummaryCards.
+            legacy = map_party_key(winner.get("partyName", ""))
+            key = legacy if legacy != "OTH" else party_id
+            if key in seat_tally:
+                seat_tally[key]["fptp"] += 1
             else:
                 seat_tally["OTH"]["fptp"] += 1
 
