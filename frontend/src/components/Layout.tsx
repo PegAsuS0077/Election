@@ -85,7 +85,7 @@ export default function Layout({
 
   return (
     <div
-      className="min-h-screen bg-slate-50 dark:bg-[#080e1a]"
+      className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-[#080e1a]"
       style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
     >
       {/* ── Top shimmer bar ─────────────────────────────────────────────── */}

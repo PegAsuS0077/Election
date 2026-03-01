@@ -41,10 +41,13 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 body {
   font-family: 'DM Sans', system-ui, sans-serif;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 /* Mono / tabular data */
