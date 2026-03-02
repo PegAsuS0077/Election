@@ -99,7 +99,9 @@ function PartyCandidatesPanel({
           style={{ borderTopColor: hex, borderTopWidth: 4 }}
         >
           <div className="flex items-center gap-3">
-            <span className="text-3xl leading-none">{p.symbol}</span>
+            {p.symbolUrl
+              ? <img src={p.symbolUrl} alt={p.symbol} className="h-10 w-10 object-contain" />
+              : <span className="text-3xl leading-none">{p.symbol}</span>}
             <div>
               <h3 className="font-bold text-slate-900 dark:text-slate-100 text-lg">
                 {lang === "np" ? p.partyName : p.nameEn}
@@ -400,7 +402,9 @@ export default function PartiesPage() {
               {/* Header */}
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl leading-none">{pInfo.symbol}</span>
+                  {pInfo.symbolUrl
+                    ? <img src={pInfo.symbolUrl} alt={pInfo.symbol} className="h-10 w-10 object-contain flex-shrink-0" />
+                    : <span className="text-3xl leading-none">{pInfo.symbol}</span>}
                   <div>
                     <h2 className="font-bold text-slate-900 dark:text-slate-100 text-base leading-tight" style={{ fontFamily: "'Sora', sans-serif" }}>
                       {lang === "np" ? pInfo.partyName : pInfo.nameEn}

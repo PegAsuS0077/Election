@@ -218,6 +218,78 @@ const PARTY_SYMBOL: Record<string, string> = {
   IND:       "🧑",
 };
 
+const SYMBOL_BASE = "https://nepalelectionupdates.com/candidates/signs/";
+
+// Official party symbol image URLs (slug portion only — append to SYMBOL_BASE)
+const PARTY_SYMBOL_SLUG: Record<string, string> = {
+  NC:         "nepali-congress.jpg",
+  "CPN-UML":  "communist-party-of-nepal-unified-marxist-leninist.jpg",
+  NCP:        "nepali-communist-party.jpg",
+  RSP:        "rastriya-swatantra-party.jpg",
+  RPP:        "rastriya-prajatantra-party.jpg",
+  JSP:        "janata-samajwadi-party-nepal.jpg",
+  "CPN-US":   "communist-party-of-nepal-unified-socialist.jpg",
+  "CPN-M":    "communist-party-of-nepal-maoist.jpg",
+  NMKP:       "nepal-majdoor-kishan-party.jpg",
+  RJM:        "rastriya-janmorcha.jpg",
+  JMP:        "janmat-party.jpg",
+  AJP:        "aam-janata-party-single-election-symbol.jpg",
+  NUP:        "nagarik-unmukti-party-nepal-single-election-symbol.jpg",
+  UNP:        "ujjyalo-nepal-party.jpg",
+  SSP:        "labour-culture-party.jpg",
+  MNO:        "mongol-national-organization.jpg",
+  PLP:        "progressive-democratic-party.jpg",
+  "RMP-N":    "rastriya-mukti-party-nepal-single-election-symbol.jpg",
+  "RJP-N":    "rastriya-janata-party-nepal.jpg",
+  "CPN-ML":   "communist-party-of-nepal-marxist-pushpa-lal.jpg",
+  "CPN-M2":   "communist-party-of-nepal-marxist-single-election-symbol.jpg",
+  "CPN-PL":   "communist-party-of-nepal-marxist-pushpa-lal.jpg",
+  "CPN-U":    "communist-party-of-nepal-unified.jpg",
+  NSP:        "nepal-sadbhavana-party.jpg",
+  RSjP:       "rastriya-sajha-party.jpg",
+  FDNF:       "federal-democratic-national-forum.jpg",
+  UCP:        "united-citizens-party.jpg",
+  NJP:        "nepal-janata-party.jpg",
+  NJMP:       "nepal-janmukti-party.jpg",
+  "RPP-N":    "rastriya-parivartan-party.jpg",
+  RJMP:       "rastriya-janmukti-party.jpg",
+  JMP2:       "jai-matrubhumi-party.jpg",
+  RND:        "rastra-nirman-dal-nepal.jpg",
+  NFSP:       "nepal-federal-socialist-party-single-election-symbol.jpg",
+  BEP:        "bahujan-ekta-party-nepal-single-election-symbol.jpg",
+  NJvP:       "nepal-janasewa-party.jpg",
+  SSjP:       "inclusive-socialist-party.jpg",
+  SNP:        "sarbabhauma-nagarik-party.jpg",
+  JAP:        "jana-adhikar-party.jpg",
+  NMP:        "nepal-manavtawadi-party.jpg",
+  NLP:        "nepal-loktantrik-party.jpg",
+  NJD:        "nepali-janata-dal.jpg",
+  RED:        "rastriya-ekta-dal.jpg",
+  JLPN:       "janata-loktantrik-party-nepal.jpg",
+  JPN:        "janaadesh-party-nepal-single-election-symbol.jpg",
+  RJMP2:      "rastriya-janmat-party.jpg",
+  PFP:        "people-first-party.jpg",
+  RUPN:       "rastriya-urjashil-party-nepal.jpg",
+  NSPN:       "nagarik-sarvochha-party-nepal-single-election-symbol.jpg",
+  NJSP:       "nepal-janata-sanrakshan-party.jpg",
+  BSP:        "bahujan-shakti-party.jpg",
+  RMAN:       "rastriya-mukti-andolan-nepal.jpg",
+  GDP:        "gatishil-loktantrik-party.jpg",
+  PPN:        "prajatantrik-party-nepal.jpg",
+  TMN:        "trimul-nepal.jpg",
+  SWP:        "swabhiman-party.jpg",
+  UNDP:       "united-nepal-democratic-party.jpg",
+  IJP:        "aitihasik-janata-party.jpg",
+  RNP:        "rastriya-nagarik-party.jpg",
+  NMP2:       "nepal-matrubhumi-party.jpg",
+  GPN:        "gandhiwadi-party-nepal.jpg",
+  MPN:        "miteri-party-nepal.jpg",
+  NRN:        "national-republic-nepal.jpg",
+  NPN:        "nepali-party-for-nepal.jpg",
+  NJSKP:      "nepali-jana-shramdaan-culture-party.jpg",
+  NSjP:       "inclusive-socialist-party-nepal.jpg",
+};
+
 // ── Registry state ────────────────────────────────────────────────────────────
 
 let _registry: Map<string, PartyInfo> = new Map();
@@ -241,6 +313,7 @@ export function getParty(partyId: string): PartyInfo {
       color: "bg-slate-400",
       hex: "#94a3b8",
       symbol: "•",
+      symbolUrl: "",
       candidateCount: 0,
     }
   );
@@ -283,6 +356,7 @@ export function buildRegistry(constituencies: ConstituencyResult[]): void {
     const abbrev = NEPALI_NAME_TO_ID[partyName] ?? partyId;
     const nameEn = KNOWN_ENGLISH[partyId] ?? KNOWN_ENGLISH[abbrev] ?? partyName;
     const color = PARTY_COLOR[abbrev] ?? PARTY_COLOR[partyId] ?? "bg-slate-400";
+    const slug = PARTY_SYMBOL_SLUG[abbrev] ?? PARTY_SYMBOL_SLUG[partyId];
     _registry.set(partyId, {
       partyId,
       partyName,
@@ -290,6 +364,7 @@ export function buildRegistry(constituencies: ConstituencyResult[]): void {
       color,
       hex: PARTY_HEX[color] ?? "#94a3b8",
       symbol: PARTY_SYMBOL[abbrev] ?? PARTY_SYMBOL[partyId] ?? "•",
+      symbolUrl: slug ? SYMBOL_BASE + slug : "",
       candidateCount: count,
     });
   }

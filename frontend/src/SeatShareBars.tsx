@@ -42,23 +42,25 @@ export default function SeatShareBars({
       return {
         partyId,
         total,
-        color:    info.color,
-        name:     lang === "np" ? info.partyName : info.nameEn,
-        symbol:   info.symbol,
-        percent:  (total / totalSeats) * 100,
-        isOthers: false,
+        color:     info.color,
+        name:      lang === "np" ? info.partyName : info.nameEn,
+        symbol:    info.symbol,
+        symbolUrl: info.symbolUrl,
+        percent:   (total / totalSeats) * 100,
+        isOthers:  false,
       };
     });
 
   if (othersTotal > 0) {
     rows.push({
-      partyId:  "OTH",
-      total:    othersTotal,
-      color:    "bg-slate-400",
-      name:     lang === "np" ? "अन्य" : "Others",
-      symbol:   "🏳️",
-      percent:  (othersTotal / totalSeats) * 100,
-      isOthers: true,
+      partyId:   "OTH",
+      total:     othersTotal,
+      color:     "bg-slate-400",
+      name:      lang === "np" ? "अन्य" : "Others",
+      symbol:    "🏳️",
+      symbolUrl: "",
+      percent:   (othersTotal / totalSeats) * 100,
+      isOthers:  true,
     });
   }
 
@@ -103,7 +105,9 @@ export default function SeatShareBars({
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <span className={`h-3 w-3 rounded-full ${r.color}`} />
-                  <span className="text-base leading-none">{r.symbol}</span>
+                  {r.symbolUrl
+                    ? <img src={r.symbolUrl} alt={r.symbol} className="h-5 w-5 object-contain" />
+                    : <span className="text-base leading-none">{r.symbol}</span>}
                   <span className="font-medium text-slate-900 dark:text-slate-100">{r.name}</span>
                 </div>
                 <Tooltip text={`${r.name}: ${r.total} seats (${r.percent.toFixed(1)}%)`}>

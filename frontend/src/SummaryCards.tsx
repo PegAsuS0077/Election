@@ -76,6 +76,7 @@ export default function SummaryCards({
         sub={`${leader.total} ${t("seats", lang)}`}
         dotColor={leaderInfo.color}
         symbol={leaderInfo.symbol}
+        symbolUrl={leaderInfo.symbolUrl}
         right={<ChangePill delta={leader.delta} />}
       />
       <Card
@@ -84,6 +85,7 @@ export default function SummaryCards({
         sub={`${runnerUp.total} ${t("seats", lang)}`}
         dotColor={runnerUpInfo.color}
         symbol={runnerUpInfo.symbol}
+        symbolUrl={runnerUpInfo.symbolUrl}
         right={<ChangePill delta={runnerUp.delta} />}
       />
     </section>
@@ -91,10 +93,10 @@ export default function SummaryCards({
 }
 
 function Card({
-  title, big, sub, dotColor, symbol, right,
+  title, big, sub, dotColor, symbol, symbolUrl, right,
 }: {
   title: string; big: string; sub: string;
-  dotColor?: string; symbol?: string; right?: React.ReactNode;
+  dotColor?: string; symbol?: string; symbolUrl?: string; right?: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
@@ -106,7 +108,11 @@ function Card({
         {right}
       </div>
       <div className="mt-2 flex items-center gap-2">
-        {symbol && <span className="text-2xl leading-none">{symbol}</span>}
+        {symbolUrl
+          ? <img src={symbolUrl} alt={symbol} className="h-8 w-8 object-contain" />
+          : symbol
+          ? <span className="text-2xl leading-none">{symbol}</span>
+          : null}
         <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{big}</span>
       </div>
       <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{sub}</div>

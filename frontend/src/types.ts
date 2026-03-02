@@ -119,8 +119,10 @@ export type PartyInfo = {
   color: string;
   /** Hex colour for charts */
   hex: string;
-  /** Symbol emoji for display */
+  /** Symbol emoji for display (fallback when image unavailable) */
   symbol: string;
+  /** URL of the official party symbol image from nepalelectionupdates.com */
+  symbolUrl: string;
   /** Number of FPTP candidates in this election */
   candidateCount: number;
 };
