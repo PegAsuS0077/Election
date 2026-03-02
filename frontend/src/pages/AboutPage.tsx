@@ -7,6 +7,8 @@ export default function AboutPage() {
 
   useEffect(() => {
     document.title = "About – NepalVotes | Nepal Election Results 2082";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content", "About NepalVotes — an independent informational dashboard for Nepal's House of Representatives General Election 2082 (2026). Data sourced exclusively from the Election Commission of Nepal.");
   }, []);
 
   return (

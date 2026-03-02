@@ -7,6 +7,8 @@ export default function ContactPage() {
 
   useEffect(() => {
     document.title = "Contact – NepalVotes";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content", "Contact NepalVotes — the independent Nepal Election Results 2082 dashboard. Reach us by email for data issues, feedback, or press enquiries.");
   }, []);
 
   return (

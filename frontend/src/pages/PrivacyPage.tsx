@@ -7,6 +7,8 @@ export default function PrivacyPage() {
 
   useEffect(() => {
     document.title = "Privacy Policy – NepalVotes";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content", "Privacy Policy for NepalVotes (nepalvotes.live). Learn about data collection, cookies, Google Analytics, Google AdSense advertising, and your privacy rights.");
   }, []);
 
   return (
@@ -76,10 +78,15 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
               {lang === "np" ? "Cookies" : "Cookies"}
             </h2>
+            <p className="mb-3">
+              {lang === "np"
+                ? "यो साइटले दुईवटा उद्देश्यका लागि cookies प्रयोग गर्दछ: (१) Google Analytics — साइट विश्लेषण र ट्राफिक बुझ्न, र (२) Google AdSense — प्रासंगिक विज्ञापन प्रदर्शन गर्न।"
+                : "This site uses cookies for two purposes: (1) Google Analytics — to understand site traffic and usage, and (2) Google AdSense — to display relevant advertisements."}
+            </p>
             <p>
               {lang === "np"
-                ? "हामीले प्रयोग गरिने एकमात्र cookies Google Analytics द्वारा सेट गरिएका हुन्। यी cookies साइट विश्लेषणको लागि मात्र प्रयोग गरिन्छ। हामी कुनै मार्केटिङ वा ट्र्याकिङ cookies प्रयोग गर्दैनौं।"
-                : "The only cookies we use are set by Google Analytics for site analytics purposes. We do not use any marketing or tracking cookies."}
+                ? "हामी आफैंले कुनै cookies सेट गर्दैनौं। सबै cookies तेस्रो-पक्ष सेवाहरू (Google) द्वारा सेट गरिन्छन् र ती सेवाहरूको गोपनीयता नीति अन्तर्गत छन्। तपाईं आफ्नो ब्राउजरको सेटिङमा गएर cookies अस्वीकार गर्न वा हटाउन सक्नुहुन्छ, तर यसले साइटको केही सुविधाहरूलाई असर गर्न सक्छ।"
+                : "We do not set any first-party cookies ourselves. All cookies are set by third-party services (Google) and are governed by their respective privacy policies. You can refuse or delete cookies through your browser settings, though this may affect some site functionality."}
             </p>
           </section>
 
