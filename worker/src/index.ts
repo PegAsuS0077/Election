@@ -129,6 +129,96 @@ async function loadNeuLookup(frontendUrl: string): Promise<Map<number, NeuRecord
   }
 }
 
+// ── Devanagari transliteration ────────────────────────────────────────────────
+// Mirrors frontend/src/lib/transliterate.ts exactly.
+// Inherent-'a' rule: every consonant carries an inherent 'a' that is suppressed
+// when followed by a vowel matra, virama, or end-of-word.
+
+const _CS = "\x01"; // C_START sentinel
+const _CE = "\x02"; // C_END sentinel
+const _VI = "\x03"; // virama sentinel
+const _MS = "\x04"; // matra-start sentinel
+
+function _cons(r: string): string { return _CS + r + _CE; }
+
+function _charToken(ch: string): string {
+  switch (ch) {
+    case "अ": return "a";   case "आ": return "aa";  case "इ": return "i";
+    case "ई": return "ee";  case "उ": return "u";   case "ऊ": return "oo";
+    case "ऋ": return "ri";  case "ए": return "e";   case "ऐ": return "ai";
+    case "ओ": return "o";   case "औ": return "au";
+    case "ा": return _MS+"a";  case "ि": return _MS+"i";  case "ी": return _MS+"i";
+    case "ु": return _MS+"u";  case "ू": return _MS+"u";  case "ृ": return _MS+"ri";
+    case "े": return _MS+"e";  case "ै": return _MS+"ai"; case "ो": return _MS+"o";
+    case "ौ": return _MS+"au";
+    case "्": return _VI;
+    case "ं": return "n";  case "ँ": return "n";  case "ः": return "h";
+    case "़": return "";
+    case "क": return _cons("k");   case "ख": return _cons("kh");
+    case "ग": return _cons("g");   case "घ": return _cons("gh");
+    case "ङ": return _cons("ng");  case "च": return _cons("ch");
+    case "छ": return _cons("chh"); case "ज": return _cons("j");
+    case "झ": return _cons("jh");  case "ञ": return _cons("ny");
+    case "ट": return _cons("t");   case "ठ": return _cons("th");
+    case "ड": return _cons("d");   case "ढ": return _cons("dh");
+    case "ण": return _cons("n");   case "त": return _cons("t");
+    case "थ": return _cons("th");  case "द": return _cons("d");
+    case "ध": return _cons("dh");  case "न": return _cons("n");
+    case "प": return _cons("p");   case "फ": return _cons("ph");
+    case "ब": return _cons("b");   case "भ": return _cons("bh");
+    case "म": return _cons("m");   case "य": return _cons("y");
+    case "र": return _cons("r");   case "ल": return _cons("l");
+    case "व": return _cons("v");   case "श": return _cons("sh");
+    case "ष": return _cons("sh");  case "स": return _cons("s");
+    case "ह": return _cons("h");
+    case "०": return "0"; case "१": return "1"; case "२": return "2";
+    case "३": return "3"; case "४": return "4"; case "५": return "5";
+    case "६": return "6"; case "७": return "7"; case "८": return "8";
+    case "९": return "9"; case "।": return ".";
+    default:  return ch;
+  }
+}
+
+function _nuktaToken(base: string): string {
+  switch (base) {
+    case "ड": return _cons("r");  case "ढ": return _cons("rh");
+    case "क": return _cons("q");  case "फ": return _cons("f");
+    case "ग": return _cons("gh"); case "ज": return _cons("z");
+    default:  return _charToken(base);
+  }
+}
+
+// Suppress inherent-a before matra/virama OR at end of token (word boundary)
+const _RE_SUPPRESS = new RegExp(_CS + "([^" + _CE + "]*)" + _CE + "(?=[" + _MS + _VI + "]|$)", "g");
+const _RE_KEEP     = new RegExp(_CS + "([^" + _CE + "]*)" + _CE, "g");
+
+function transliterateDevanagari(text: string): string {
+  if (!text) return text;
+  const chars = [...text];
+  let tokens = "";
+  for (let i = 0; i < chars.length; i++) {
+    if (chars[i + 1] === "़") { tokens += _nuktaToken(chars[i]); i++; }
+    else { tokens += _charToken(chars[i]); }
+  }
+  return tokens
+    .replace(_RE_SUPPRESS, "$1")
+    .replace(_RE_KEEP, "$1a")
+    .replace(new RegExp(_VI, "g"), "")
+    .replace(new RegExp(_MS, "g"), "");
+}
+
+function nepaliNameToEnglish(name: string): string {
+  if (!name) return name;
+  if (/^[\x00-\x7F\s]+$/.test(name)) return name.trim();
+  const roman = transliterateDevanagari(name);
+  return roman
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ")
+    .trim();
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const UPSTREAM_URL =
@@ -375,7 +465,7 @@ function transform(records: UpstreamRecord[], neuLookup: Map<number, NeuRecord>)
 
       const nameNp = rec.CandidateName ?? "";
       const neu = neuLookup.get(rec.CandidateID);
-      const nameEn = neu?.n ?? nameNp;
+      const nameEn = neu?.n ?? nepaliNameToEnglish(nameNp);
 
       const cand: Candidate = {
         candidateId: rec.CandidateID,

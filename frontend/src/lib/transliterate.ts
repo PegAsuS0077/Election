@@ -125,7 +125,7 @@ function nuktaToken(base: string): string {
 // Then strip M_START and VIRAMA sentinels.
 
 const RE_SUPPRESS = new RegExp(
-  C_START + "([^" + C_END + "]*)" + C_END + "(?=[" + M_START + VIRAMA + "])",
+  C_START + "([^" + C_END + "]*)" + C_END + "(?=[" + M_START + VIRAMA + "]|$)",
   "g",
 );
 const RE_KEEP     = new RegExp(C_START + "([^" + C_END + "]*)" + C_END, "g");
