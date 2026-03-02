@@ -9,6 +9,9 @@ export default function PrivacyPage() {
     document.title = "Privacy Policy – NepalVotes";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", "Privacy Policy for NepalVotes (nepalvotes.live). Learn about data collection, cookies, Google Analytics, Google AdSense advertising, and your privacy rights.");
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/privacy-policy");
+    return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live"); };
   }, []);
 
   return (
