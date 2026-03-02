@@ -491,7 +491,6 @@ export default function CandidatesPage() {
   // Reset to page 1 whenever filters/sort change
   useEffect(() => { setPage(1); }, [selParty, selProv, selDistrict, selConst, selGender, search, sortKey]);
 
-  const pageCount  = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
 
