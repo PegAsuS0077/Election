@@ -125,7 +125,7 @@ function nuktaToken(base: string): string {
 // Then strip M_START and VIRAMA sentinels.
 
 const RE_SUPPRESS = new RegExp(
-  C_START + "([^" + C_END + "]*)" + C_END + "(?=[" + M_START + VIRAMA + "]|$)",
+  C_START + "([^" + C_END + "]*)" + C_END + "(?=[" + M_START + VIRAMA + "]| |$)",
   "g",
 );
 const RE_KEEP     = new RegExp(C_START + "([^" + C_END + "]*)" + C_END, "g");
@@ -161,6 +161,16 @@ export function transliterateDevanagari(text: string): string {
   return result;
 }
 
+// Full transliteration overrides for Devanagari words whose conventional
+// English spelling differs from mechanical transliteration.
+// Key: exact Devanagari token. Value: desired lowercase English form.
+const WORD_OVERRIDES: Record<string, string> = {
+  "यज्ञ": "yagya",
+  "सूर्य": "surya",
+  "कार्य": "karya",
+  "इन्द्र": "indra",
+};
+
 /**
  * Converts a Nepali name (Devanagari) to a display-ready English name.
  * Title-cases each word.
@@ -168,11 +178,15 @@ export function transliterateDevanagari(text: string): string {
 export function nepaliNameToEnglish(name: string): string {
   if (!name) return name;
   if (/^[\x00-\x7F\s]+$/.test(name)) return name.trim();
-  const roman = transliterateDevanagari(name);
-  return roman
+  return name
     .split(/\s+/)
     .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map((word) => {
+      const lower = word in WORD_OVERRIDES
+        ? WORD_OVERRIDES[word]
+        : transliterateDevanagari(word).toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
     .join(" ")
     .trim();
 }
