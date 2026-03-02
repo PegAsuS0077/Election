@@ -1,0 +1,11 @@
+name = "nepalvotes-scraper"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+# Workers + R2 are available on the free tier — no paid plan required.
+
+[[r2_buckets]]
+binding = "RESULTS_BUCKET"
+bucket_name = "nepal-election-gh-actions"
+
+[triggers]
+crons = ["*/1 * * * *"]

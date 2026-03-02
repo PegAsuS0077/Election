@@ -1,11 +1,8 @@
 name: Publish Election Results to R2
 
+# Disabled: replaced by Cloudflare Worker cron (more reliable, true 1-min intervals).
+# Re-enable by restoring the `on:` block below and removing `if: false` from the job.
 on:
-  schedule:
-    # Runs every minute. GitHub Actions minimum cron interval is 1 minute.
-    # Note: GitHub may delay scheduled runs by a few minutes under high load.
-    - cron: "* * * * *"
-  # Allow manual trigger from GitHub Actions UI for testing
   workflow_dispatch:
 
 jobs:
