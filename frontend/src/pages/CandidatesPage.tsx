@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES as provinces } from "../types";
 import type { Province } from "../types";
-import { getParties, partyHex } from "../lib/partyRegistry";
-import { partyName, provinceName } from "../i18n";
+import { getParties, getParty, partyHex } from "../lib/partyRegistry";
+import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
@@ -130,7 +130,7 @@ function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onC
             <div className="flex items-center gap-1.5 mt-1.5">
               <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
               <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">
-                {partyName(c.partyId, lang)}
+                {lang === "np" ? getParty(c.partyId).partyName : getParty(c.partyId).nameEn}
               </span>
             </div>
           </div>
@@ -495,7 +495,7 @@ export default function CandidatesPage() {
             );
           })()}
           {selParty !== "All" && (
-            <span className="text-slate-400 dark:text-slate-500">· {partyName(selParty, lang)}</span>
+            <span className="text-slate-400 dark:text-slate-500">· {lang === "np" ? getParty(selParty).partyName : getParty(selParty).nameEn}</span>
           )}
         </div>
 

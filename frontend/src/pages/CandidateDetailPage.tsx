@@ -13,12 +13,12 @@
  * All prose: original, auto-generated from field values — no competitor text reused.
  */
 
-import { useState, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { candidatePhotoUrl } from "../lib/parseUpstreamData";
 import { partyHex, getParty } from "../lib/partyRegistry";
-import { provinceName, partyName as i18nPartyName } from "../i18n";
+import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
@@ -246,7 +246,7 @@ function generateAboutNp(fields: {
 }
 
 function generateAboutEn(fields: {
-  nameNp: string;
+  name: string;
   partyNameEn: string;
   district: string;
   constNum: string;
@@ -259,7 +259,7 @@ function generateAboutEn(fields: {
   const pronoun =
     fields.gender === "Female" ? "She" : fields.gender === "Male" ? "He" : "They";
   parts.push(
-    `${fields.nameNp} is contesting the Nepal House of Representatives General Election 2082 (2026) as a candidate for ${fields.partyNameEn} from ${fields.district} Constituency No. ${fields.constNum}.`
+    `${fields.name} is contesting the Nepal House of Representatives General Election 2082 (2026) as a candidate for ${fields.partyNameEn} from ${fields.district} Constituency No. ${fields.constNum}.`
   );
   if (fields.age && fields.qualificationEn) {
     parts.push(
@@ -283,9 +283,9 @@ export default function CandidateDetailPage() {
   const { candidateId: paramId } = useParams<{ candidateId: string }>();
   const results  = useElectionStore((s) => s.results);
   const lang     = useElectionStore((s) => s.lang);
-  const navigate = useNavigate();
-
   const targetId = paramId ? parseInt(paramId, 10) : NaN;
+
+  useEffect(() => { window.scrollTo(0, 0); }, [targetId]);
 
   const found = useMemo(() => {
     if (isNaN(targetId)) return null;
@@ -353,7 +353,7 @@ export default function CandidateDetailPage() {
   const genderEnRaw  = GENDER_EN[genderNpRaw] ?? (cand.gender === "F" ? "Female" : "Male");
   const qualEn_      = cand.qualification ? qualEn(cand.qualification) : undefined;
   const partyNameNp  = cand.partyName;
-  const partyNameEn  = i18nPartyName(cand.partyId, "en");
+  const partyNameEn  = partyInfo.nameEn;
   const isWinner     = cand.isWinner && constituency.status === "DECLARED";
   const constNum     = constituency.code.split("-").pop() ?? "";
   const voteShare    = constituency.votesCast > 0
@@ -367,38 +367,6 @@ export default function CandidateDetailPage() {
   );
   const candRank = sortedCands.findIndex((c) => c.candidateId === cand.candidateId) + 1;
 
-  // Other candidates from same party (different constituencies)
-  const samePartyCands = useMemo(() => {
-    const list: Array<{
-      candidateId: number;
-      nameNp: string;
-      constName: string;
-      constNameNp: string;
-      province: Province;
-      votes: number;
-      isWinner: boolean;
-      constCode: string;
-    }> = [];
-    for (const r of results) {
-      if (r.code === constituency.code) continue;
-      for (const c of r.candidates) {
-        if (c.partyId === cand.partyId) {
-          list.push({
-            candidateId: c.candidateId,
-            nameNp: c.nameNp,
-            constName: r.name,
-            constNameNp: r.nameNp,
-            province: r.province,
-            votes: c.votes,
-            isWinner: c.isWinner && r.status === "DECLARED",
-            constCode: r.code,
-          });
-        }
-      }
-    }
-    return list.sort((a, b) => b.votes - a.votes).slice(0, 20);
-  }, [results, constituency.code, cand.partyId]);
-
   // About text
   const aboutNp = generateAboutNp({
     nameNp:        cand.nameNp,
@@ -411,7 +379,7 @@ export default function CandidateDetailPage() {
     address:       cand.address,
   });
   const aboutEn = generateAboutEn({
-    nameNp:          cand.nameNp,
+    name:            cand.name,
     partyNameEn,
     district:        constituency.district,
     constNum,
@@ -423,7 +391,7 @@ export default function CandidateDetailPage() {
 
   return (
     <Layout
-      title={`${cand.nameNp} – Nepal Election 2082`}
+      title={`${cand.name} – Nepal Election 2082`}
       titleNp={`${cand.nameNp} – निर्वाचन २०८२`}
       subtitle={`${partyNameEn} · ${constituency.name}`}
       subtitleNp={`${partyNameNp} · ${constituency.nameNp}`}
@@ -448,7 +416,7 @@ export default function CandidateDetailPage() {
 
             {/* Photo */}
             <div className="shrink-0">
-              <CandidatePhoto id={cand.candidateId} name={cand.nameNp} size="hero" />
+              <CandidatePhoto id={cand.candidateId} name={lang === "np" ? cand.nameNp : cand.name} size="hero" />
             </div>
 
             {/* Name + meta */}
@@ -457,7 +425,7 @@ export default function CandidateDetailPage() {
                 className="text-2xl sm:text-3xl font-bold text-white leading-tight"
                 style={{ fontFamily: "'Sora', sans-serif" }}
               >
-                {cand.nameNp}
+                {lang === "np" ? cand.nameNp : cand.name}
               </h1>
 
               {/* Party */}
@@ -477,7 +445,7 @@ export default function CandidateDetailPage() {
                   {provinceName(constituency.province, lang)}
                 </span>
                 <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/10 text-white/70">
-                  {constituency.district}
+                  {lang === "np" ? constituency.districtNp : constituency.district}
                 </span>
                 <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white/10 text-white/70">
                   {lang === "np" ? constituency.nameNp : constituency.name}
@@ -528,12 +496,12 @@ export default function CandidateDetailPage() {
             {lang === "np" ? "उम्मेदवार" : "Candidates"}
           </Link>
           <span>›</span>
-          <span className="text-slate-500 dark:text-slate-400 font-medium" style={{ color: hex }}>
+          <span className="font-medium" style={{ color: hex }}>
             {lang === "np" ? partyNameNp : partyNameEn}
           </span>
           <span>›</span>
           <span className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[180px]">
-            {cand.nameNp}
+            {lang === "np" ? cand.nameNp : cand.name}
           </span>
         </div>
       </div>
@@ -572,7 +540,7 @@ export default function CandidateDetailPage() {
                 />
                 <InfoRow
                   label={lang === "np" ? "जिल्ला" : "District"}
-                  value={constituency.district}
+                  value={lang === "np" ? constituency.districtNp : constituency.district}
                 />
                 <InfoRow
                   label={lang === "np" ? "प्रदेश" : "Province"}
@@ -613,9 +581,6 @@ export default function CandidateDetailPage() {
                   <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                     {lang === "np" ? partyNameNp : partyNameEn}
                   </div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                    {lang === "np" ? `दल कोड: ${cand.partyId}` : `Party code: ${cand.partyId}`}
-                  </div>
                 </div>
               </div>
             </div>
@@ -634,7 +599,7 @@ export default function CandidateDetailPage() {
                 />
                 <StatBox
                   value={voteShare}
-                  label={lang === "np" ? "मत %%" : "Vote %"}
+                  label={lang === "np" ? "मत %" : "Vote %"}
                 />
                 <StatBox
                   value={String(constituency.candidates.length)}
@@ -652,11 +617,6 @@ export default function CandidateDetailPage() {
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 {lang === "np" ? aboutNp : aboutEn}
               </p>
-              {lang === "np" && (
-                <p className="text-xs text-slate-400 dark:text-slate-600 leading-relaxed mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  {aboutEn}
-                </p>
-              )}
               <p className="text-[10px] text-slate-300 dark:text-slate-700 mt-3">
                 {lang === "np"
                   ? "निर्वाचन आयोग नेपालको आधिकारिक डेटाबाट स्वचालित रूपमा तयार।"
@@ -668,30 +628,30 @@ export default function CandidateDetailPage() {
             <SectionCard title="Personal Information" titleNp="व्यक्तिगत जानकारी" lang={lang}>
               <div className="divide-y divide-slate-50 dark:divide-slate-800/60">
                 <InfoRow
-                  label={lang === "np" ? "लिङ्ग (Gender)" : "Gender (लिङ्ग)"}
-                  value={`${genderNpRaw} / ${genderEnRaw}`}
+                  label={lang === "np" ? "लिङ्ग" : "Gender"}
+                  value={lang === "np" ? genderNpRaw : genderEnRaw}
                 />
                 {cand.age && (
                   <InfoRow
-                    label={lang === "np" ? "उमेर (Age)" : "Age (उमेर)"}
-                    value={`${cand.age} ${lang === "np" ? "वर्ष (years)" : "years (वर्ष)"}`}
+                    label={lang === "np" ? "उमेर" : "Age"}
+                    value={lang === "np" ? `${cand.age} वर्ष` : `${cand.age} years`}
                   />
                 )}
                 {cand.fatherName && (
                   <InfoRow
-                    label={lang === "np" ? "बाबाको नाम (Father)" : "Father's Name (बाबाको नाम)"}
+                    label={lang === "np" ? "बाबाको नाम" : "Father's Name"}
                     value={cand.fatherName}
                   />
                 )}
                 {cand.spouseName && (
                   <InfoRow
-                    label={lang === "np" ? "पतिपत्नीको नाम (Spouse)" : "Spouse's Name (पतिपत्नीको नाम)"}
+                    label={lang === "np" ? "पतिपत्नीको नाम" : "Spouse's Name"}
                     value={cand.spouseName}
                   />
                 )}
                 {cand.address && (
                   <InfoRow
-                    label={lang === "np" ? "ठेगाना (Address)" : "Address (ठेगाना)"}
+                    label={lang === "np" ? "ठेगाना" : "Address"}
                     value={cand.address}
                   />
                 )}
@@ -711,19 +671,19 @@ export default function CandidateDetailPage() {
                 <div className="divide-y divide-slate-50 dark:divide-slate-800/60">
                   {cand.qualification && (
                     <InfoRow
-                      label={lang === "np" ? "शैक्षिक योग्यता (Education)" : "Education (शैक्षिक योग्यता)"}
-                      value={qualEn_ ? `${cand.qualification} / ${qualEn_}` : cand.qualification}
+                      label={lang === "np" ? "शैक्षिक योग्यता" : "Education"}
+                      value={lang === "np" ? cand.qualification : (qualEn_ ?? cand.qualification)}
                     />
                   )}
                   {cand.institution && (
                     <InfoRow
-                      label={lang === "np" ? "संस्था (Institution)" : "Institution (संस्था)"}
+                      label={lang === "np" ? "संस्था" : "Institution"}
                       value={cand.institution}
                     />
                   )}
                   {cand.experience && (
                     <InfoRow
-                      label={lang === "np" ? "अनुभव (Experience)" : "Experience (अनुभव)"}
+                      label={lang === "np" ? "अनुभव" : "Experience"}
                       value={cand.experience}
                     />
                   )}
@@ -731,108 +691,7 @@ export default function CandidateDetailPage() {
               </SectionCard>
             )}
 
-            {/* 4. Constituency race */}
-            <SectionCard title="Constituency Race" titleNp="निर्वाचन क्षेत्रको प्रतिस्पर्धा" lang={lang}>
-              {/* Summary stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                <StatBox
-                  value={String(constituency.candidates.length)}
-                  label={lang === "np" ? "कुल उम्मेदवार" : "Total Candidates"}
-                />
-                <StatBox
-                  value={
-                    constituency.votesCast > 0
-                      ? constituency.votesCast.toLocaleString("en-IN")
-                      : "—"
-                  }
-                  label={lang === "np" ? "कुल मत" : "Total Votes Cast"}
-                />
-                <StatBox
-                  value={candRank > 0 && cand.votes > 0 ? `#${candRank}` : "—"}
-                  label={lang === "np" ? "यो उम्मेदवारको क्रम" : "This Candidate's Rank"}
-                  highlight
-                />
-              </div>
-
-              {/* Full candidate list for this constituency */}
-              <div className="rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-[#060d1f] border-b border-slate-100 dark:border-slate-800">
-                      <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 w-8">#</th>
-                      <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">
-                        {lang === "np" ? "उम्मेदवार" : "Candidate"}
-                      </th>
-                      <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">
-                        {lang === "np" ? "मत" : "Votes"}
-                      </th>
-                      <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 hidden sm:table-cell">
-                        {lang === "np" ? "%" : "%"}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedCands.map((c, i) => {
-                      const isThis = c.candidateId === cand.candidateId;
-                      const ph     = partyHex(c.partyId);
-                      const pct    =
-                        constituency.votesCast > 0
-                          ? ((c.votes / constituency.votesCast) * 100).toFixed(1)
-                          : "—";
-                      return (
-                        <tr
-                          key={c.candidateId}
-                          onClick={() => navigate(`/candidate/${c.candidateId}`)}
-                          className={`border-b border-slate-50 dark:border-slate-800/60 cursor-pointer transition-colors last:border-0 ${
-                            isThis
-                              ? "bg-blue-50 dark:bg-blue-950/20"
-                              : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                          }`}
-                        >
-                          <td className="px-3 py-2.5 font-bold text-slate-400 dark:text-slate-600">
-                            {i + 1}
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="h-2 w-2 rounded-full shrink-0"
-                                style={{ backgroundColor: ph }}
-                              />
-                              <span
-                                className={`font-medium leading-snug ${
-                                  isThis
-                                    ? "text-[#2563eb] dark:text-[#3b82f6]"
-                                    : "text-slate-700 dark:text-slate-300"
-                                }`}
-                              >
-                                {c.nameNp}
-                                {c.isWinner && (
-                                  <span className="ml-1 text-emerald-500">🏆</span>
-                                )}
-                              </span>
-                            </div>
-                          </td>
-                          <td
-                            className="px-3 py-2.5 text-right tabular-nums text-slate-600 dark:text-slate-400"
-                            style={{ fontFamily: "'DM Mono', monospace" }}
-                          >
-                            {c.votes > 0 ? c.votes.toLocaleString("en-IN") : "—"}
-                          </td>
-                          <td
-                            className="px-3 py-2.5 text-right text-slate-400 dark:text-slate-600 hidden sm:table-cell"
-                            style={{ fontFamily: "'DM Mono', monospace" }}
-                          >
-                            {pct !== "—" ? `${pct}%` : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </SectionCard>
-
-            {/* 5. Data source */}
+            {/* 4. Data source */}
             <div className="rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50 dark:bg-[#060d1f] px-5 py-3 flex items-start gap-3">
               <span className="text-base shrink-0 mt-0.5">📋</span>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -855,83 +714,91 @@ export default function CandidateDetailPage() {
           </div>
         </div>
 
-        {/* ── Other candidates from same party ──────────────────────────────── */}
-        {samePartyCands.length > 0 && (
-          <div className="mt-8">
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0c1525] overflow-hidden shadow-sm">
-              <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#060d1f] flex items-center justify-between gap-3">
-                <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                  {lang === "np"
-                    ? `${partyNameNp}का अन्य उम्मेदवारहरू`
-                    : `Other ${partyNameEn} Candidates`}
-                </h2>
-                <span className="text-[10px] text-slate-400 dark:text-slate-600">
-                  {lang === "np" ? `शीर्ष ${samePartyCands.length}` : `Top ${samePartyCands.length}`}
-                </span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800">
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-400 dark:text-slate-500 w-8">#</th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-400 dark:text-slate-500">
-                        {lang === "np" ? "उम्मेदवार" : "Candidate"}
-                      </th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-400 dark:text-slate-500 hidden sm:table-cell">
-                        {lang === "np" ? "निर्वाचन क्षेत्र" : "Constituency"}
-                      </th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-400 dark:text-slate-500 hidden md:table-cell">
-                        {lang === "np" ? "प्रदेश" : "Province"}
-                      </th>
-                      <th className="text-right px-4 py-2.5 font-semibold text-slate-400 dark:text-slate-500">
-                        {lang === "np" ? "मत" : "Votes"}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {samePartyCands.map((c, i) => (
+        {/* ── Constituency race (full-width) ───────────────────────────────── */}
+        <div className="mt-6">
+          <SectionCard title="Constituency Race" titleNp="निर्वाचन क्षेत्रको प्रतिस्पर्धा" lang={lang}>
+            {/* Summary stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+              <StatBox
+                value={String(constituency.candidates.length)}
+                label={lang === "np" ? "कुल उम्मेदवार" : "Total Candidates"}
+              />
+              <StatBox
+                value={constituency.votesCast > 0 ? constituency.votesCast.toLocaleString("en-IN") : "—"}
+                label={lang === "np" ? "कुल मत" : "Total Votes Cast"}
+              />
+              <StatBox
+                value={candRank > 0 && cand.votes > 0 ? `#${candRank}` : "—"}
+                label={lang === "np" ? "यो उम्मेदवारको क्रम" : "This Candidate's Rank"}
+                highlight
+              />
+            </div>
+
+            {/* Full candidate list */}
+            <div className="rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-[#060d1f] border-b border-slate-100 dark:border-slate-800">
+                    <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 w-8">#</th>
+                    <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">
+                      {lang === "np" ? "उम्मेदवार" : "Candidate"}
+                    </th>
+                    <th className="text-left px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 hidden sm:table-cell">
+                      {lang === "np" ? "दल" : "Party"}
+                    </th>
+                    <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400">
+                      {lang === "np" ? "मत" : "Votes"}
+                    </th>
+                    <th className="text-right px-3 py-2 font-semibold text-slate-500 dark:text-slate-400 hidden sm:table-cell">
+                      %
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedCands.map((c, i) => {
+                    const isThis   = c.candidateId === cand.candidateId;
+                    const ph       = partyHex(c.partyId);
+                    const pInfo    = getParty(c.partyId);
+                    const pName    = lang === "np" ? c.partyName : pInfo.nameEn;
+                    const pct      = constituency.votesCast > 0
+                      ? ((c.votes / constituency.votesCast) * 100).toFixed(1)
+                      : "—";
+                    return (
                       <tr
                         key={c.candidateId}
-                        onClick={() => navigate(`/candidate/${c.candidateId}`)}
-                        className="border-b border-slate-50 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors last:border-0"
+                        className={`border-b border-slate-50 dark:border-slate-800/60 transition-colors last:border-0 ${
+                          isThis
+                            ? "bg-blue-50 dark:bg-blue-950/20"
+                            : ""
+                        }`}
                       >
-                        <td className="px-4 py-3 font-bold text-slate-300 dark:text-slate-700">{i + 1}</td>
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                            {c.isWinner && <span className="text-emerald-500 shrink-0">🏆</span>}
-                            {c.nameNp}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400 hidden sm:table-cell">
-                          {lang === "np" ? c.constNameNp : c.constName}
-                        </td>
-                        <td className="px-4 py-3 hidden md:table-cell">
-                          <span className={"text-[10px] font-semibold px-2 py-0.5 rounded-full " + (PROVINCE_COLORS[c.province] ?? "bg-slate-100 text-slate-600")}>
-                            {provinceName(c.province, lang)}
+                        <td className="px-3 py-2.5 font-bold text-slate-400 dark:text-slate-600">{i + 1}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={`font-medium leading-snug ${isThis ? "text-[#2563eb] dark:text-[#3b82f6]" : "text-slate-700 dark:text-slate-300"}`}>
+                            {lang === "np" ? c.nameNp : c.name}
+                            {c.isWinner && <span className="ml-1 text-emerald-500">🏆</span>}
                           </span>
                         </td>
-                        <td
-                          className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400"
-                          style={{ fontFamily: "'DM Mono', monospace" }}
-                        >
+                        <td className="px-3 py-2.5 hidden sm:table-cell">
+                          <div className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: ph }} />
+                            <span className="text-slate-500 dark:text-slate-400 truncate max-w-[160px]">{pName}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums text-slate-600 dark:text-slate-400" style={{ fontFamily: "'DM Mono', monospace" }}>
                           {c.votes > 0 ? c.votes.toLocaleString("en-IN") : "—"}
                         </td>
+                        <td className="px-3 py-2.5 text-right text-slate-400 dark:text-slate-600 hidden sm:table-cell" style={{ fontFamily: "'DM Mono', monospace" }}>
+                          {pct !== "—" ? `${pct}%` : "—"}
+                        </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#060d1f]">
-                <Link
-                  to={`/candidates`}
-                  className="text-xs text-[#2563eb] dark:text-[#3b82f6] font-semibold hover:underline"
-                >
-                  {lang === "np" ? "सबै उम्मेदवार हेर्नुस् →" : "View all candidates →"}
-                </Link>
-              </div>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
-        )}
+          </SectionCard>
+        </div>
 
         {/* ── Bottom nav ───────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-3 mt-6 pt-2">

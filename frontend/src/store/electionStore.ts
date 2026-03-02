@@ -128,7 +128,7 @@ export const useElectionStore = create<ElectionStore>((set) => ({
   isLoading:        true,
   viewMode:         "table",
   sortBy:           "status",
-  lang:             (localStorage.getItem("lang") as Lang | null) ?? "en",
+  lang:             "en",
 
   setResults: (results) => {
     // Rebuild party registry whenever new data arrives

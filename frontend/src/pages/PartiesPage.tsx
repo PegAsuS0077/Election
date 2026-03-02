@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES } from "../types";
 import { getParty, partyHex } from "../lib/partyRegistry";
@@ -6,7 +7,6 @@ import { getPartyMeta } from "../lib/db";
 import { provinceName } from "../i18n";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
-import { DetailsModal } from "../ConstituencyTable";
 import { candidatePhotoUrl } from "../lib/parseUpstreamData";
 
 function fmt(n: number) { return n.toLocaleString("en-IN"); }
@@ -59,16 +59,15 @@ function PartyCandidatesPanel({
   candidates,
   lang,
   onClose,
-  onSelectConst,
 }: {
   partyKey: string;
   candidates: CandidateRow[];
   lang: "en" | "np";
   onClose: () => void;
-  onSelectConst: (code: string) => void;
 }) {
-  const p   = getParty(partyKey);
-  const hex = partyHex(partyKey);
+  const p        = getParty(partyKey);
+  const hex      = partyHex(partyKey);
+  const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -164,7 +163,7 @@ function PartyCandidatesPanel({
                     <button
                       key={`${c.candidateId}-${c.constCode}`}
                       type="button"
-                      onClick={() => onSelectConst(c.constCode)}
+                      onClick={() => navigate(`/candidate/${c.candidateId}`)}
                       className={
                         "w-full text-left flex items-center gap-3 px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors " +
                         (isWinnerRow ? "bg-emerald-50/30 dark:bg-emerald-900/10" : "")
@@ -175,7 +174,7 @@ function PartyCandidatesPanel({
                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                           {lang === "np" ? c.nameNp : c.name}
                         </div>
-                        <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
                           {lang === "np" ? c.constNameNp : c.constName}
                           <span className="mx-1">·</span>
                           {c.district}
@@ -212,7 +211,6 @@ export default function PartiesPage() {
   const lang      = useElectionStore((s) => s.lang);
 
   const [selectedParty, setSelectedParty] = useState<string | null>(null);
-  const [selectedCode,  setSelectedCode]  = useState<string | null>(null);
 
   const totalSeats = 275;
 
@@ -308,11 +306,6 @@ export default function PartiesPage() {
     }
     return flat.sort((a, b) => b.votes - a.votes);
   }, [results, selectedParty]);
-
-  const selectedResult = useMemo(
-    () => (selectedCode ? results.find((r) => r.code === selectedCode) ?? null : null),
-    [results, selectedCode]
-  );
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -527,16 +520,6 @@ export default function PartiesPage() {
           candidates={partyCandidates}
           lang={lang}
           onClose={() => setSelectedParty(null)}
-          onSelectConst={(code) => setSelectedCode(code)}
-        />
-      )}
-
-      {/* ── Constituency DetailsModal ── */}
-      {selectedResult && (
-        <DetailsModal
-          r={selectedResult}
-          onClose={() => setSelectedCode(null)}
-          lang={lang}
         />
       )}
     </Layout>

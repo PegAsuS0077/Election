@@ -22,6 +22,7 @@ import type {
 } from "../types";
 import { districtNameEn } from "./districtNames";
 import { nepaliNameToEnglish, transliterateBioField } from "./transliterate";
+import { type NeuRecord } from "./neuLookup";
 
 // ── Province mapping ──────────────────────────────────────────────────────────
 
@@ -85,8 +86,14 @@ function districtEn(np: string, stateId: number): string {
  *
  * Vote counts are preserved as-is from the upstream data.
  * Call zeroVotes (from archiveData.ts) if you need archive mode behaviour.
+ *
+ * Optional neuLookup: when provided, overlays English names and biographical
+ * fields (father, spouse, hometown) from the NEU candidate dataset.
  */
-export function parseUpstreamCandidates(records: UpstreamRecord[]): ConstituencyResult[] {
+export function parseUpstreamCandidates(
+  records: UpstreamRecord[],
+  neuLookup?: Map<number, NeuRecord>,
+): ConstituencyResult[] {
   const grouped = new Map<string, UpstreamRecord[]>();
   for (const rec of records) {
     const key = `${rec.STATE_ID}-${rec.DistrictName}-${rec.SCConstID}`;
@@ -113,12 +120,15 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
         ? "COUNTING"
         : "PENDING";
 
+    const constName = `${district}-${constNum}`;
+
     const candidates: Candidate[] = recs.map((rec) => {
       const nameNp = rec.CandidateName ?? "";
+      const nameEn = nepaliNameToEnglish(nameNp);
       const c: Candidate = {
         candidateId: rec.CandidateID,
         nameNp,
-        name:      nepaliNameToEnglish(nameNp),
+        name:      nameEn,
         partyName: rec.PoliticalPartyName ?? "",
         partyId:   derivePartyId(rec),
         votes:     rec.TotalVoteReceived,
@@ -133,6 +143,18 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
       if (rec.NAMEOFINST   && rec.NAMEOFINST   !== "0")  c.institution  = transliterateBioField(rec.NAMEOFINST);
       if (rec.EXPERIENCE   && rec.EXPERIENCE   !== "0")  c.experience   = transliterateBioField(rec.EXPERIENCE);
       if (rec.ADDRESS      && rec.ADDRESS      !== "0")  c.address      = transliterateBioField(rec.ADDRESS);
+
+      // Overlay NEU English data when available (name, father, spouse, hometown)
+      if (neuLookup) {
+        const neu = neuLookup.get(rec.CandidateID);
+        if (neu) {
+          if (neu.n) c.name = neu.n;
+          if (neu.f) c.fatherName = neu.f;
+          if (neu.s) c.spouseName = neu.s;
+          if (neu.h) c.address    = neu.h;
+        }
+      }
+
       return c;
     });
 
@@ -143,7 +165,7 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
       district,
       districtNp,
       code:        key,
-      name:        `${district}-${constNum}`,
+      name:        constName,
       nameNp:      `${districtNp} क्षेत्र नं. ${constNum}`,
       status,
       lastUpdated: new Date().toISOString(),
