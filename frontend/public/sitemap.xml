@@ -2,49 +2,53 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://nepalvotes.live/</loc>
-    <lastmod>2026-02-24</lastmod>
+    <lastmod>2026-03-02</lastmod>
     <changefreq>always</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://nepalvotes.live/explore</loc>
-    <lastmod>2026-02-24</lastmod>
+    <lastmod>2026-03-02</lastmod>
     <changefreq>always</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://nepalvotes.live/map</loc>
-    <lastmod>2026-02-24</lastmod>
+    <lastmod>2026-03-02</lastmod>
     <changefreq>always</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://nepalvotes.live/parties</loc>
-    <lastmod>2026-02-24</lastmod>
+    <lastmod>2026-03-02</lastmod>
     <changefreq>always</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://nepalvotes.live/candidates</loc>
-    <lastmod>2026-02-24</lastmod>
+    <lastmod>2026-03-02</lastmod>
     <changefreq>always</changefreq>
     <priority>0.8</priority>
   </url>
+  <!-- Individual candidate pages: /candidate/{candidateId}
+       There are 3,406 candidates with numeric IDs from the Election Commission dataset.
+       Example: https://nepalvotes.live/candidate/12345
+       These pages are dynamically rendered client-side from the upstream JSON feed. -->
   <url>
     <loc>https://nepalvotes.live/about</loc>
-    <lastmod>2026-02-24</lastmod>
+    <lastmod>2026-03-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://nepalvotes.live/privacy-policy</loc>
-    <lastmod>2026-02-24</lastmod>
+    <lastmod>2026-03-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://nepalvotes.live/contact</loc>
-    <lastmod>2026-02-24</lastmod>
+    <lastmod>2026-03-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

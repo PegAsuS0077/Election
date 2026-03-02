@@ -13,8 +13,8 @@ export default function PrivacyPage() {
     <Layout
       title="Privacy Policy"
       titleNp="गोपनीयता नीति"
-      subtitle="Last updated: February 24, 2026"
-      subtitleNp="अन्तिम अपडेट: फेब्रुअरी २४, २०२६"
+      subtitle="Last updated: March 2, 2026"
+      subtitleNp="अन्तिम अपडेट: मार्च २, २०२६"
     >
       <main className="max-w-3xl mx-auto px-6 py-12">
         <div className="space-y-8 text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -91,6 +91,28 @@ export default function PrivacyPage() {
               {lang === "np"
                 ? "यो साइटले भविष्यमा Google AdSense मार्फत विज्ञापन प्रदर्शन गर्न सक्छ। यदि विज्ञापन सक्षम गरिन्छ भने, Google ले प्रासंगिक विज्ञापनहरू देखाउन cookies प्रयोग गर्न सक्छ। तपाईं Google को विज्ञापन सेटिङ मार्फत personalized विज्ञापनहरू opt out गर्न सक्नुहुन्छ।"
                 : "This site may display advertisements via Google AdSense in the future. If ads are enabled, Google may use cookies to show relevant ads. You can opt out of personalized ads through Google's ad settings."}
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+              {lang === "np" ? "localStorage र सेसन स्टोरेज" : "localStorage & Session Storage"}
+            </h2>
+            <p>
+              {lang === "np"
+                ? "यो साइटले तपाईंको ब्राउजरको localStorage मा केही प्राथमिकताहरू सुरक्षित गर्दछ — जस्तै भाषा (नेपाली/अंग्रेजी) र थिम (उज्यालो/अँध्यारो)। मतगणना डेटा sessionStorage मा क्यास गरिन्छ ताकि पृष्ठ नेभिगेसनमा पटक-पटक डाउनलोड नगर्नुपरोस्। यी सबै डेटा तपाईंकै डिभाइसमा रहन्छ र हाम्रो सर्भरमा पठाइँदैन।"
+                : "This site stores a small amount of preference data in your browser's localStorage — specifically your chosen language (Nepali/English) and theme (light/dark). Vote count data is cached in sessionStorage to avoid re-downloading ~3 MB of data on every page navigation. All of this data stays on your device and is never sent to our servers."}
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+              {lang === "np" ? "तेस्रो पक्षका लिङ्कहरू" : "Third-Party Links"}
+            </h2>
+            <p>
+              {lang === "np"
+                ? "यो साइटले निर्वाचन आयोग नेपालको वेबसाइट (result.election.gov.np) मा लिङ्क गर्दछ। ती बाह्य साइटहरूको गोपनीयता नीतिमा हाम्रो कुनै नियन्त्रण छैन।"
+                : "This site links to the Election Commission of Nepal's website (result.election.gov.np). We have no control over the privacy practices of that external site."}
             </p>
           </section>
 

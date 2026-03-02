@@ -11,6 +11,7 @@ import CandidatesPage from "./pages/CandidatesPage.tsx";
 import AboutPage from "./pages/AboutPage.tsx";
 import PrivacyPage from "./pages/PrivacyPage.tsx";
 import ContactPage from "./pages/ContactPage.tsx";
+import CandidateDetailPage from "./pages/CandidateDetailPage.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -22,6 +23,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/map" element={<MapPage />} />
         <Route path="/parties" element={<PartiesPage />} />
         <Route path="/candidates" element={<CandidatesPage />} />
+        <Route path="/candidate/:candidateId" element={<CandidateDetailPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/privacy-policy" element={<PrivacyPage />} />
         <Route path="/contact" element={<ContactPage />} />

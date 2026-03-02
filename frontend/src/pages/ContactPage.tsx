@@ -67,12 +67,29 @@ export default function ContactPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
-              {lang === "np" ? "प्रतिक्रिया दिन" : "Response Time"}
+              {lang === "np" ? "प्रतिक्रिया समय" : "Response Time"}
             </h2>
             <p>
               {lang === "np"
                 ? "हामी सामान्यतः १-२ कार्य दिनभित्र जवाफ दिन्छौं। निर्वाचन अवधिमा ढिलाइ हुन सक्छ।"
                 : "We typically respond within 1–2 business days. During the election period, responses may be delayed."}
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+              {lang === "np" ? "के बारेमा सम्पर्क गर्न सकिन्छ?" : "What Can You Contact Us About?"}
+            </h2>
+            <ul className="list-disc list-inside space-y-2">
+              <li>{lang === "np" ? "डेटामा त्रुटि वा विसङ्गति" : "Data errors or discrepancies you notice"}</li>
+              <li>{lang === "np" ? "साइटको सुविधा वा सुझाव" : "Feature suggestions or improvements"}</li>
+              <li>{lang === "np" ? "प्रेस वा मिडिया सम्बन्धी जानकारी" : "Press or media enquiries"}</li>
+              <li>{lang === "np" ? "सामान्य प्रतिक्रिया" : "General feedback about the platform"}</li>
+            </ul>
+            <p className="mt-4 text-sm text-slate-500 dark:text-slate-500">
+              {lang === "np"
+                ? "कृपया ध्यान दिनुहोस्: हामी निर्वाचन परिणामहरू परिवर्तन गर्न वा निर्वाचन आयोगसँग पैरवी गर्न सक्दैनौं।"
+                : "Please note: we cannot alter election results or intervene with the Election Commission on any matter. We only control the presentation of data, not the data itself."}
             </p>
           </section>
 

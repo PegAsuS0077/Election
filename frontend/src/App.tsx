@@ -175,6 +175,67 @@ export default function App() {
           {results.filter((r) => r.status === "COUNTING").length} {t("stillCounting", lang)}
         </div>
       </main>
+
+      {/* ── Informational content block (AdSense / SEO) ─────────────────── */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0c1525] p-8 shadow-sm space-y-6">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+            {lang === "np"
+              ? "नेपाल निर्वाचन परिणाम २०८२ (२०२६) — लाइभ मत गणना"
+              : "Nepal Election Results 2082 (2026) — Live Vote Count"}
+          </h2>
+
+          <div className="prose prose-slate dark:prose-invert max-w-none text-sm text-slate-600 dark:text-slate-400 leading-relaxed space-y-4">
+            <p>
+              {lang === "np"
+                ? "नेपालभोट्स (NepalVotes) एउटा स्वतन्त्र डिजिटल ड्यासबोर्ड हो जसले नेपालको प्रतिनिधि सभा सामान्य निर्वाचन २०८२ (मार्च ५, २०२६) को मतगणना परिणाम वास्तविक समयमा प्रदर्शन गर्दछ। यो मञ्च निर्वाचन आयोग नेपालको आधिकारिक परिणाम वेबसाइटबाट स्वचालित रूपमा डेटा प्राप्त गर्छ र हरेक ३० सेकेन्डमा अपडेट गर्दछ।"
+                : "NepalVotes is an independent informational dashboard tracking the vote count for Nepal's House of Representatives (Pratinidhi Sabha) General Election 2082, held on March 5, 2026. The site fetches data automatically from the official results website of the Election Commission of Nepal and refreshes every 30 seconds, giving you a near-real-time view of how counting is progressing across the country."}
+            </p>
+
+            <p>
+              {lang === "np"
+                ? "यस साइटले नेपालका सातै प्रदेशका १६५ प्रत्यक्ष निर्वाचन क्षेत्रहरूको परिणाम समेट्दछ। प्रत्येक क्षेत्रमा ३,४०६ उम्मेदवारहरू प्रतिस्पर्धा गर्दैछन् — ६६ भन्दा बढी दर्ता राजनीतिक दलहरूबाट र स्वतन्त्र उम्मेदवारहरू पनि। प्रतिनिधि सभामा कुल २७५ सिट छन् — १६५ प्रत्यक्ष (FPTP) र ११० समानुपातिक (PR)।"
+                : "This site covers all 165 First-Past-The-Post (FPTP) constituencies spread across Nepal's 7 provinces — Koshi, Madhesh, Bagmati, Gandaki, Lumbini, Karnali, and Sudurpashchim. Across these constituencies, 3,406 candidates are contesting under more than 66 registered political parties and as independents. The House of Representatives has 275 total seats: 165 filled by direct constituency winners and 110 allocated through proportional representation."}
+            </p>
+
+            <p>
+              {lang === "np"
+                ? "ड्यासबोर्डका प्रमुख सुविधाहरू:"
+                : "Key features of this dashboard:"}
+            </p>
+
+            <ul className="list-disc list-inside space-y-1 pl-2">
+              {lang === "np" ? (
+                <>
+                  <li>हरेक ३० सेकेन्डमा स्वचालित डेटा अपडेट</li>
+                  <li>१६५ निर्वाचन क्षेत्रहरूको विस्तृत परिणाम</li>
+                  <li>प्रत्येक उम्मेदवारको व्यक्तिगत विवरण पृष्ठ</li>
+                  <li>प्रदेश र जिल्लाअनुसार फिल्टर गर्ने सुविधा</li>
+                  <li>दलअनुसार सिट तथ्याङ्क (FPTP + समानुपातिक अनुमान)</li>
+                  <li>अन्तरक्रियात्मक नेपाल प्रदेश नक्सा</li>
+                  <li>नेपाली र अंग्रेजी भाषा समर्थन</li>
+                </>
+              ) : (
+                <>
+                  <li>Automatic data refresh every 30 seconds from the Election Commission</li>
+                  <li>Detailed results for all 165 FPTP constituencies</li>
+                  <li>Individual candidate profile pages with biographical information</li>
+                  <li>Filter results by province, district, party, or gender</li>
+                  <li>Party seat tallies combining FPTP wins and proportional representation estimates</li>
+                  <li>Interactive province map showing leading parties by region</li>
+                  <li>Full bilingual support in Nepali (Devanagari) and English</li>
+                </>
+              )}
+            </ul>
+
+            <p>
+              {lang === "np"
+                ? "सबै डेटा निर्वाचन आयोग नेपालको आधिकारिक परिणाम वेबसाइट (result.election.gov.np) बाट प्राप्त गरिन्छ। यो साइट निर्वाचन आयोग नेपाल वा कुनै पनि राजनीतिक दलसँग आबद्ध छैन। यहाँ प्रदर्शित जानकारी केवल सूचनात्मक उद्देश्यका लागि हो। आधिकारिक तथा अन्तिम निर्वाचन परिणामका लागि कृपया निर्वाचन आयोग नेपालको वेबसाइट हेर्नुहोस्।"
+                : "All data is sourced exclusively from the official results portal of the Election Commission of Nepal at result.election.gov.np. NepalVotes is an independent informational service and is not affiliated with the Election Commission, any political party, or any government body. Information displayed here is provided for informational purposes only. For the official and final election results, please refer directly to the Election Commission of Nepal."}
+            </p>
+          </div>
+        </div>
+      </section>
     </Layout>
   );
 }

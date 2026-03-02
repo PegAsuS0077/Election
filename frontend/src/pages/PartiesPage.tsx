@@ -410,7 +410,7 @@ export default function PartiesPage() {
                       {lang === "np" ? pInfo.partyName : pInfo.nameEn}
                     </h2>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                      {lang === "np" ? pInfo.partyName : pInfo.nameEn}
+                      {lang === "np" ? pInfo.nameEn : pInfo.partyName}
                     </p>
                     {(() => {
                       const meta = getPartyMeta(key);
