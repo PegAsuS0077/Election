@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useElectionStore } from "./store/electionStore";
 import { t } from "./i18n";
-import { getParty, totalPartyCount } from "./lib/partyRegistry";
+import { getParty } from "./lib/partyRegistry";
 import { RESULTS_MODE } from "./types";
 
 import SummaryCards from "./SummaryCards";
@@ -17,7 +17,7 @@ const STATS: {
 }[] = [
   { value: () => "165",                            labelKey: "statsConstituencies", icon: "⬡" },
   { value: () => "7",                              labelKey: "statsProvinces",      icon: "◈" },
-  { value: () => String(Math.max(totalPartyCount(), 20)) + "+", labelKey: "statsParties", icon: "◉" },
+  { value: () => "66",                             labelKey: "statsParties",      icon: "◉" },
   { value: () => "275",                            labelKey: "statsTotalSeats",     icon: "◆" },
 ];
 

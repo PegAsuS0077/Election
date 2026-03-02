@@ -329,6 +329,57 @@ function CandidateDetailModal({ c, lang, onClose }: { c: FlatCandidate; lang: La
   );
 }
 
+// ── Pagination ────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 24;
+
+function Pagination({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
+  const pageCount = Math.ceil(total / PAGE_SIZE);
+  if (pageCount <= 1) return null;
+
+  // Build page numbers to show: always first, last, current ±2, with ellipsis
+  const pages: (number | "…")[] = [];
+  const add = new Set<number>();
+  for (let p = 1; p <= pageCount; p++) {
+    if (p === 1 || p === pageCount || (p >= page - 2 && p <= page + 2)) add.add(p);
+  }
+  let prev = 0;
+  for (const p of Array.from(add).sort((a, b) => a - b)) {
+    if (prev && p - prev > 1) pages.push("…");
+    pages.push(p);
+    prev = p;
+  }
+
+  const btn = (label: React.ReactNode, target: number, disabled: boolean, active = false) => (
+    <button
+      key={String(label)}
+      onClick={() => { if (!disabled) onChange(target); }}
+      disabled={disabled}
+      className={
+        "h-8 min-w-[2rem] px-2 rounded-lg text-xs font-semibold transition border " +
+        (active
+          ? "bg-[#2563eb] border-[#2563eb] text-white"
+          : disabled
+            ? "border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 cursor-default bg-white dark:bg-[#0c1525]"
+            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] text-slate-600 dark:text-slate-400 hover:border-[#2563eb]/50 hover:text-[#2563eb] cursor-pointer")
+      }
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="flex items-center justify-center gap-1 flex-wrap py-6">
+      {btn("←", page - 1, page === 1)}
+      {pages.map((p, i) =>
+        p === "…"
+          ? <span key={`ellipsis-${i}`} className="h-8 flex items-center px-1 text-xs text-slate-400">…</span>
+          : btn(p, p, false, p === page)
+      )}
+      {btn("→", page + 1, page === pageCount)}
+    </div>
+  );
+}
+
 // ── Shared dropdown style ──────────────────────────────────────────────────────
 const SELECT_CLS =
   "h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] " +
@@ -347,6 +398,7 @@ export default function CandidatesPage() {
   const [selGender, setSelGender]     = useState<"All" | "M" | "F">("All");
   const [sortKey, setSortKey]         = useState<SortKey>("votes");
   const [selectedCandidate, setSelectedCandidate] = useState<FlatCandidate | null>(null);
+  const [page, setPage] = useState(1);
 
   // Flatten all candidates from all results
   const allCandidates = useMemo<FlatCandidate[]>(() => {
@@ -435,6 +487,12 @@ export default function CandidatesPage() {
 
     return list;
   }, [allCandidates, selParty, selProv, selDistrict, selConst, selGender, search, sortKey]);
+
+  // Reset to page 1 whenever filters/sort change
+  useEffect(() => { setPage(1); }, [selParty, selProv, selDistrict, selConst, selGender, search, sortKey]);
+
+  const pageCount  = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
 
   const heroBadge = (
@@ -599,16 +657,19 @@ export default function CandidatesPage() {
             <p className="text-sm">{lang === "np" ? "कोई उम्मेद्वार फेला पर्दैन" : "No candidates match your filters"}</p>
           </div>
         ) : (
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {filtered.map((c) => (
-              <CandidateCard
-                key={`${c.candidateId}-${c.constCode}`}
-                c={c}
-                lang={lang}
-                onClick={() => setSelectedCandidate(c)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {paginated.map((c) => (
+                <CandidateCard
+                  key={`${c.candidateId}-${c.constCode}`}
+                  c={c}
+                  lang={lang}
+                  onClick={() => setSelectedCandidate(c)}
+                />
+              ))}
+            </div>
+            <Pagination page={page} total={filtered.length} onChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+          </>
         )}
       </div>
 

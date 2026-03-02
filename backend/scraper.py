@@ -30,23 +30,100 @@ HEADERS = {
 
 # ── Party name → frontend PartyKey mapping ───────────────────────────────────
 # Exact Nepali strings from the upstream JSON field "PoliticalPartyName".
-# All other parties → "OTH".
-# NOTE: Verify the NCP string on election day — two similar names exist.
+# Unknown parties → their own Nepali name (no "OTH" collapse).
+# NOTE: Verify NCP/Maoist strings on election day — multiple spellings exist.
 PARTY_MAP: dict[str, str] = {
-    "नेपाली काँग्रेस":                                                    "NC",
-    "नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी लेनिनवादी)":          "CPN-UML",
-    "नेपाल कम्युनिस्ट पार्टी (माओवादी)":                                 "NCP",
-    "नेपाल कम्युनिष्ट पार्टी (माओवादी)":                                 "NCP",   # alternate spelling
-    "राष्ट्रिय स्वतन्त्र पार्टी":                                         "RSP",
-    "राष्ट्रिय प्रजातन्त्र पार्टी":                                       "RPP",
-    "जनता समाजवादी पार्टी, नेपाल":                                        "JSP",
-    "स्वतन्त्र":                                                           "IND",
+    # ── Major national parties ────────────────────────────────────────────────
+    "नेपाली काँग्रेस":                                                            "NC",
+    "नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी-लेनिनवादी)":                  "CPN-UML",
+    "नेपाल कम्युनिष्ट पार्टी (एकीकृत मार्क्सवादी लेनिनवादी)":                   "CPN-UML",  # alternate spacing
+    # NCP — new merger party (Kartik 2082) combining Maoist Centre + CPN-US + others
+    "नेपाली कम्युनिष्ट पार्टी":                                                   "NCP",
+    "नेपाल कम्युनिस्ट पार्टी (माओवादी)":                                          "NCP",      # old Maoist Centre spelling
+    "नेपाल कम्युनिष्ट पार्टी (माओवादी)":                                          "NCP",      # alternate spelling
+    "नेपाल कम्युनिष्ट पार्टी (माओवादी केन्द्र)":                                  "NCP",      # another variant
+    "नेकपा (एकीकृत समाजवादी)":                                                    "CPN-US",
+    "नेपाल कम्युनिष्ट पार्टी (एकीकृत समाजवादी)":                                  "CPN-US",
+    "राष्ट्रिय स्वतन्त्र पार्टी":                                                  "RSP",
+    "राष्ट्रिय प्रजातन्त्र पार्टी":                                                "RPP",
+    "जनता समाजवादी पार्टी, नेपाल":                                                 "JSP",
+    "जनमत पार्टी":                                                                  "JMP",
+    "नागरिक उन्मुक्ति पार्टी, नेपाल":                                              "NUP",
+    "नागरिक उन्मुक्ति पार्टी":                                                     "NUP",      # alternate
+    "नेपाल मजदुर किसान पार्टी":                                                    "NMKP",
+    "राष्ट्रिय जनमोर्चा":                                                           "RJM",
+    "लोकतान्त्रिक समाजवादी पार्टी":                                                "LSP",
+    # ── Mid-tier parties ──────────────────────────────────────────────────────
+    "उज्यालो नेपाल पार्टी":                                                         "UNP",
+    "श्रम संस्कृति पार्टी":                                                          "SSP",
+    "नेपाल कम्युनिस्ट पार्टी (माओवादी)":                                           "CPN-M",    # separate from NCP merger
+    "मंगोल नेशनल अर्गनाइजेसन":                                                     "MNO",
+    "प्रगतिशील लोकतान्त्रिक पार्टी":                                               "PLP",
+    "राष्ट्रिय मुक्ति पार्टी, नेपाल":                                              "RMP-N",
+    "राष्ट्रिय जनता पार्टी नेपाल":                                                  "RJP-N",
+    "आम जनता पार्टी":                                                               "AJP",
+    # ── Smaller registered parties ────────────────────────────────────────────
+    "नेपाल कम्युनिष्ट पार्टी (मार्क्सवादी-लेनिनवादी)":                            "CPN-ML",
+    "नेकपा (मार्क्सवादी-लेनिनवादी)":                                               "CPN-ML",
+    "नेपाल कम्युनिष्ट पार्टी (मार्क्सवादी)":                                       "CPN-M2",
+    "नेपाल कम्युनिष्ट पार्टी कमार्क्सवादी (पुष्पलाल)":                             "CPN-PL",
+    "नेपाल परिवार दल":                                                              "NPD",
+    "नेपाल सद्भावना पार्टी":                                                        "NSP",
+    "राष्ट्रिय साझा पार्टी":                                                        "RSjP",
+    "संघीय लोकतान्त्रिक राष्ट्रिय मञ्च":                                           "FDNF",
+    "संयुक्त नागरिक पार्टी":                                                        "UCP",
+    "नेपाल जनता पार्टी":                                                            "NJP",
+    "नेपाल जनमुक्ति पार्टी":                                                        "NJMP",
+    "राष्ट्रिय परिवर्तन पार्टी":                                                    "RPP-N",
+    "राष्ट्रिय जनमुक्ति पार्टी":                                                    "RJMP",
+    "जय मातृभूमि पार्टी":                                                           "JMP2",
+    "राष्ट्र निर्माण दल, नेपाल":                                                    "RND",
+    "नेपाल संघीय समाजवादी पार्टी":                                                  "NFSP",
+    "बहुजन एकता पार्टी, नेपाल":                                                     "BEP",
+    "नेपाल जनसेवा पार्टी":                                                          "NJvP",
+    "समावेशी समाजवादी पार्टी":                                                      "SSjP",
+    "सार्वभौम नागरिक पार्टी":                                                       "SNP",
+    "जन अधिकार पार्टी":                                                             "JAP",
+    "नेपाल मानवतावादी पार्टी":                                                      "NMP",
+    "नेपाल लोकतान्त्रिक पार्टी":                                                    "NLP",
+    "नेपाली जनता दल":                                                               "NJD",
+    "राष्ट्रिय एकता दल":                                                            "RED",
+    "जनता लोकतान्त्रिक पार्टी, नेपाल":                                             "JLPN",
+    "जनादेश पार्टी नेपाल":                                                          "JPN",
+    "राष्ट्रिय जनमत पार्टी":                                                        "RJMP2",
+    "पिपुल फर्स्ट पार्टी":                                                          "PFP",
+    "राष्ट्रिय ऊर्जाशील पार्टी, नेपाल":                                             "RUPN",
+    "नागरिक सर्वोच्चता पार्टी, नेपाल":                                              "NSPN",
+    "नेपाल जनता संरक्षण पार्टी":                                                    "NJSP",
+    "बहुजन शक्ति पार्टी":                                                           "BSP",
+    "राष्ट्रिय मुक्ति आन्दोलन, नेपाल":                                             "RMAN",
+    "गतिशील लोकतान्त्रिक पार्टी":                                                   "GDP",
+    "प्रजातान्त्रिक पार्टी, नेपाल":                                                 "PPN",
+    "त्रिमूल नेपाल":                                                                "TMN",
+    "स्वाभिमान पार्टी":                                                             "SWP",
+    "युनाइटेड नेपाल डेमोक्रेटिक पार्टी":                                           "UNDP",
+    "इतिहासिक जनता पार्टी":                                                         "IJP",
+    "राष्ट्रिय नागरिक पार्टी":                                                      "RNP",
+    "नेपाल मातृभूमि पार्टी":                                                        "NMP2",
+    "गान्धीवादी पार्टी, नेपाल":                                                     "GPN",
+    "मधेशी जनअधिकार फोरम":                                                         "MJF",
+    "हाम्रो नेपाली पार्टी":                                                         "HNP",
+    "मितेरी पार्टी नेपाल":                                                          "MPN",
+    "नेशनल रिपब्लिक नेपाल":                                                        "NRN",
+    "नेकपा (एकीकृत) / नेपाल कम्युनिष्ट पार्टी (संयुक्त)":                         "CPN-U",
+    "नेपाल कम्युनिष्ट पार्टी (संयुक्त)":                                            "CPN-U",
+    "नेपालका लागि नेपाली पार्टी":                                                   "NPN",
+    "नेपाली जनश्रमदान संस्कृति पार्टी":                                             "NJSKP",
+    # ── Independent ───────────────────────────────────────────────────────────
+    "स्वतन्त्र":                                                                    "IND",
 }
 
 
 def map_party_key(party_name: str) -> str:
-    """Map upstream PoliticalPartyName to a frontend PartyKey."""
-    return PARTY_MAP.get(party_name.strip(), "OTH")
+    """Map upstream PoliticalPartyName to a frontend PartyKey.
+    Falls back to the Nepali name itself so no party is lost in an OTH bucket."""
+    name = party_name.strip()
+    return PARTY_MAP.get(name, name)
 
 
 def constituency_id(record: dict[str, Any]) -> str:
@@ -233,11 +310,9 @@ def _state_id_to_province_key(state_id: int) -> str:
 def build_snapshot_from_constituencies(
     constituencies: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Derive a snapshot dict from a list of ConstituencyResult dicts."""
-    seat_tally: dict[str, dict[str, int]] = {
-        k: {"fptp": 0, "pr": 0}
-        for k in ["NC", "CPN-UML", "NCP", "RSP", "RPP", "JSP", "IND", "OTH"]
-    }
+    """Derive a snapshot dict from a list of ConstituencyResult dicts.
+    The seat_tally is built dynamically — every party gets its own entry."""
+    seat_tally: dict[str, dict[str, int]] = {}
     declared = 0
     for c in constituencies:
         if c["status"] == "DECLARED" and c.get("candidates"):
@@ -245,15 +320,11 @@ def build_snapshot_from_constituencies(
             # Use isWinner flag first; fall back to highest vote-getter
             winners = [cand for cand in c["candidates"] if cand.get("isWinner")]
             winner = winners[0] if winners else max(c["candidates"], key=lambda x: x["votes"])
-            party_id = winner.get("partyId", "OTH")
-            # Map SYMBOLCODE-based partyId back to legacy key for snapshot tally.
-            # The snapshot uses the old NC/CPN-UML/… keys consumed by SummaryCards.
-            legacy = map_party_key(winner.get("partyName", ""))
-            key = legacy if legacy != "OTH" else party_id
-            if key in seat_tally:
-                seat_tally[key]["fptp"] += 1
-            else:
-                seat_tally["OTH"]["fptp"] += 1
+            # Prefer the mapped abbreviation key; fall back to raw partyName
+            key = map_party_key(winner.get("partyName", "")) or winner.get("partyId", "UNK")
+            if key not in seat_tally:
+                seat_tally[key] = {"fptp": 0, "pr": 0}
+            seat_tally[key]["fptp"] += 1
 
     return {
         "taken_at":       datetime.now(timezone.utc).isoformat(),

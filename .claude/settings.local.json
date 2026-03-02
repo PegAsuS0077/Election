@@ -20,7 +20,8 @@
       "Bash(curl:*)",
       "Bash(echo:*)",
       "Bash(source venv/Scripts/activate)",
-      "Bash(pytest tests/test_scraper.py tests/test_worker.py -v --tb=short)"
+      "Bash(pytest tests/test_scraper.py tests/test_worker.py -v --tb=short)",
+      "WebFetch(domain:ne.wikipedia.org)"
     ]
   }
 }
