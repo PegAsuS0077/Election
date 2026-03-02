@@ -21,6 +21,7 @@ import type {
   UpstreamRecord,
 } from "../types";
 import { districtNameEn } from "./districtNames";
+import { nepaliNameToEnglish, transliterateBioField } from "./transliterate";
 
 // ── Province mapping ──────────────────────────────────────────────────────────
 
@@ -113,24 +114,25 @@ export function parseUpstreamCandidates(records: UpstreamRecord[]): Constituency
         : "PENDING";
 
     const candidates: Candidate[] = recs.map((rec) => {
+      const nameNp = rec.CandidateName ?? "";
       const c: Candidate = {
         candidateId: rec.CandidateID,
-        nameNp:      rec.CandidateName ?? "",
-        name:        rec.CandidateName ?? "",
-        partyName:   rec.PoliticalPartyName ?? "",
-        partyId:     derivePartyId(rec),
-        votes:       rec.TotalVoteReceived,
-        gender:      mapGender(rec.Gender),
-        isWinner:    isWinner(rec),
+        nameNp,
+        name:      nepaliNameToEnglish(nameNp),
+        partyName: rec.PoliticalPartyName ?? "",
+        partyId:   derivePartyId(rec),
+        votes:     rec.TotalVoteReceived,
+        gender:    mapGender(rec.Gender),
+        isWinner:  isWinner(rec),
       };
-      // Biographical fields — include only when present and meaningful
-      if (rec.AGE_YR)                                    c.age          = rec.AGE_YR;
-      if (rec.FATHER_NAME && rec.FATHER_NAME !== "-")    c.fatherName   = rec.FATHER_NAME;
-      if (rec.SPOUCE_NAME  && rec.SPOUCE_NAME  !== "-")  c.spouseName   = rec.SPOUCE_NAME;
-      if (rec.QUALIFICATION && rec.QUALIFICATION !== "0") c.qualification = rec.QUALIFICATION;
-      if (rec.NAMEOFINST   && rec.NAMEOFINST   !== "0")  c.institution  = rec.NAMEOFINST;
-      if (rec.EXPERIENCE   && rec.EXPERIENCE   !== "0")  c.experience   = rec.EXPERIENCE;
-      if (rec.ADDRESS      && rec.ADDRESS      !== "0")  c.address      = rec.ADDRESS;
+      // Biographical fields — transliterated to English, omit when absent/placeholder
+      if (rec.AGE_YR)                                     c.age          = rec.AGE_YR;
+      if (rec.FATHER_NAME && rec.FATHER_NAME !== "-")     c.fatherName   = nepaliNameToEnglish(rec.FATHER_NAME);
+      if (rec.SPOUCE_NAME  && rec.SPOUCE_NAME  !== "-")   c.spouseName   = nepaliNameToEnglish(rec.SPOUCE_NAME);
+      if (rec.QUALIFICATION && rec.QUALIFICATION !== "0") c.qualification = transliterateBioField(rec.QUALIFICATION);
+      if (rec.NAMEOFINST   && rec.NAMEOFINST   !== "0")  c.institution  = transliterateBioField(rec.NAMEOFINST);
+      if (rec.EXPERIENCE   && rec.EXPERIENCE   !== "0")  c.experience   = transliterateBioField(rec.EXPERIENCE);
+      if (rec.ADDRESS      && rec.ADDRESS      !== "0")  c.address      = transliterateBioField(rec.ADDRESS);
       return c;
     });
 
