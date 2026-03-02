@@ -97,9 +97,39 @@ export default function AboutPage() {
           </h2>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
             {lang === "np"
-              ? "यो मञ्चले प्रदर्शन गरेको डेटा जानकारीको लागि मात्र हो। आधिकारिक र अन्तिम परिणामको लागि कृपया निर्वाचन आयोग नेपालको वेबसाइट हेर्नुहोस्। हामी डेटाको शतप्रतिशत सटीकताको ग्यारेन्टी गर्दैनौं — डेटा सीधै तेस्रो पक्षको (निर्वाचन आयोग) API बाट लिइन्छ।"
+              ? "यो मञ्चले प्रदर्शन गरेको डेटा जानकारीको लागि मात्र हो। आधिकारिक र अन्तिम परिणामको लागि कृपया निर्वाचन आयोग नेपालको वेबसाइट हेर्नुहोस्। हामी डेटाको शतप्रतिशत सटीकताको ग्यारेन्टी गर्दैनौं — डेटा सीधै तेस्रो पक्षको (निर्वाचन आयोग) API बाट लिइन्छ। NepalVotes एउटा स्वतन्त्र ड्यासबोर्ड हो जसको अन्तर्निहित डेटामाथि कुनै सम्पादकीय नियन्त्रण छैन।"
               : "The data displayed on this platform is for informational purposes only. For the official and final results, please refer to the Election Commission of Nepal's website. We do not guarantee 100% accuracy as data is sourced directly from a third-party API (the Election Commission). NepalVotes is an independent dashboard with no editorial control over the underlying data."}
           </p>
+        </section>
+
+        {/* Independence statement */}
+        <section>
+          <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+            {lang === "np" ? "स्वतन्त्रता" : "Independence"}
+          </h2>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            {lang === "np"
+              ? "NepalVotes कुनै पनि राजनीतिक दल, उम्मेदवार, मिडिया संस्था वा सरकारी निकायसँग आबद्ध छैन। यो साइट कुनै पनि दलको समर्थन गर्दैन वा विरोध गर्दैन। हाम्रो एकमात्र उद्देश्य नागरिकहरूलाई सार्वजनिक रूपमा उपलब्ध आधिकारिक चुनावी डेटासम्म सजिलो पहुँच प्रदान गर्नु हो।"
+              : "NepalVotes is not affiliated with any political party, candidate, media organisation, or government body. The site does not endorse or oppose any party or candidate. Our sole purpose is to give citizens easy access to publicly available, official electoral data in a clear and readable format."}
+          </p>
+        </section>
+
+        {/* Contact */}
+        <section>
+          <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+            {lang === "np" ? "सम्पर्क" : "Contact"}
+          </h2>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+            {lang === "np"
+              ? "प्रश्न, सुझाव, वा डेटा सम्बन्धी समस्याको लागि इमेलमा सम्पर्क गर्नुहोस्:"
+              : "For questions, suggestions, or data-related issues, contact us by email:"}
+          </p>
+          <a
+            href="mailto:riwajghimire1@gmail.com"
+            className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+          >
+            riwajghimire1@gmail.com
+          </a>
         </section>
 
       </main>

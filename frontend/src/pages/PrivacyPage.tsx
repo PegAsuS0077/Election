@@ -85,12 +85,55 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
-              {lang === "np" ? "भविष्यमा विज्ञापन" : "Advertising"}
+              {lang === "np" ? "Google AdSense विज्ञापन" : "Advertising (Google AdSense)"}
             </h2>
+            <p className="mb-3">
+              {lang === "np"
+                ? "यो साइट Google AdSense मार्फत विज्ञापन प्रदर्शन गर्दछ। Google AdSense एउटा तेस्रो-पक्ष विज्ञापन सेवा हो जुन Google LLC द्वारा सञ्चालित छ। विज्ञापन सेवा प्रदान गर्न Google ले यो साइटमा cookies र web beacons प्रयोग गर्न सक्छ।"
+                : "This site displays advertisements through Google AdSense, a third-party advertising service operated by Google LLC. To serve ads, Google may use cookies and web beacons on this site."}
+            </p>
+            <p className="mb-3">
+              {lang === "np"
+                ? "Google AdSense ले तपाईंको यस साइट र अन्य साइटहरूमा भ्रमणको आधारमा प्रासंगिक विज्ञापनहरू देखाउन cookies प्रयोग गर्दछ। यी cookies मा व्यक्तिगत पहिचान योग्य जानकारी समावेश छैन।"
+                : "Google AdSense uses cookies to serve ads based on your prior visits to this site and other sites. These cookies do not contain personally identifiable information."}
+            </p>
             <p>
               {lang === "np"
-                ? "यो साइटले भविष्यमा Google AdSense मार्फत विज्ञापन प्रदर्शन गर्न सक्छ। यदि विज्ञापन सक्षम गरिन्छ भने, Google ले प्रासंगिक विज्ञापनहरू देखाउन cookies प्रयोग गर्न सक्छ। तपाईं Google को विज्ञापन सेटिङ मार्फत personalized विज्ञापनहरू opt out गर्न सक्नुहुन्छ।"
-                : "This site may display advertisements via Google AdSense in the future. If ads are enabled, Google may use cookies to show relevant ads. You can opt out of personalized ads through Google's ad settings."}
+                ? "तपाईं "
+                : "You can opt out of personalised advertising by visiting "}
+              <a
+                href="https://www.google.com/settings/ads"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {lang === "np" ? "Google विज्ञापन सेटिङ" : "Google Ads Settings"}
+              </a>
+              {lang === "np"
+                ? " मार्फत personalized विज्ञापनहरू opt out गर्न सक्नुहुन्छ। वैकल्पिक रूपमा, तपाईं "
+                : " or by visiting "}
+              <a
+                href="https://www.aboutads.info/choices/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {lang === "np" ? "aboutads.info" : "aboutads.info"}
+              </a>
+              {lang === "np"
+                ? " मार्फत पनि opt out गर्न सक्नुहुन्छ।"
+                : ". Google's privacy policy for advertising is available at "}
+              {lang !== "np" && (
+                <a
+                  href="https://policies.google.com/technologies/ads"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  policies.google.com/technologies/ads
+                </a>
+              )}
+              {lang !== "np" && "."}
             </p>
           </section>
 

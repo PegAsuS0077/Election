@@ -55,9 +55,15 @@ export default function Footer({ lang = "en" }: { lang?: Lang }) {
             </Link>
           </nav>
           <span>
-            {lang === "np"
-              ? "निर्वाचन आयोग नेपालको आधिकारिक डेटा"
-              : "Official data from Election Commission of Nepal"}
+            {lang === "np" ? "डेटा स्रोत: " : "Data Source: "}
+            <a
+              href="https://result.election.gov.np"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-slate-600 dark:hover:text-slate-300 underline transition-colors"
+            >
+              {lang === "np" ? "निर्वाचन आयोग नेपाल" : "Election Commission of Nepal"}
+            </a>
           </span>
         </div>
       </div>

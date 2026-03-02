@@ -188,14 +188,20 @@ export default function App() {
           <div className="prose prose-slate dark:prose-invert max-w-none text-sm text-slate-600 dark:text-slate-400 leading-relaxed space-y-4">
             <p>
               {lang === "np"
-                ? "नेपालभोट्स (NepalVotes) एउटा स्वतन्त्र डिजिटल ड्यासबोर्ड हो जसले नेपालको प्रतिनिधि सभा सामान्य निर्वाचन २०८२ (मार्च ५, २०२६) को मतगणना परिणाम वास्तविक समयमा प्रदर्शन गर्दछ। यो मञ्च निर्वाचन आयोग नेपालको आधिकारिक परिणाम वेबसाइटबाट स्वचालित रूपमा डेटा प्राप्त गर्छ र हरेक ३० सेकेन्डमा अपडेट गर्दछ।"
-                : "NepalVotes is an independent informational dashboard tracking the vote count for Nepal's House of Representatives (Pratinidhi Sabha) General Election 2082, held on March 5, 2026. The site fetches data automatically from the official results website of the Election Commission of Nepal and refreshes every 30 seconds, giving you a near-real-time view of how counting is progressing across the country."}
+                ? "नेपालभोट्स (NepalVotes) एउटा स्वतन्त्र डिजिटल ड्यासबोर्ड हो जसले नेपालको प्रतिनिधि सभा सामान्य निर्वाचन २०८२ (मार्च ५, २०२६) को मतगणना परिणाम वास्तविक समयमा प्रदर्शन गर्दछ। यो मञ्च निर्वाचन आयोग नेपालको आधिकारिक परिणाम वेबसाइटबाट स्वचालित रूपमा डेटा प्राप्त गर्छ र हरेक ३० सेकेन्डमा अपडेट गर्दछ — निर्वाचनको रात देशभरबाट मत गणना कसरी अगाडि बढ्दैछ भन्ने लगभग वास्तविक समयको दृश्य प्रदान गर्दछ।"
+                : "NepalVotes is an independent informational dashboard tracking the vote count for Nepal's House of Representatives (Pratinidhi Sabha) General Election 2082, held on March 5, 2026. The site fetches data automatically from the official results website of the Election Commission of Nepal and refreshes every 30 seconds, giving you a near-real-time view of how counting is progressing across the country on election night."}
             </p>
 
             <p>
               {lang === "np"
-                ? "यस साइटले नेपालका सातै प्रदेशका १६५ प्रत्यक्ष निर्वाचन क्षेत्रहरूको परिणाम समेट्दछ। प्रत्येक क्षेत्रमा ३,४०६ उम्मेदवारहरू प्रतिस्पर्धा गर्दैछन् — ६६ भन्दा बढी दर्ता राजनीतिक दलहरूबाट र स्वतन्त्र उम्मेदवारहरू पनि। प्रतिनिधि सभामा कुल २७५ सिट छन् — १६५ प्रत्यक्ष (FPTP) र ११० समानुपातिक (PR)।"
+                ? "यस साइटले नेपालका सातै प्रदेशका १६५ प्रत्यक्ष (FPTP) निर्वाचन क्षेत्रहरूको परिणाम समेट्दछ — कोशी, मधेश, बागमती, गण्डकी, लुम्बिनी, कर्णाली र सुदूरपश्चिम। यी क्षेत्रहरूमा ३,४०६ उम्मेदवारहरू ६६ भन्दा बढी दर्ता राजनीतिक दलहरू र स्वतन्त्र उम्मेदवारको रूपमा प्रतिस्पर्धा गर्दैछन्। प्रतिनिधि सभामा कुल २७५ सिट छन् — १६५ प्रत्यक्ष निर्वाचन क्षेत्रका विजेताहरूले भर्ने र ११० समानुपातिक प्रतिनिधित्वमार्फत विभाजित।"
                 : "This site covers all 165 First-Past-The-Post (FPTP) constituencies spread across Nepal's 7 provinces — Koshi, Madhesh, Bagmati, Gandaki, Lumbini, Karnali, and Sudurpashchim. Across these constituencies, 3,406 candidates are contesting under more than 66 registered political parties and as independents. The House of Representatives has 275 total seats: 165 filled by direct constituency winners and 110 allocated through proportional representation."}
+            </p>
+
+            <p>
+              {lang === "np"
+                ? "निर्वाचन प्रक्रियाले नेपालभर मतगणना अगाडि बढाउँदा, यो ड्यासबोर्डले घोषित र घोषणा हुन बाँकी निर्वाचन क्षेत्रहरूको सङ्ख्या, दलअनुसार चालू सिट तथ्याङ्क, र बहुमत प्राप्त गर्न कुन दललाई कतिवटा थप सिट चाहिन्छ भन्ने देखाउँछ। प्रत्येक निर्वाचन क्षेत्रको क्लिक गर्न मिल्ने विवरण पृष्ठले उम्मेदवारको नाम, दल, प्राप्त मत, र घोषित भएमा विजेताको स्थिति प्रदर्शन गर्दछ।"
+                : "As counting progresses across Nepal, the dashboard shows how many constituencies have been declared versus still counting, the running seat tally by party, and how many more seats each party needs to reach a majority. Each constituency's clickable detail view shows candidate names, parties, votes received, and winner status where declared."}
             </p>
 
             <p>
@@ -207,13 +213,13 @@ export default function App() {
             <ul className="list-disc list-inside space-y-1 pl-2">
               {lang === "np" ? (
                 <>
-                  <li>हरेक ३० सेकेन्डमा स्वचालित डेटा अपडेट</li>
-                  <li>१६५ निर्वाचन क्षेत्रहरूको विस्तृत परिणाम</li>
-                  <li>प्रत्येक उम्मेदवारको व्यक्तिगत विवरण पृष्ठ</li>
-                  <li>प्रदेश र जिल्लाअनुसार फिल्टर गर्ने सुविधा</li>
-                  <li>दलअनुसार सिट तथ्याङ्क (FPTP + समानुपातिक अनुमान)</li>
-                  <li>अन्तरक्रियात्मक नेपाल प्रदेश नक्सा</li>
-                  <li>नेपाली र अंग्रेजी भाषा समर्थन</li>
+                  <li>हरेक ३० सेकेन्डमा निर्वाचन आयोगबाट स्वचालित डेटा अपडेट</li>
+                  <li>१६५ FPTP निर्वाचन क्षेत्रहरूको विस्तृत परिणाम</li>
+                  <li>जीवनी जानकारीसहित व्यक्तिगत उम्मेदवार प्रोफाइल पृष्ठहरू</li>
+                  <li>प्रदेश, जिल्ला, दल वा लैंगिकताअनुसार फिल्टर गर्ने सुविधा</li>
+                  <li>FPTP जित र समानुपातिक प्रतिनिधित्व अनुमान जोडेर दल सिट तथ्याङ्क</li>
+                  <li>क्षेत्रअनुसार अग्रणी दलहरू देखाउने अन्तरक्रियात्मक प्रदेश नक्सा</li>
+                  <li>नेपाली (देवनागरी) र अंग्रेजी भाषामा पूर्ण द्विभाषिक समर्थन</li>
                 </>
               ) : (
                 <>
@@ -230,8 +236,14 @@ export default function App() {
 
             <p>
               {lang === "np"
-                ? "सबै डेटा निर्वाचन आयोग नेपालको आधिकारिक परिणाम वेबसाइट (result.election.gov.np) बाट प्राप्त गरिन्छ। यो साइट निर्वाचन आयोग नेपाल वा कुनै पनि राजनीतिक दलसँग आबद्ध छैन। यहाँ प्रदर्शित जानकारी केवल सूचनात्मक उद्देश्यका लागि हो। आधिकारिक तथा अन्तिम निर्वाचन परिणामका लागि कृपया निर्वाचन आयोग नेपालको वेबसाइट हेर्नुहोस्।"
-                : "All data is sourced exclusively from the official results portal of the Election Commission of Nepal at result.election.gov.np. NepalVotes is an independent informational service and is not affiliated with the Election Commission, any political party, or any government body. Information displayed here is provided for informational purposes only. For the official and final election results, please refer directly to the Election Commission of Nepal."}
+                ? "यस ड्यासबोर्डले प्रदेश सारांश दृश्य पनि प्रदान गर्दछ जसले सातवटा प्रदेशका प्रत्येकमा दलको प्रदर्शनलाई छुट्टाछुट्टै देखाउँछ। दल पृष्ठले ठूला र साना दुवै दलको सिट तथ्याङ्क एकत्र गर्दछ, जसमा मत प्रतिशत र प्रत्येक प्रतिस्पर्धी दलको FPTP उम्मेदवारहरू समावेश छन्। उम्मेदवार खोज पृष्ठले नागरिकहरूलाई कुनै विशेष व्यक्ति खोज्न र उनीहरूको वर्तमान मत स्थिति हेर्न सक्षम बनाउँछ।"
+                : "The dashboard also provides a province summary view that breaks down party performance across each of the seven provinces separately. The parties page aggregates seat tallies for both major and minor parties, including vote percentages and FPTP candidates for each contesting party. The candidates search page enables citizens to look up a specific individual and see their current vote standing."}
+            </p>
+
+            <p>
+              {lang === "np"
+                ? "सबै डेटा निर्वाचन आयोग नेपालको आधिकारिक परिणाम वेबसाइट (result.election.gov.np) बाट मात्र प्राप्त गरिन्छ। NepalVotes एउटा स्वतन्त्र सूचनात्मक सेवा हो र निर्वाचन आयोग, कुनै पनि राजनीतिक दल, वा कुनै सरकारी निकायसँग आबद्ध छैन। यहाँ प्रदर्शित जानकारी केवल सूचनात्मक उद्देश्यका लागि प्रदान गरिएको छ। डेटा सिधै तेस्रो-पक्षको स्रोतबाट आउँछ र हामी सम्पादकीय परिवर्तन गर्दैनौं। आधिकारिक र अन्तिम निर्वाचन परिणामका लागि कृपया सिधै निर्वाचन आयोग नेपालको वेबसाइट हेर्नुहोस्।"
+                : "All data is sourced exclusively from the official results portal of the Election Commission of Nepal at result.election.gov.np. NepalVotes is an independent informational service and is not affiliated with the Election Commission, any political party, or any government body. Information displayed here is provided for informational purposes only. Data comes directly from a third-party source and we make no editorial changes to it. For the official and final election results, please refer directly to the Election Commission of Nepal's website."}
             </p>
           </div>
         </div>
