@@ -11,11 +11,28 @@ No Playwright required — plain httpx async client is sufficient.
 """
 
 import json
+import os
 import httpx
 from datetime import datetime, timezone
 from typing import Any
 
 from district_names import district_name_en
+
+
+# ── NEU English name lookup ───────────────────────────────────────────────────
+# neu_candidates.json lives next to scraper.py in the backend/ directory.
+# It is a copy of frontend/public/neu_candidates.json (committed to git).
+# Maps CandidateID (int) → {"n": "English name", ...}
+def _load_neu_lookup() -> dict[int, dict]:
+    path = os.path.join(os.path.dirname(__file__), "neu_candidates.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            records: list[dict] = json.load(f)
+        return {r["id"]: r for r in records if "id" in r}
+    except Exception:
+        return {}
+
+_NEU: dict[int, dict] = _load_neu_lookup()
 
 
 # ── Upstream endpoint ────────────────────────────────────────────────────────
@@ -208,10 +225,14 @@ def parse_candidates_json(raw_candidates: list[dict[str, Any]]) -> list[dict[str
 
         candidates: list[dict[str, Any]] = []
         for rec in recs:
+            name_np = rec.get("CandidateName") or ""
+            cid_int = rec.get("CandidateID")
+            neu = _NEU.get(cid_int) if cid_int is not None else None
+            name_en = neu["n"] if neu and neu.get("n") else name_np
             cand: dict[str, Any] = {
-                "candidateId": rec.get("CandidateID"),
-                "name":        rec.get("CandidateName") or "",
-                "nameNp":      rec.get("CandidateName") or "",
+                "candidateId": cid_int,
+                "name":        name_en,
+                "nameNp":      name_np,
                 "partyId":     _derive_party_id(rec),
                 "partyName":   rec.get("PoliticalPartyName") or "",
                 "votes":       rec.get("TotalVoteReceived", 0),
