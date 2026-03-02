@@ -1,0 +1,53 @@
+# REFERENCE ONLY — not an active workflow file.
+# Original location was .github/workflows/publish-results.yml
+# Removed because GitHub Actions schedules run at most every 5 minutes,
+# and the cron `* * * * *` (every minute) caused lint warnings.
+# Replaced by a Cloudflare Worker cron (true 1-min intervals, more reliable).
+#
+# To restore: copy the content below into .github/workflows/publish-results.yml
+# and set the desired schedule (minimum every 5 minutes for GitHub Actions).
+#
+# -----------------------------------------------------------------------
+#
+# name: Publish Election Results to R2
+#
+# on:
+#   schedule:
+#     - cron: "*/5 * * * *"   # every 5 minutes (GitHub Actions minimum)
+#   workflow_dispatch:
+#
+# jobs:
+#   publish:
+#     name: Fetch → Parse → Upload to R2
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 3
+#
+#     defaults:
+#       run:
+#         working-directory: backend
+#
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+#
+#       - name: Set up Python 3.13
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: "3.13"
+#           cache: "pip"
+#           cache-dependency-path: backend/requirements.txt
+#
+#       - name: Install dependencies
+#         run: pip install -r requirements.txt
+#
+#       - name: Fetch, parse, and upload to R2
+#         env:
+#           R2_ACCOUNT_ID:        ${{ secrets.R2_ACCOUNT_ID }}
+#           R2_ACCESS_KEY_ID:     ${{ secrets.R2_ACCESS_KEY_ID }}
+#           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+#           R2_BUCKET:            ${{ secrets.R2_BUCKET }}
+#         run: python publish_to_r2.py
+#
+#       - name: Report status
+#         if: failure()
+#         run: echo "publish_to_r2.py exited with a non-zero status — check logs above"

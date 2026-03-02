@@ -101,6 +101,32 @@ interface PartyInfo {
 
 interface Env {
   RESULTS_BUCKET: R2Bucket;
+  FRONTEND_URL: string;
+}
+
+// ── NEU lookup ────────────────────────────────────────────────────────────────
+
+interface NeuRecord {
+  id: number;
+  n?: string;  // English name
+  f?: string;  // father's English name
+  s?: string;  // spouse's English name
+  h?: string;  // hometown
+}
+
+async function loadNeuLookup(frontendUrl: string): Promise<Map<number, NeuRecord>> {
+  try {
+    const res = await fetch(`${frontendUrl}/neu_candidates.json`);
+    if (!res.ok) throw new Error(`NEU fetch failed: ${res.status}`);
+    const records: NeuRecord[] = await res.json() as NeuRecord[];
+    const map = new Map<number, NeuRecord>();
+    for (const r of records) map.set(r.id, r);
+    console.log(`[scraper] loaded ${map.size} NEU records`);
+    return map;
+  } catch (err) {
+    console.warn("[scraper] NEU lookup unavailable — names will be Nepali:", err);
+    return new Map<number, NeuRecord>();
+  }
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -295,7 +321,7 @@ function omitIfZeroOrDash(s: string | undefined): string | undefined {
 
 // ── Core transform ────────────────────────────────────────────────────────────
 
-function transform(records: UpstreamRecord[]): {
+function transform(records: UpstreamRecord[], neuLookup: Map<number, NeuRecord>): {
   constituencies: ConstituencyResult[];
   snapshot: Snapshot;
   parties: PartyInfo[];
@@ -347,10 +373,14 @@ function transform(records: UpstreamRecord[]): {
         partyNameByPartyId.set(partyId, partyName);
       }
 
+      const nameNp = rec.CandidateName ?? "";
+      const neu = neuLookup.get(rec.CandidateID);
+      const nameEn = neu?.n ?? nameNp;
+
       const cand: Candidate = {
         candidateId: rec.CandidateID,
-        nameNp: rec.CandidateName ?? "",
-        name: rec.CandidateName ?? "",  // Worker skips transliteration — name == nameNp
+        nameNp,
+        name: nameEn,
         partyName,
         partyId,
         votes: rec.TotalVoteReceived,
@@ -359,12 +389,12 @@ function transform(records: UpstreamRecord[]): {
       };
 
       if (rec.AGE_YR)                                       cand.age          = rec.AGE_YR;
-      if (omitIfZeroOrDash(rec.FATHER_NAME))               cand.fatherName   = rec.FATHER_NAME;
-      if (omitIfZeroOrDash(rec.SPOUCE_NAME))               cand.spouseName   = rec.SPOUCE_NAME;
+      if (neu?.f ?? omitIfZeroOrDash(rec.FATHER_NAME))    cand.fatherName   = neu?.f ?? rec.FATHER_NAME;
+      if (neu?.s ?? omitIfZeroOrDash(rec.SPOUCE_NAME))    cand.spouseName   = neu?.s ?? rec.SPOUCE_NAME;
       if (omitIfZeroOrDash(rec.QUALIFICATION))             cand.qualification = rec.QUALIFICATION;
       if (omitIfZeroOrDash(rec.NAMEOFINST))                cand.institution  = rec.NAMEOFINST;
       if (omitIfZeroOrDash(rec.EXPERIENCE))                cand.experience   = rec.EXPERIENCE;
-      if (omitIfZeroOrDash(rec.ADDRESS))                   cand.address      = rec.ADDRESS;
+      if (neu?.h ?? omitIfZeroOrDash(rec.ADDRESS))        cand.address      = neu?.h ?? rec.ADDRESS;
 
       return cand;
     });
@@ -482,12 +512,12 @@ async function putJson(bucket: R2Bucket, key: string, body: unknown): Promise<vo
 
 async function runScrape(env: Env): Promise<void> {
   const t0 = Date.now();
-  console.log("[scraper] fetching upstream JSON…");
+  console.log("[scraper] fetching upstream JSON and NEU lookup…");
 
-  const res = await fetch(UPSTREAM_URL, {
-    headers: { "Accept-Encoding": "gzip" },
-    cf: { cacheTtl: 0 },
-  });
+  const [res, neuLookup] = await Promise.all([
+    fetch(UPSTREAM_URL, { headers: { "Accept-Encoding": "gzip" }, cf: { cacheTtl: 0 } }),
+    loadNeuLookup(env.FRONTEND_URL),
+  ]);
   if (!res.ok) {
     throw new Error(`Upstream fetch failed: ${res.status} ${res.statusText}`);
   }
@@ -504,7 +534,7 @@ async function runScrape(env: Env): Promise<void> {
   );
 
   const t1 = Date.now();
-  const { constituencies, snapshot, parties } = transform(records);
+  const { constituencies, snapshot, parties } = transform(records, neuLookup);
   const transformMs = Date.now() - t1;
 
   const totalVotes = constituencies.reduce((s, c) => s + c.votesCast, 0);

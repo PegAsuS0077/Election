@@ -9,3 +9,8 @@ bucket_name = "nepal-election-gh-actions"
 
 [triggers]
 crons = ["*/1 * * * *"]
+
+[vars]
+# Base URL of the deployed frontend — used to fetch /neu_candidates.json
+# for English name enrichment. Override in the Cloudflare dashboard if needed.
+FRONTEND_URL = "https://nepalvotes.live"
