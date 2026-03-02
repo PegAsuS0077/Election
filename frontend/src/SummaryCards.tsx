@@ -72,7 +72,7 @@ export default function SummaryCards({
       <Card title={t("majority", lang)} big={`${majority}`} sub={t("majorityDesc", lang)} />
       <Card
         title={t("leadingParty", lang)}
-        big={leaderInfo.nameEn.split(" (")[0]}
+        big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
         sub={`${leader.total} ${t("seats", lang)}`}
         dotColor={leaderInfo.color}
         symbol={leaderInfo.symbol}
@@ -81,7 +81,7 @@ export default function SummaryCards({
       />
       <Card
         title={t("runnerUp", lang)}
-        big={runnerUpInfo.nameEn.split(" (")[0]}
+        big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
         sub={`${runnerUp.total} ${t("seats", lang)}`}
         dotColor={runnerUpInfo.color}
         symbol={runnerUpInfo.symbol}
