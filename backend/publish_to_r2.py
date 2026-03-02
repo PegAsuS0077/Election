@@ -36,6 +36,8 @@ import boto3
 import httpx
 from botocore.config import Config
 
+from district_names import district_name_en
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 UPSTREAM_URL = (
@@ -60,49 +62,13 @@ STATE_TO_PROVINCE: dict[int, str] = {
     7: "Sudurpashchim",
 }
 
-PROVINCE_EN: dict[int, str] = {
-    1: "Koshi", 2: "Madhesh", 3: "Bagmati",
-    4: "Gandaki", 5: "Lumbini", 6: "Karnali", 7: "Sudurpashchim",
-}
-
-DISTRICT_EN: dict[str, str] = {
-    "ताप्लेजुङ": "Taplejung",      "पाँचथर": "Panchthar",        "इलाम": "Ilam",
-    "सङ्खुवासभा": "Sankhuwasabha", "भोजपुर": "Bhojpur",           "धनकुटा": "Dhankuta",
-    "तेह्रथुम": "Terhathum",       "खोटाङ": "Khotang",            "सोलुखुम्बु": "Solukhumbu",
-    "ओखलढुङ्गा": "Okhaldhunga",    "झापा": "Jhapa",               "मोरङ": "Morang",
-    "सुनसरी": "Sunsari",           "उदयपुर": "Udayapur",          "सप्तरी": "Saptari",
-    "सिरहा": "Siraha",             "धनुषा": "Dhanusha",           "महोत्तरी": "Mahottari",
-    "सर्लाही": "Sarlahi",          "रौतहट": "Rautahat",           "बारा": "Bara",
-    "पर्सा": "Parsa",              "सिन्धुली": "Sindhuli",        "रामेछाप": "Ramechhap",
-    "दोलखा": "Dolakha",            "सिन्धुपाल्चोक": "Sindhupalchok",
-    "काभ्रेपलाञ्चोक": "Kavrepalanchok",
-    "भक्तपुर": "Bhaktapur",        "ललितपुर": "Lalitpur",         "काठमाडौँ": "Kathmandu",
-    "काठमाडौं": "Kathmandu",
-    "नुवाकोट": "Nuwakot",          "मकवानपुर": "Makwanpur",       "चितवन": "Chitwan",
-    "गोर्खा": "Gorkha",            "लमजुङ": "Lamjung",            "तनहुँ": "Tanahu",
-    "कास्की": "Kaski",             "स्याङ्जा": "Syangja",         "पर्वत": "Parbat",
-    "बाग्लुङ": "Baglung",          "म्याग्दी": "Myagdi",          "नवलपुर": "Nawalpur",
-    "मुस्ताङ": "Mustang",          "मनाङ": "Manang",
-    "रूपन्देही": "Rupandehi",      "कपिलवस्तु": "Kapilvastu",     "अर्घाखाँची": "Arghakhanchi",
-    "गुल्मी": "Gulmi",             "पाल्पा": "Palpa",             "दाङ": "Dang",
-    "बाँके": "Banke",              "बर्दिया": "Bardiya",           "रोल्पा": "Rolpa",
-    "रुकुम पश्चिम": "Rukum-West",  "प्युठान": "Pyuthan",
-    "डोल्पा": "Dolpa",             "मुगु": "Mugu",                "हुम्ला": "Humla",
-    "जुम्ला": "Jumla",             "कालिकोट": "Kalikot",          "दैलेख": "Dailekh",
-    "जाजरकोट": "Jajarkot",         "सल्यान": "Salyan",            "रुकुम पूर्व": "Rukum-East",
-    "सुर्खेत": "Surkhet",
-    "बाजुरा": "Bajura",            "बझाङ": "Bajhang",             "दार्चुला": "Darchula",
-    "बैतडी": "Baitadi",            "डडेलधुरा": "Dadeldhura",      "डोटी": "Doti",
-    "अछाम": "Achham",              "कैलाली": "Kailali",           "कञ्चनपुर": "Kanchanpur",
-}
-
 INDEPENDENT_NP = "स्वतन्त्र"
 
 
 # ── Helpers (mirror parseUpstreamData.ts) ─────────────────────────────────────
 
 def district_en(np_name: str, state_id: int) -> str:
-    return DISTRICT_EN.get(np_name, f"{PROVINCE_EN.get(state_id, 'Province')}-District")
+    return district_name_en(np_name, state_id)
 
 
 def derive_party_id(rec: dict[str, Any]) -> str:

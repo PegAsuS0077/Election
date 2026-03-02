@@ -194,7 +194,7 @@ export const constituencyResults: ConstituencyResult[] = [
     c(310093,"Suresh Sherpa","सुरेश शेर्पा","RSP",8200,"M"),
     c(310094,"Lokendra Tamang","लोकेन्द्र तामाङ","LSP",1500,"M"),
   ]),
-  con("Koshi","Terhathum","तेह्रथुम",1,1,"DECLARED",110,[
+  con("Koshi","Tehrathum","तेह्रथुम",1,1,"DECLARED",110,[
     c(310101,"Kamala Rai","कमला राई","NC",14900,"F"),
     c(310102,"Bishnu Limbu","बिष्णु लिम्बु","CPN-UML",11200,"M"),
     c(310103,"Tika Sherpa","टिका शेर्पा","NCP",3800,"M"),
@@ -707,19 +707,19 @@ export const constituencyResults: ConstituencyResult[] = [
     c(340033,"Kamala Thapa","कमला थापा","NCP",7100,"F"),
     c(340034,"Rajan BK","राजन बि.क.","CPN-US",800,"M"),
   ]),
-  con("Gandaki","Tanahu","तनहुँ",4,1,"COUNTING",17,[
+  con("Gandaki","Tanahun","तनहुँ",4,1,"COUNTING",17,[
     c(340041,"Rajan Paudel","राजन पौडेल","NC",25300,"M"),
     c(340042,"Mina Adhikari","मिना अधिकारी","CPN-UML",23100,"F"),
     c(340043,"Suraj Gurung","सुराज गुरुङ","RSP",9600,"M"),
     c(340044,"Laxmi Bhatta","लक्ष्मी भट्ट","LSP",1300,"F"),
   ]),
-  con("Gandaki","Tanahu","तनहुँ",4,2,"DECLARED",92,[
+  con("Gandaki","Tanahun","तनहुँ",4,2,"DECLARED",92,[
     c(340051,"Kamala Paudel","कमला पौडेल","NC",22800,"F"),
     c(340052,"Hari Adhikari","हरि अधिकारी","CPN-UML",20400,"M"),
     c(340053,"Rajan Gurung","राजन गुरुङ","RSP",8800,"M"),
     c(340054,"Sita BK","सिता बि.क.","NUP",1100,"F"),
   ]),
-  con("Gandaki","Tanahu","तनहुँ",4,3,"PENDING",0,[
+  con("Gandaki","Tanahun","तनहुँ",4,3,"PENDING",0,[
     c(340061,"Suresh Paudel","सुरेश पौडेल","NC",0,"M"),
     c(340062,"Mina Gurung","मिना गुरुङ","CPN-UML",0,"F"),
     c(340063,"Anita Adhikari","अनिता अधिकारी","RSP",0,"F"),
@@ -801,7 +801,7 @@ export const constituencyResults: ConstituencyResult[] = [
   // LUMBINI PROVINCE — STATE_ID 5 — 32 constituencies
   // ═══════════════════════════════════════════════════════════════════════════
 
-  con("Lumbini","Nawalpur","नवलपुर",5,1,"DECLARED",128,[
+  con("Lumbini","Parasi","नवलपुर",5,1,"DECLARED",128,[
     c(350001,"Devi Gyawali","देवी ज्ञवाली","CPN-UML",28100,"F"),
     c(350002,"Tika Dhakal","तिका ढकाल","NC",25900,"M"),
     c(350003,"Sabita Poudel","सबिता पौडेल","RSP",9800,"F"),
@@ -939,13 +939,13 @@ export const constituencyResults: ConstituencyResult[] = [
     c(350223,"Bikash BK","बिकास बि.क.","CPN-UML",5400,"M"),
     c(350224,"Nirmala Rawal","निर्मला रावल","LSP",800,"F"),
   ]),
-  con("Lumbini","Rukum-West","रुकुम पश्चिम",5,1,"DECLARED",128,[
+  con("Lumbini","Rukum West","रुकुम पश्चिम",5,1,"DECLARED",128,[
     c(350231,"Deepak Budha Magar","दिपक बुढा मगर","NCP",15800,"M"),
     c(350232,"Sita Shahi","सिता शाही","NC",13900,"F"),
     c(350233,"Ram BK","राम बि.क.","CPN-UML",4800,"M"),
     c(350234,"Mina Rawal","मिना रावल","NUP",700,"F"),
   ]),
-  con("Lumbini","Rukum-West","रुकुम पश्चिम",5,2,"PENDING",0,[
+  con("Lumbini","Rukum West","रुकुम पश्चिम",5,2,"PENDING",0,[
     c(350241,"Hari Budha Magar","हरि बुढा मगर","NCP",0,"M"),
     c(350242,"Kamala Shahi","कमला शाही","NC",0,"F"),
     c(350243,"Bikash BK","बिकास बि.क.","CPN-UML",0,"M"),
@@ -1033,7 +1033,7 @@ export const constituencyResults: ConstituencyResult[] = [
     c(360103,"Sita Rawal","सिता रावल","NCP",6400,"F"),
     c(360104,"Bikash BK","बिकास बि.क.","NPD",1000,"M"),
   ]),
-  con("Karnali","Rukum-East","रुकुम पूर्व",6,1,"DECLARED",132,[
+  con("Karnali","Rukum East","रुकुम पूर्व",6,1,"DECLARED",132,[
     c(360111,"Deepa Shahi","दीपा शाही","NC",15900,"F"),
     c(360112,"Karna Budha","कर्ण बुढा","CPN-UML",14200,"M"),
     c(360113,"Mina Rawal","मिना रावल","NCP",5100,"F"),

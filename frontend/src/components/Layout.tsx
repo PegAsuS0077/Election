@@ -240,48 +240,20 @@ export default function Layout({
       {/* Backdrop */}
       <div
         onClick={() => setDrawerOpen(false)}
-        className={`sm:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity duration-300
+        className={`sm:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300
           ${drawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
         aria-hidden="true"
       />
-      {/* Drawer panel */}
+      {/* Drawer panel — drops down from top below the header */}
       <div
-        className={`sm:hidden fixed top-0 left-0 bottom-0 z-50 w-64 flex flex-col
-          bg-white dark:bg-[#0c1525] border-r border-slate-200 dark:border-slate-800/80
-          shadow-2xl transition-transform duration-300 ease-in-out
-          ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`sm:hidden fixed top-14 left-0 right-0 z-50 flex flex-col
+          bg-white dark:bg-[#0c1525] border-b border-slate-200 dark:border-slate-800/80
+          shadow-2xl transition-transform duration-300 ease-in-out origin-top
+          ${drawerOpen ? "translate-y-0" : "-translate-y-full"}`}
         aria-label="Navigation drawer"
       >
-        {/* Drawer header */}
-        <div className="flex items-center justify-between px-4 h-14 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
-          <div className="flex items-center gap-2">
-            <img
-              src="https://flagcdn.com/w40/np.png"
-              width="22"
-              height="auto"
-              alt="Nepal flag"
-              className="rounded-sm"
-            />
-            <span className="text-[13px] font-bold tracking-tight text-slate-900 dark:text-slate-100" style={{ fontFamily: "'Sora', sans-serif" }}>
-              Nepal 2082
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(false)}
-            aria-label="Close navigation menu"
-            className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 dark:text-slate-500
-                       hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
         {/* Nav links */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2">
+        <nav className="py-2 px-2">
           {NAV_LINKS.map((link) => {
             const isActive = location.pathname === link.path;
             const label = lang === "np" ? link.labelNp : link.labelEn;
@@ -305,8 +277,8 @@ export default function Layout({
           })}
         </nav>
 
-        {/* Drawer footer controls */}
-        <div className="shrink-0 px-4 py-4 border-t border-slate-200 dark:border-slate-800/80 flex items-center gap-2">
+        {/* Controls row */}
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800/80 flex items-center gap-2">
           <button
             type="button"
             onClick={toggleLang}

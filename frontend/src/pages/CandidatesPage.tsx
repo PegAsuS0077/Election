@@ -28,6 +28,7 @@ type FlatCandidate = {
   constNameNp: string;
   province: Province;
   district: string;
+  districtNp: string;
   constStatus: "DECLARED" | "COUNTING" | "PENDING";
   isWinner: boolean;
   // biographical (optional)
@@ -142,7 +143,7 @@ function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onC
               {provinceName(c.province, lang)}
             </span>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-              {c.district}
+              {lang === "np" ? c.districtNp : c.district}
             </span>
           </div>
           <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
@@ -272,6 +273,7 @@ export default function CandidatesPage() {
           constNameNp:  r.nameNp,
           province:     r.province,
           district:     r.district,
+          districtNp:   r.districtNp,
           constStatus:  r.status,
           isWinner,
           age:          c.age,
@@ -289,21 +291,21 @@ export default function CandidatesPage() {
 
   // Cascading options derived from data
   const districtOptions = useMemo(() => {
-    const seen = new Set<string>();
+    const seen = new Map<string, string>(); // en → np
     for (const c of allCandidates) {
-      if (selProv === "All" || c.province === selProv) seen.add(c.district);
+      if (selProv === "All" || c.province === selProv) seen.set(c.district, c.districtNp);
     }
-    return Array.from(seen).sort();
+    return Array.from(seen.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [allCandidates, selProv]);
 
   const constOptions = useMemo(() => {
-    const seen = new Map<string, string>(); // code → name
+    const seen = new Map<string, [string, string]>(); // code → [nameEn, nameNp]
     for (const c of allCandidates) {
       if (selProv !== "All" && c.province !== selProv) continue;
       if (selDistrict !== "All" && c.district !== selDistrict) continue;
-      seen.set(c.constCode, c.constName);
+      seen.set(c.constCode, [c.constName, c.constNameNp]);
     }
-    return Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+    return Array.from(seen.entries()).sort((a, b) => a[1][0].localeCompare(b[1][0]));
   }, [allCandidates, selProv, selDistrict]);
 
   const partyOptions = useMemo(() => getParties(), []);
@@ -393,8 +395,8 @@ export default function CandidatesPage() {
             disabled={districtOptions.length === 0}
           >
             <option value="All">{lang === "np" ? "सबै जिल्ला" : "All Districts"}</option>
-            {districtOptions.map((d) => (
-              <option key={d} value={d}>{d}</option>
+            {districtOptions.map(([en, np]) => (
+              <option key={en} value={en}>{lang === "np" ? np : en}</option>
             ))}
           </select>
 
@@ -406,8 +408,8 @@ export default function CandidatesPage() {
             disabled={constOptions.length === 0}
           >
             <option value="All">{lang === "np" ? "सबै क्षेत्र" : "All Constituencies"}</option>
-            {constOptions.map(([code, name]) => (
-              <option key={code} value={code}>{name}</option>
+            {constOptions.map(([code, [nameEn, nameNp]]) => (
+              <option key={code} value={code}>{lang === "np" ? nameNp : nameEn}</option>
             ))}
           </select>
 

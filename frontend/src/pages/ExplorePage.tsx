@@ -138,10 +138,12 @@ export default function ExplorePage() {
   const [statusTab, setStatusTab]     = useState<StatusTab>("all");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
-  // Dynamically build district list based on selected province
+  // Dynamically build district list based on selected province — en → np
   const districts = useMemo(() => {
     const base = selProv === "All" ? results : results.filter((r) => r.province === selProv);
-    return ["All", ...Array.from(new Set(base.map((r) => r.district))).sort()];
+    const seen = new Map<string, string>();
+    for (const r of base) seen.set(r.district, r.districtNp);
+    return Array.from(seen.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [results, selProv]);
 
   // Apply all filters
@@ -161,12 +163,12 @@ export default function ExplorePage() {
     });
   }, [results, selProv, selDistrict, statusTab, search]);
 
-  // Group filtered results by district
+  // Group filtered results by district — value includes [constList, districtNp]
   const grouped = useMemo(() => {
-    const map = new Map<string, ConstituencyResult[]>();
+    const map = new Map<string, { list: ConstituencyResult[]; districtNp: string }>();
     for (const r of filtered) {
-      if (!map.has(r.district)) map.set(r.district, []);
-      map.get(r.district)!.push(r);
+      if (!map.has(r.district)) map.set(r.district, { list: [], districtNp: r.districtNp });
+      map.get(r.district)!.list.push(r);
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
@@ -211,10 +213,9 @@ export default function ExplorePage() {
             onChange={(e) => setSelDistrict(e.target.value)}
             className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-3 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition"
           >
-            {districts.map((d) => (
-              <option key={d} value={d}>
-                {d === "All" ? (lang === "np" ? "सबै जिल्ला" : "All Districts") : d}
-              </option>
+            <option value="All">{lang === "np" ? "सबै जिल्ला" : "All Districts"}</option>
+            {districts.map(([en, np]) => (
+              <option key={en} value={en}>{lang === "np" ? np : en}</option>
             ))}
           </select>
 
@@ -297,25 +298,25 @@ export default function ExplorePage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {grouped.map(([district, constList]) => (
+            {grouped.map(([district, { list, districtNp }]) => (
               <section key={district}>
-                {/* District heading — matches nepalelection.live style */}
+                {/* District heading */}
                 <div className="flex items-center gap-3 mb-4">
                   <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 capitalize">
-                    {district}
+                    {lang === "np" ? districtNp : district}
                   </h2>
                   <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                    {constList.length}{" "}
+                    {list.length}{" "}
                     {lang === "np"
                       ? "निर्वाचन क्षेत्र"
-                      : `Constituenc${constList.length === 1 ? "y" : "ies"}`}
+                      : `Constituenc${list.length === 1 ? "y" : "ies"}`}
                   </span>
                   <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
                 </div>
 
                 {/* Constituency cards grid */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {constList.map((r) => (
+                  {list.map((r) => (
                     <ConstituencyCard
                       key={r.code}
                       r={r}
