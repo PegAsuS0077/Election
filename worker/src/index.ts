@@ -105,6 +105,9 @@ interface Env {
 }
 
 // ── NEU lookup ────────────────────────────────────────────────────────────────
+// Cached at module level so it's loaded once per isolate lifetime, not per cron tick.
+// Workers reuse the same isolate for many cron invocations — this avoids a 205 KB
+// network fetch + JSON.parse on every scheduled() call.
 
 interface NeuRecord {
   id: number;
@@ -114,19 +117,37 @@ interface NeuRecord {
   h?: string;  // hometown
 }
 
+let _neuCache: Map<number, NeuRecord> | null = null;
+let _neuFetchPromise: Promise<Map<number, NeuRecord>> | null = null;
+
 async function loadNeuLookup(frontendUrl: string): Promise<Map<number, NeuRecord>> {
-  try {
-    const res = await fetch(`${frontendUrl}/neu_candidates.json`);
-    if (!res.ok) throw new Error(`NEU fetch failed: ${res.status}`);
-    const records: NeuRecord[] = await res.json() as NeuRecord[];
-    const map = new Map<number, NeuRecord>();
-    for (const r of records) map.set(r.id, r);
-    console.log(`[scraper] loaded ${map.size} NEU records`);
-    return map;
-  } catch (err) {
-    console.warn("[scraper] NEU lookup unavailable — names will be Nepali:", err);
-    return new Map<number, NeuRecord>();
-  }
+  // Return immediately if already cached
+  if (_neuCache !== null) return _neuCache;
+  // Coalesce concurrent callers into a single in-flight fetch
+  if (_neuFetchPromise !== null) return _neuFetchPromise;
+
+  _neuFetchPromise = (async () => {
+    try {
+      const res = await fetch(`${frontendUrl}/neu_candidates.json`);
+      if (!res.ok) throw new Error(`NEU fetch failed: ${res.status}`);
+      const records: NeuRecord[] = await res.json() as NeuRecord[];
+      const map = new Map<number, NeuRecord>();
+      for (const r of records) map.set(r.id, r);
+      console.log(`[scraper] loaded ${map.size} NEU records (cached for isolate lifetime)`);
+      _neuCache = map;
+      return map;
+    } catch (err) {
+      console.warn("[scraper] NEU lookup unavailable — names will be Nepali:", err);
+      // Cache an empty map so we don't retry on every run after a transient failure.
+      // The cache is invalidated when the isolate is recycled (typically every few hours).
+      _neuCache = new Map<number, NeuRecord>();
+      return _neuCache;
+    } finally {
+      _neuFetchPromise = null;
+    }
+  })();
+
+  return _neuFetchPromise;
 }
 
 // ── Devanagari transliteration ────────────────────────────────────────────────
@@ -600,49 +621,70 @@ async function putJson(bucket: R2Bucket, key: string, body: unknown): Promise<vo
 
 // ── Scheduled handler ─────────────────────────────────────────────────────────
 
-async function runScrape(env: Env): Promise<void> {
+async function runOnce(env: Env): Promise<void> {
   const t0 = Date.now();
-  console.log("[scraper] fetching upstream JSON and NEU lookup…");
+  console.log("[scraper] scheduled run — fetching upstream JSON…");
 
-  const [res, neuLookup] = await Promise.all([
-    fetch(UPSTREAM_URL, { headers: { "Accept-Encoding": "gzip" }, cf: { cacheTtl: 0 } }),
-    loadNeuLookup(env.FRONTEND_URL),
-  ]);
+  // ── Phase 1B: fetch upstream — bail out WITHOUT touching R2 on any failure ──
+  let res: Response;
+  try {
+    res = await fetch(UPSTREAM_URL, { headers: { "Accept-Encoding": "gzip" }, cf: { cacheTtl: 0 } });
+  } catch (err) {
+    console.error("[scraper] upstream network error — R2 NOT updated:", err);
+    return;
+  }
   if (!res.ok) {
-    throw new Error(`Upstream fetch failed: ${res.status} ${res.statusText}`);
+    console.error(`[scraper] upstream returned ${res.status} ${res.statusText} — R2 NOT updated`);
+    return;
   }
 
-  let text = await res.text();
+  let text: string;
+  try {
+    text = await res.text();
+  } catch (err) {
+    console.error("[scraper] failed to read upstream response body — R2 NOT updated:", err);
+    return;
+  }
+
   // Strip UTF-8 BOM (0xFEFF) — present in the official file
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
 
-  const records: UpstreamRecord[] = JSON.parse(text) as UpstreamRecord[];
-  const fetchMs = Date.now() - t0;
+  let records: UpstreamRecord[];
+  try {
+    records = JSON.parse(text) as UpstreamRecord[];
+  } catch (err) {
+    console.error("[scraper] upstream JSON parse failed — R2 NOT updated:", err);
+    return;
+  }
 
-  console.log(
-    `[scraper] fetched ${records.length} candidate records in ${fetchMs} ms`,
-  );
+  if (!Array.isArray(records) || records.length < 100) {
+    console.error(`[scraper] upstream data looks wrong (${records?.length ?? 0} records) — R2 NOT updated`);
+    return;
+  }
+
+  const fetchMs = Date.now() - t0;
+  console.log(`[scraper] fetched ${records.length} records in ${fetchMs} ms`);
+
+  // NEU lookup is cached at module level — negligible cost after first run
+  const neuLookup = await loadNeuLookup(env.FRONTEND_URL);
 
   const t1 = Date.now();
   const { constituencies, snapshot, parties } = transform(records, neuLookup);
   const transformMs = Date.now() - t1;
 
   const totalVotes = constituencies.reduce((s, c) => s + c.votesCast, 0);
-
   console.log(
     `[scraper] transformed in ${transformMs} ms → ` +
     `${constituencies.length} constituencies, ` +
     `${snapshot.declaredSeats} declared, ` +
-    `${totalVotes} total votes cast`,
+    `${totalVotes} total votes`,
   );
 
   if (constituencies.length !== 165) {
-    console.warn(
-      `[scraper] WARNING: expected 165 constituencies, got ${constituencies.length}`,
-    );
+    console.warn(`[scraper] WARNING: expected 165 constituencies, got ${constituencies.length}`);
   }
 
-  // Upload all three files in parallel
+  // Upload all three files in parallel — only reached after successful parse
   const t2 = Date.now();
   await Promise.all([
     putJson(env.RESULTS_BUCKET, "constituencies.json", constituencies),
@@ -652,44 +694,43 @@ async function runScrape(env: Env): Promise<void> {
   const uploadMs = Date.now() - t2;
 
   console.log(
-    `[scraper] uploaded 3 files to R2 in ${uploadMs} ms ` +
-    `(total ${Date.now() - t0} ms)`,
+    `[scraper] uploaded 3 files to R2 in ${uploadMs} ms (total ${Date.now() - t0} ms)`,
   );
 }
 
 // ── Worker export ─────────────────────────────────────────────────────────────
 
 export default {
-  /** Cron trigger — runs on every scheduled event (e.g. every 1 minute). */
+  /**
+   * Cron trigger — the ONLY place runOnce() is called.
+   * Never triggered by HTTP traffic, so bots and health checks
+   * cannot consume Worker CPU budget.
+   */
   async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
-    await runScrape(env);
+    await runOnce(env);
   },
 
   /**
-   * HTTP handler — useful for manual testing.
-   * GET / → triggers a scrape and returns a summary JSON.
-   * Any other path returns 404.
+   * HTTP handler — health check ONLY.
+   *
+   * Returns a lightweight JSON status response without fetching upstream
+   * or doing any processing. This prevents bots, uptime monitors, and
+   * Cloudflare health probes from triggering expensive scrape work and
+   * hitting the CPU time limit.
+   *
+   * To manually trigger a scrape for testing, use `wrangler dev` with
+   * `wrangler dev --test-scheduled` and POST to /__scheduled?cron=*\/2+*+*+*+*
    */
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname !== "/") {
-      return new Response("Not found", { status: 404 });
-    }
 
-    const t0 = Date.now();
-    try {
-      await runScrape(env);
+    if (url.pathname === "/health" || url.pathname === "/") {
       return new Response(
-        JSON.stringify({ ok: true, ms: Date.now() - t0 }),
+        JSON.stringify({ ok: true, service: "nepal-election-scraper", ts: new Date().toISOString() }),
         { headers: { "Content-Type": "application/json" } },
       );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[scraper] error:", msg);
-      return new Response(
-        JSON.stringify({ ok: false, error: msg, ms: Date.now() - t0 }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
-      );
     }
+
+    return new Response("Not found", { status: 404 });
   },
 } satisfies ExportedHandler<Env>;

@@ -4,12 +4,19 @@ compatibility_date = "2024-09-23"
 compatibility_flags = []
 # Workers + R2 are available on the free tier — no paid plan required.
 
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 [[r2_buckets]]
 binding = "RESULTS_BUCKET"
 bucket_name = "nepal-election-gh-actions"
 
 [triggers]
-crons = ["*/1 * * * *"]
+crons = ["*/2 * * * *"]
 
 [vars]
 # Base URL of the deployed frontend — used to fetch /neu_candidates.json
