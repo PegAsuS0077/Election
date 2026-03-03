@@ -108,7 +108,7 @@ function CandidateHeroCard({
   const hex   = partyHex(candidate.partyId);
   return (
     <Link
-      to={`/candidate/${candidate.candidateId}`}
+      to={`/candidate/${candidate.candidateId}-${candidate.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
       className="block rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0c1525] p-4 hover:border-[#2563eb]/50 hover:shadow-md transition-all"
     >
       <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{title}</div>
@@ -347,7 +347,7 @@ export default function ConstituencyPage() {
                       <td className="px-4 py-2.5 font-bold text-slate-400 dark:text-slate-600 align-middle">{i + 1}</td>
                       <td className="px-4 py-2.5 align-middle">
                         <Link
-                          to={`/candidate/${c.candidateId}`}
+                          to={`/candidate/${c.candidateId}-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                           className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300 hover:text-[#2563eb] dark:hover:text-[#3b82f6] transition-colors group-hover:text-[#2563eb] dark:group-hover:text-[#3b82f6]"
                         >
                           {lang === "np" ? c.nameNp : c.name}

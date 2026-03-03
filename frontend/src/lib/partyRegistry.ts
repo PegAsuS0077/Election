@@ -370,6 +370,19 @@ export function buildRegistry(constituencies: ConstituencyResult[]): void {
   }
 }
 
+/** Convert a party's English name to a URL slug. e.g. "Nepali Congress" → "nepali-congress" */
+export function partySlug(nameEn: string): string {
+  return nameEn.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+/** Lookup a party by its nameEn slug. Returns null if not found. */
+export function getPartyBySlug(slug: string): PartyInfo | null {
+  for (const p of _registry.values()) {
+    if (partySlug(p.nameEn) === slug) return p;
+  }
+  return null;
+}
+
 /** Total number of parties (excluding IND) */
 export function namedPartyCount(): number {
   return Array.from(_registry.keys()).filter((k) => k !== "IND").length;

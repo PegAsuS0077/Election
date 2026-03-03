@@ -24,10 +24,10 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/parties" element={<PartiesPage />} />
-        <Route path="/party/:partyId" element={<PartyPage />} />
+        <Route path="/party/:partySlug" element={<PartyPage />} />
         <Route path="/constituency/:code" element={<ConstituencyPage />} />
         <Route path="/candidates" element={<CandidatesPage />} />
-        <Route path="/candidate/:candidateId" element={<CandidateDetailPage />} />
+        <Route path="/candidate/:candidateSlug" element={<CandidateDetailPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/privacy-policy" element={<PrivacyPage />} />
         <Route path="/contact" element={<ContactPage />} />

@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
-import { getParty, partyHex } from "../lib/partyRegistry";
+import { getParty, getPartyBySlug, partyHex } from "../lib/partyRegistry";
 import { provinceName } from "../i18n";
 import { candidatePhotoUrl } from "../lib/parseUpstreamData";
 import Layout from "../components/Layout";
@@ -17,14 +17,16 @@ import Layout from "../components/Layout";
 function fmt(n: number) { return n.toLocaleString("en-IN"); }
 
 export default function PartyPage() {
-  const { partyId } = useParams<{ partyId: string }>();
+  const { partySlug: slugParam } = useParams<{ partySlug: string }>();
   const results    = useElectionStore((s) => s.results);
   const seatTally  = useElectionStore((s) => s.seatTally);
   const lang       = useElectionStore((s) => s.lang);
   const navigate   = useNavigate();
 
-  const id     = partyId ?? "";
-  const pInfo  = getParty(id);
+  const slug   = slugParam ?? "";
+  const found  = useMemo(() => getPartyBySlug(slug), [slug, results]);
+  const id     = found?.partyId ?? slug;
+  const pInfo  = found ?? getParty(id);
   const tally  = seatTally[id] ?? { fptp: 0, pr: 0 };
   const total  = tally.fptp + tally.pr;
   const hex    = partyHex(id);
@@ -68,12 +70,12 @@ export default function PartyPage() {
     [candidates]
   );
 
-  // Redirect to /parties if partyId not found after data loads
+  // Redirect to /parties if slug not found after data loads
   useEffect(() => {
-    if (results.length > 0 && candidates.length === 0) {
+    if (results.length > 0 && !found) {
       navigate("/parties", { replace: true });
     }
-  }, [results, candidates, navigate]);
+  }, [results, found, navigate]);
 
   // Per-page meta
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function PartyPage() {
       `${nameEn} election results in Nepal's House of Representatives Election 2082. Seat tally, vote count, and all candidates.`
     );
     const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/party/${id}`);
+    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/party/${slug}`);
     return () => {
       document.title = "Nepal Election Results 2082 Live | Real-Time Vote Count – NepalVotes";
       if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/");
@@ -160,7 +162,7 @@ export default function PartyPage() {
               candidates.map((c) => (
                 <Link
                   key={c.candidateId}
-                  to={`/candidate/${c.candidateId}`}
+                  to={`/candidate/${c.candidateId}-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                   className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                 >
                   <CandidateThumb id={c.candidateId} name={c.name} />

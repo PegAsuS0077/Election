@@ -522,7 +522,7 @@ export default function CandidatesPage() {
                   key={`${c.candidateId}-${c.constCode}`}
                   c={c}
                   lang={lang}
-                  onClick={() => navigate(`/candidate/${c.candidateId}`)}
+                  onClick={() => navigate(`/candidate/${c.candidateId}-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`)}
                 />
               ))}
             </div>

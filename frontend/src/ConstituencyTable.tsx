@@ -615,7 +615,7 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
                 return (
                   <Link
                     key={`${c.candidateId}`}
-                    to={`/candidate/${c.candidateId}`}
+                    to={`/candidate/${c.candidateId}-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
                     className={`flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2
                       dark:border-slate-800 hover:border-[#2563eb]/40 dark:hover:border-[#3b82f6]/40
                       hover:bg-blue-50/50 dark:hover:bg-[#3b82f6]/5 transition-colors

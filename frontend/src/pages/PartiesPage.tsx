@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES } from "../types";
-import { getParty, partyHex } from "../lib/partyRegistry";
+import { getParty, partyHex, partySlug } from "../lib/partyRegistry";
 import { getPartyMeta } from "../lib/db";
 import { provinceName } from "../i18n";
 import Layout from "../components/Layout";
@@ -180,7 +180,7 @@ export default function PartiesPage() {
                       {lang === "np" ? pInfo.nameEn : pInfo.partyName}
                     </p>
                     <Link
-                      to={`/party/${encodeURIComponent(key)}`}
+                      to={`/party/${partySlug(pInfo.nameEn)}`}
                       onClick={(e) => e.stopPropagation()}
                       className="text-[10px] text-blue-500 dark:text-blue-400 hover:underline mt-0.5 inline-block"
                     >
@@ -277,7 +277,7 @@ export default function PartiesPage() {
 
               {/* View candidates button */}
               <Link
-                to={`/party/${encodeURIComponent(key)}`}
+                to={`/party/${partySlug(pInfo.nameEn)}`}
                 className="flex items-center justify-center w-full h-9 rounded-xl text-xs font-semibold transition-all border border-[#2563eb]/40 text-[#2563eb] dark:text-[#3b82f6] hover:bg-[#2563eb] hover:text-white hover:border-[#2563eb]"
               >
                 {`${lang === "np" ? "▼ उम्मेद्वार हेर्नुस्" : "▼ View Candidates"} (${candidateCount})`}

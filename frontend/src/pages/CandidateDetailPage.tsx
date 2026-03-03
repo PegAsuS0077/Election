@@ -279,11 +279,16 @@ function generateAboutEn(fields: {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+function nameToSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 export default function CandidateDetailPage() {
-  const { candidateId: paramId } = useParams<{ candidateId: string }>();
+  const { candidateSlug: paramSlug } = useParams<{ candidateSlug: string }>();
   const results  = useElectionStore((s) => s.results);
   const lang     = useElectionStore((s) => s.lang);
-  const targetId = paramId ? parseInt(paramId, 10) : NaN;
+  // Slug format: "{id}-{name-slug}" — ID is everything before the first "-" that is a number
+  const targetId = paramSlug ? parseInt(paramSlug, 10) : NaN;
 
   useEffect(() => { window.scrollTo(0, 0); }, [targetId]);
 
@@ -305,7 +310,7 @@ export default function CandidateDetailPage() {
       `${cand.name} (${cand.partyName}) — ${constituency.name}, ${constituency.district}. Nepal House of Representatives Election 2082 vote count and results.`
     );
     const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/candidate/${cand.candidateId}`);
+    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/candidate/${cand.candidateId}-${nameToSlug(cand.name)}`);
     return () => {
       document.title = "Nepal Election Results 2082 Live | Real-Time Vote Count – NepalVotes";
       if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/");
@@ -345,8 +350,8 @@ export default function CandidateDetailPage() {
           <div className="text-5xl mb-4">🔍</div>
           <p className="text-slate-600 dark:text-slate-400 mb-6">
             {lang === "np"
-              ? `उम्मेदवार ID ${paramId} फेला परेन।`
-              : `Candidate with ID ${paramId} was not found.`}
+              ? `उम्मेदवार ID ${targetId} फेला परेन।`
+              : `Candidate with ID ${targetId} was not found.`}
           </p>
           <Link
             to="/candidates"
