@@ -104,6 +104,45 @@ interface Env {
   FRONTEND_URL: string;
 }
 
+// ── Voter rolls lookup ────────────────────────────────────────────────────────
+// Static JSON: "{District} Constituency {N}" → registered voter count.
+// Loaded once from frontend/public/voter_rolls.json via FRONTEND_URL.
+// Used to populate totalVoters on each ConstituencyResult for turnout calculation.
+
+let _voterRolls: Map<string, number> | null = null;
+let _voterRollsPromise: Promise<Map<string, number>> | null = null;
+
+async function loadVoterRolls(frontendUrl: string): Promise<Map<string, number>> {
+  if (_voterRolls !== null) return _voterRolls;
+  if (_voterRollsPromise !== null) return _voterRollsPromise;
+
+  _voterRollsPromise = (async () => {
+    try {
+      const res = await fetch(`${frontendUrl}/voter_rolls.json`);
+      if (!res.ok) throw new Error(`voter_rolls fetch failed: ${res.status}`);
+      const raw = await res.json() as Record<string, number>;
+      const map = new Map<string, number>();
+      for (const [k, v] of Object.entries(raw)) {
+        if (k.startsWith("_")) continue;
+        // "Kathmandu Constituency 1" → "Kathmandu-1"
+        const m = k.match(/^(.+?)\s+Constituency\s+(\d+)$/i);
+        if (m) map.set(`${m[1]}-${m[2]}`, v);
+      }
+      console.log(`[scraper] loaded ${map.size} voter roll entries (cached for isolate lifetime)`);
+      _voterRolls = map;
+      return map;
+    } catch (err) {
+      console.warn("[scraper] voter_rolls unavailable — totalVoters will be omitted:", err);
+      _voterRolls = new Map<string, number>();
+      return _voterRolls;
+    } finally {
+      _voterRollsPromise = null;
+    }
+  })();
+
+  return _voterRollsPromise;
+}
+
 // ── NEU lookup ────────────────────────────────────────────────────────────────
 // Cached at module level so it's loaded once per isolate lifetime, not per cron tick.
 // Workers reuse the same isolate for many cron invocations — this avoids a 205 KB
@@ -432,7 +471,11 @@ function omitIfZeroOrDash(s: string | undefined): string | undefined {
 
 // ── Core transform ────────────────────────────────────────────────────────────
 
-function transform(records: UpstreamRecord[], neuLookup: Map<number, NeuRecord>): {
+function transform(
+  records: UpstreamRecord[],
+  neuLookup: Map<number, NeuRecord>,
+  voterRolls: Map<string, number>,
+): {
   constituencies: ConstituencyResult[];
   snapshot: Snapshot;
   parties: PartyInfo[];
@@ -511,19 +554,23 @@ function transform(records: UpstreamRecord[], neuLookup: Map<number, NeuRecord>)
     });
 
     const votesCast = candidates.reduce((s, c) => s + c.votes, 0);
+    const constName = `${district}-${constNum}`;
+    const totalVoters = voterRolls.get(constName);
 
-    constituencies.push({
+    const entry: ConstituencyResult = {
       province,
       district,
       districtNp,
       code: key,
-      name: `${district}-${constNum}`,
+      name: constName,
       nameNp: `${districtNp} क्षेत्र नं. ${constNum}`,
       status,
       lastUpdated: now,
       candidates,
       votesCast,
-    });
+    };
+    if (totalVoters !== undefined) entry.totalVoters = totalVoters;
+    constituencies.push(entry);
   }
 
   // Sort: province → district → name (mirrors frontend parseUpstreamData.ts)
@@ -665,11 +712,14 @@ async function runOnce(env: Env): Promise<void> {
   const fetchMs = Date.now() - t0;
   console.log(`[scraper] fetched ${records.length} records in ${fetchMs} ms`);
 
-  // NEU lookup is cached at module level — negligible cost after first run
-  const neuLookup = await loadNeuLookup(env.FRONTEND_URL);
+  // Both lookups are cached at module level — negligible cost after first run
+  const [neuLookup, voterRolls] = await Promise.all([
+    loadNeuLookup(env.FRONTEND_URL),
+    loadVoterRolls(env.FRONTEND_URL),
+  ]);
 
   const t1 = Date.now();
-  const { constituencies, snapshot, parties } = transform(records, neuLookup);
+  const { constituencies, snapshot, parties } = transform(records, neuLookup, voterRolls);
   const transformMs = Date.now() - t1;
 
   const totalVotes = constituencies.reduce((s, c) => s + c.votesCast, 0);

@@ -93,6 +93,7 @@ function districtEn(np: string, stateId: number): string {
 export function parseUpstreamCandidates(
   records: UpstreamRecord[],
   neuLookup?: Map<number, NeuRecord>,
+  voterRolls?: Map<string, number>,
 ): ConstituencyResult[] {
   const grouped = new Map<string, UpstreamRecord[]>();
   for (const rec of records) {
@@ -159,8 +160,9 @@ export function parseUpstreamCandidates(
     });
 
     const votesCast = candidates.reduce((s, c) => s + c.votes, 0);
+    const totalVoters = voterRolls?.get(constName);
 
-    results.push({
+    const entry: ConstituencyResult = {
       province,
       district,
       districtNp,
@@ -171,7 +173,9 @@ export function parseUpstreamCandidates(
       lastUpdated: new Date().toISOString(),
       candidates,
       votesCast,
-    });
+    };
+    if (totalVoters !== undefined) entry.totalVoters = totalVoters;
+    results.push(entry);
   }
 
   results.sort((a, b) => {

@@ -15,6 +15,7 @@
 
 import { parseUpstreamCandidates } from "./parseUpstreamData";
 import { getNeuLookup } from "./neuLookup";
+import { getVoterRolls } from "./voterRolls";
 import type { ConstituencyResult, UpstreamRecord } from "../types";
 
 const CACHE_KEY = "archive_constituencies_v2";
@@ -30,9 +31,10 @@ const UPSTREAM_URL = _upstreamBase
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
 async function fetchFromUpstream(): Promise<ConstituencyResult[]> {
-  const [res, neuLookup] = await Promise.all([
+  const [res, neuLookup, voterRolls] = await Promise.all([
     fetch(UPSTREAM_URL),
     getNeuLookup().catch(() => undefined),
+    getVoterRolls().catch(() => undefined),
   ]);
   if (!res.ok) throw new Error(`Upstream fetch failed: ${res.status}`);
   let text = await res.text();
@@ -42,7 +44,7 @@ async function fetchFromUpstream(): Promise<ConstituencyResult[]> {
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new Error("Upstream returned empty or non-array data");
   }
-  return parseUpstreamCandidates(parsed as UpstreamRecord[], neuLookup);
+  return parseUpstreamCandidates(parsed as UpstreamRecord[], neuLookup, voterRolls);
 }
 
 // ── Vote zeroing ──────────────────────────────────────────────────────────────

@@ -13,6 +13,8 @@ import { getParty, getPartyBySlug, partyHex } from "../lib/partyRegistry";
 import { provinceName } from "../i18n";
 import { candidatePhotoUrl } from "../lib/parseUpstreamData";
 import Layout from "../components/Layout";
+import { PROVINCES } from "../types";
+import type { Province } from "../types";
 
 // ── Pagination ─────────────────────────────────────────────────────────────────
 const CAND_PAGE_SIZE = 20;
@@ -74,6 +76,9 @@ export default function PartyPage() {
   const navigate   = useNavigate();
 
   const [candPage, setCandPage] = useState(1);
+  const [selProv, setSelProv]         = useState<Province | "All">("All");
+  const [selDistrict, setSelDistrict] = useState<string>("All");
+  const [selConst, setSelConst]       = useState<string>("All");
 
   const slug   = slugParam ?? "";
   const found  = useMemo(() => getPartyBySlug(slug), [slug, results]);
@@ -122,13 +127,41 @@ export default function PartyPage() {
     [candidates]
   );
 
+  // Cascading filter options derived from this party's candidates
+  const districtOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const c of candidates) {
+      if (selProv === "All" || c.province === selProv) seen.add(c.district);
+    }
+    return Array.from(seen).sort();
+  }, [candidates, selProv]);
+
+  const constOptions = useMemo(() => {
+    const seen = new Map<string, string>(); // constName → constName (we use name as key since no separate code field here)
+    for (const c of candidates) {
+      if (selProv !== "All" && c.province !== selProv) continue;
+      if (selDistrict !== "All" && c.district !== selDistrict) continue;
+      seen.set(c.constName, c.constName);
+    }
+    return Array.from(seen.keys()).sort();
+  }, [candidates, selProv, selDistrict]);
+
+  const filteredCandidates = useMemo(() => {
+    return candidates.filter((c) => {
+      if (selProv     !== "All" && c.province  !== selProv)     return false;
+      if (selDistrict !== "All" && c.district  !== selDistrict) return false;
+      if (selConst    !== "All" && c.constName !== selConst)    return false;
+      return true;
+    });
+  }, [candidates, selProv, selDistrict, selConst]);
+
   const paginatedCandidates = useMemo(
-    () => candidates.slice((candPage - 1) * CAND_PAGE_SIZE, candPage * CAND_PAGE_SIZE),
-    [candidates, candPage]
+    () => filteredCandidates.slice((candPage - 1) * CAND_PAGE_SIZE, candPage * CAND_PAGE_SIZE),
+    [filteredCandidates, candPage]
   );
 
-  // Reset candidate page when party changes
-  useEffect(() => { setCandPage(1); }, [id]);
+  // Reset candidate page when party or filters change
+  useEffect(() => { setCandPage(1); }, [id, selProv, selDistrict, selConst]);
 
   // Redirect to /parties if slug not found after data loads
   useEffect(() => {
@@ -199,31 +232,77 @@ export default function PartyPage() {
 
         {/* ── Candidate list ───────────────────────────────────────────────── */}
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0c1525] overflow-hidden shadow-sm">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              {lang === "np" ? "उम्मेदवारहरू" : "Candidates"}
-              <span className="ml-2 text-xs text-slate-400 font-normal tabular-nums">
-                ({candidates.length})
-              </span>
-            </h2>
-            <div className="flex items-center gap-3">
-              {candidates.length > CAND_PAGE_SIZE && (
-                <span className="text-xs text-slate-400 tabular-nums">
-                  {(candPage - 1) * CAND_PAGE_SIZE + 1}–{Math.min(candPage * CAND_PAGE_SIZE, candidates.length)} {lang === "np" ? "मध्ये" : "of"} {candidates.length}
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                {lang === "np" ? "उम्मेदवारहरू" : "Candidates"}
+                <span className="ml-2 text-xs text-slate-400 font-normal tabular-nums">
+                  ({filteredCandidates.length}{filteredCandidates.length !== candidates.length ? ` / ${candidates.length}` : ""})
                 </span>
-              )}
-              {totalVotes > 0 && (
-                <span className="text-xs text-slate-500">
-                  {fmt(totalVotes)} {lang === "np" ? "कुल मत" : "total votes"}
-                </span>
-              )}
+              </h2>
+              <div className="flex items-center gap-3">
+                {filteredCandidates.length > CAND_PAGE_SIZE && (
+                  <span className="text-xs text-slate-400 tabular-nums">
+                    {(candPage - 1) * CAND_PAGE_SIZE + 1}–{Math.min(candPage * CAND_PAGE_SIZE, filteredCandidates.length)} {lang === "np" ? "मध्ये" : "of"} {filteredCandidates.length}
+                  </span>
+                )}
+                {totalVotes > 0 && (
+                  <span className="text-xs text-slate-500">
+                    {fmt(totalVotes)} {lang === "np" ? "कुल मत" : "total votes"}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* ── Cascading filters: Province → District → Constituency ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <select
+                value={selProv}
+                onChange={(e) => {
+                  setSelProv(e.target.value as Province | "All");
+                  setSelDistrict("All");
+                  setSelConst("All");
+                }}
+                className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition"
+              >
+                <option value="All">{lang === "np" ? "सबै प्रदेश" : "All Provinces"}</option>
+                {PROVINCES.map((p) => (
+                  <option key={p} value={p}>{provinceName(p, lang)}</option>
+                ))}
+              </select>
+
+              <select
+                value={selDistrict}
+                onChange={(e) => { setSelDistrict(e.target.value); setSelConst("All"); }}
+                disabled={districtOptions.length === 0}
+                className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <option value="All">{lang === "np" ? "सबै जिल्ला" : "All Districts"}</option>
+                {districtOptions.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+
+              <select
+                value={selConst}
+                onChange={(e) => setSelConst(e.target.value)}
+                disabled={constOptions.length === 0}
+                className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <option value="All">{lang === "np" ? "सबै क्षेत्र" : "All Constituencies"}</option>
+                {constOptions.map((cn) => (
+                  <option key={cn} value={cn}>{cn}</option>
+                ))}
+              </select>
             </div>
           </div>
 
           <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-            {candidates.length === 0 ? (
+            {filteredCandidates.length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-slate-400">
-                {lang === "np" ? "डेटा लोड हुँदैछ…" : "Loading data…"}
+                {candidates.length === 0
+                  ? (lang === "np" ? "डेटा लोड हुँदैछ…" : "Loading data…")
+                  : (lang === "np" ? "कोई उम्मेदवार फेला परेन" : "No candidates match your filters")}
               </div>
             ) : (
               paginatedCandidates.map((c) => (
@@ -269,7 +348,7 @@ export default function PartyPage() {
           <div className="px-5">
             <Pagination
               page={candPage}
-              total={candidates.length}
+              total={filteredCandidates.length}
               onChange={(p) => { setCandPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             />
           </div>

@@ -23,7 +23,7 @@
  *   # and in another terminal: npx serve sim-output --cors -p 4000
  */
 
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -167,6 +167,30 @@ function districtEn(np, stateId) {
   return DISTRICT_EN[np] ?? `Province${stateId}-District`;
 }
 
+// ── Voter rolls lookup (registered voters per constituency) ───────────────────
+// Keyed by nepsebajar English name: "{District} Constituency {N}"
+// which maps 1:1 to the worker's constituency name "{District}-{N}".
+let _voterRolls = null;
+function loadVoterRolls() {
+  if (_voterRolls) return _voterRolls;
+  try {
+    const path = join(__dirname, "../frontend/public/voter_rolls.json");
+    const raw = JSON.parse(readFileSync(path, "utf8"));
+    // Build lookup keyed by "{District}-{N}" to match worker name field
+    const map = new Map();
+    for (const [k, v] of Object.entries(raw)) {
+      if (k.startsWith("_")) continue;
+      // "Kathmandu Constituency 1" → "Kathmandu-1"
+      const m = k.match(/^(.+?)\s+Constituency\s+(\d+)$/i);
+      if (m) map.set(`${m[1]}-${m[2]}`, v);
+    }
+    _voterRolls = map;
+  } catch {
+    _voterRolls = new Map();
+  }
+  return _voterRolls;
+}
+
 // ── Seed-based deterministic random (avoids Math.random() non-determinism) ────
 function seededRand(seed) {
   let s = seed;
@@ -236,7 +260,7 @@ function injectVotes(recs, scenario, constIdx) {
   return recs;
 }
 
-// ── Minimal transform (mirrors worker transform, no transliteration needed) ───
+// ── Minimal transform (mirrors worker transform) ──────────────────────────────
 function transform(records) {
   const now = new Date().toISOString();
 
@@ -251,6 +275,7 @@ function transform(records) {
   const constituencies = [];
   let constIdx = 0;
   const partyCandidateCount = new Map();
+  const voterRolls = loadVoterRolls();
 
   for (const [key, recs] of grouped) {
     const injected = injectVotes(recs, SCENARIO, constIdx++);
@@ -283,15 +308,20 @@ function transform(records) {
       };
     });
 
-    constituencies.push({
+    const constName = `${district}-${constNum}`;
+    const totalVoters = voterRolls.get(constName);
+
+    const entry = {
       province, district, districtNp,
       code: key,
-      name: `${district}-${constNum}`,
+      name: constName,
       nameNp: `${districtNp} क्षेत्र नं. ${constNum}`,
       status, lastUpdated: now,
       candidates,
       votesCast: candidates.reduce((s, c) => s + c.votes, 0),
-    });
+    };
+    if (totalVoters) entry.totalVoters = totalVoters;
+    constituencies.push(entry);
   }
 
   constituencies.sort((a, b) => {

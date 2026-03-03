@@ -156,9 +156,10 @@ export const useElectionStore = create<ElectionStore>((set) => ({
 
         return {
           ...existing,
-          status:      update.status,
-          votesCast:   update.votesCast,
-          lastUpdated: update.lastUpdated,
+          status:       update.status,
+          votesCast:    update.votesCast,
+          lastUpdated:  update.lastUpdated,
+          totalVoters:  update.totalVoters ?? existing.totalVoters,
           candidates:  existing.candidates.map((cand) => {
             const v = voteMap.get(cand.candidateId);
             if (!v) return cand;
