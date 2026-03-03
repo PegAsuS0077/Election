@@ -142,7 +142,7 @@ export default function ConstituencyPage() {
 
   const r = useMemo(() => {
     const slug = decodeURIComponent(code ?? "");
-    return results.find((x) => x.name.replace(/\s+/g, "-") === slug) ?? null;
+    return results.find((x) => x.code === slug || x.name.replace(/\s+/g, "-") === slug) ?? null;
   }, [results, code]);
 
   // Redirect if not found after data loads

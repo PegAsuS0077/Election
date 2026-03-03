@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useElectionStore } from "./store/electionStore";
 import { t } from "./i18n";
@@ -26,9 +26,15 @@ function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
-function useCountdown(targetDate: string) {
-  const ms = new Date(targetDate).getTime() - Date.now();
-  return Math.max(0, Math.ceil(ms / 86_400_000));
+function useCountdownTimer(targetDate: string) {
+  const [remaining, setRemaining] = useState(() => Math.max(0, new Date(targetDate).getTime() - Date.now()));
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRemaining(Math.max(0, new Date(targetDate).getTime() - Date.now()));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [targetDate]);
+  return remaining;
 }
 
 export default function App() {
@@ -47,7 +53,17 @@ export default function App() {
 
   const totalSeats = 275;
   const majority   = seatsToMajority(totalSeats);
-  const daysUntil  = useCountdown("2026-03-05");
+  const msRemaining = useCountdownTimer("2026-03-05T00:00:00+05:45");
+  const isElectionDay = msRemaining === 0;
+  const countdownStr = (() => {
+    const totalSec = Math.floor(msRemaining / 1000);
+    const d = Math.floor(totalSec / 86400);
+    const h = Math.floor((totalSec % 86400) / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (d > 0) return `${String(d).padStart(2,"0")}d ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  })();
 
   const tallyRows = Object.entries(seatTally)
     .map(([partyId, v]) => ({ partyId, total: v.fptp + v.pr }))
@@ -62,15 +78,31 @@ export default function App() {
   const statsContent = (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
       <div className="flex items-stretch divide-x divide-slate-100 dark:divide-slate-800">
-        {STATS.map((s) => (
-          <div key={s.labelKey} className="flex-1 flex flex-col items-center justify-center py-3.5 gap-0.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums" style={{ fontFamily: "'DM Mono', monospace" }}>{s.value()}</span>
-              <span className="text-[10px] text-[#2563eb] dark:text-[#3b82f6] font-medium hidden sm:block">{s.icon}</span>
+        {([
+          { value: "165", labelKey: "statsConstituencies", icon: "⬡", to: "/explore" },
+          { value: "7",   labelKey: "statsProvinces",      icon: "◈", to: "/map" },
+          { value: "66",  labelKey: "statsParties",        icon: "◉", to: "/parties" },
+          { value: "275", labelKey: "statsTotalSeats",     icon: "◆", to: null },
+        ] as const).map((s) => {
+          const inner = (
+            <>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums" style={{ fontFamily: "'DM Mono', monospace" }}>{s.value}</span>
+                <span className="text-[10px] text-[#2563eb] dark:text-[#3b82f6] font-medium hidden sm:block">{s.icon}</span>
+              </div>
+              <span className="text-[11px] text-slate-500 uppercase tracking-wide font-medium">{t(s.labelKey, lang)}</span>
+            </>
+          );
+          return s.to ? (
+            <Link key={s.labelKey} to={s.to} className="flex-1 flex flex-col items-center justify-center py-3.5 gap-0.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              {inner}
+            </Link>
+          ) : (
+            <div key={s.labelKey} className="flex-1 flex flex-col items-center justify-center py-3.5 gap-0.5">
+              {inner}
             </div>
-            <span className="text-[11px] text-slate-500 uppercase tracking-wide font-medium">{t(s.labelKey, lang)}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -114,54 +146,6 @@ export default function App() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-[#0c1525] border-b border-slate-200 dark:border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <div className="flex-1 max-w-sm">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-medium">
-                  {lang === "np" ? "घोषित निर्वाचन क्षेत्र" : "Declared Constituencies"}
-                </span>
-                <span className="text-[11px] text-slate-600 dark:text-slate-300 tabular-nums font-semibold" style={{ fontFamily: "'DM Mono', monospace" }}>
-                  {declaredSeats} / 165
-                </span>
-              </div>
-              <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <div className="h-full rounded-full bg-[#2563eb] transition-all duration-700" style={{ width: declaredPct + "%" }} />
-              </div>
-            </div>
-            <div className="flex items-stretch gap-3 shrink-0">
-              <div className="rounded-xl px-5 py-3.5 text-center min-w-[100px] bg-slate-50 dark:bg-[#060d1f]/80 border border-slate-200 dark:border-slate-700/60">
-                {daysUntil > 0 ? (
-                  <>
-                    <div className="text-3xl font-bold leading-none tabular-nums text-slate-800 dark:text-white" style={{ fontFamily: "'DM Mono', monospace", letterSpacing: "-0.04em" }}>
-                      {String(daysUntil).padStart(2, "0")}
-                    </div>
-                    <div className="mt-1 text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">
-                      {t("daysUntilElection", lang)}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-2xl">🗳️</div>
-                    <div className="mt-1 text-[9px] font-bold text-green-600 dark:text-green-400 uppercase tracking-[0.15em]">
-                      {lang === "np" ? "आज निर्वाचन!" : "Election Day!"}
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="rounded-xl px-5 py-3.5 text-center min-w-[100px] bg-slate-50 dark:bg-[#060d1f]/80 border border-slate-200 dark:border-slate-700/60">
-                <div className="text-3xl font-bold leading-none tabular-nums text-[#2563eb] dark:text-[#3b82f6]" style={{ fontFamily: "'DM Mono', monospace", letterSpacing: "-0.04em" }}>
-                  {majority}
-                </div>
-                <div className="mt-1 text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">
-                  {lang === "np" ? "बहुमत सिट" : "seats needed"}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards lang={lang} />}
@@ -171,6 +155,46 @@ export default function App() {
         </section>
 
         {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
+
+        {/* ── Declared Constituencies + Countdown ─────────────────────────── */}
+        <div className="flex flex-col items-center gap-5 py-2">
+          <Link to="/explore?status=DECLARED" className="w-full max-w-md group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-medium group-hover:text-[#2563eb] dark:group-hover:text-[#3b82f6] transition-colors">
+                {lang === "np" ? "घोषित निर्वाचन क्षेत्र" : "Declared Constituencies"}
+              </span>
+              <span className="text-[11px] text-[#2563eb] dark:text-[#3b82f6] tabular-nums font-semibold underline-offset-2 group-hover:underline" style={{ fontFamily: "'DM Mono', monospace" }}>
+                {declaredSeats} / 165 →
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <div className="h-full rounded-full bg-[#2563eb] transition-all duration-700" style={{ width: declaredPct + "%" }} />
+            </div>
+            <div className="mt-1 text-center text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
+              {declaredPct}% {lang === "np" ? "घोषित" : "declared"}
+            </div>
+          </Link>
+
+          <div className="rounded-xl px-6 py-4 text-center bg-slate-50 dark:bg-[#060d1f]/80 border border-slate-200 dark:border-slate-700/60">
+            {isElectionDay ? (
+              <>
+                <div className="text-2xl">🗳️</div>
+                <div className="mt-1 text-[9px] font-bold text-green-600 dark:text-green-400 uppercase tracking-[0.15em]">
+                  {lang === "np" ? "आज निर्वाचन!" : "Election Day!"}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold leading-none tabular-nums text-slate-800 dark:text-white" style={{ fontFamily: "'DM Mono', monospace", letterSpacing: "-0.04em" }}>
+                  {countdownStr}
+                </div>
+                <div className="mt-1 text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">
+                  {t("daysUntilElection", lang)}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
 
         <div aria-live="polite" aria-atomic="false" className="sr-only">
           {results.filter((r) => r.status === "COUNTING").length} {t("stillCounting", lang)}

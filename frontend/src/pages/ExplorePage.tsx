@@ -5,7 +5,7 @@ import type { ConstituencyResult, Province } from "../types";
 import { getParty } from "../lib/partyRegistry";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
 import PartySymbol from "../components/PartySymbol";
@@ -138,14 +138,19 @@ export default function ExplorePage() {
     return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/"); };
   }, []);
 
-  const results  = useElectionStore((s) => s.results);
-  const lang     = useElectionStore((s) => s.lang);
-  const navigate = useNavigate();
+  const results       = useElectionStore((s) => s.results);
+  const lang          = useElectionStore((s) => s.lang);
+  const navigate      = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const initialStatus = (searchParams.get("status") ?? "all") as StatusTab;
 
   const [search, setSearch]           = useState("");
   const [selProv, setSelProv]         = useState<"All" | Province>("All");
   const [selDistrict, setSelDistrict] = useState("All");
-  const [statusTab, setStatusTab]     = useState<StatusTab>("all");
+  const [statusTab, setStatusTab]     = useState<StatusTab>(
+    STATUS_TABS.includes(initialStatus) ? initialStatus : "all"
+  );
 
   // Dynamically build district list based on selected province — en → np
   const districts = useMemo(() => {

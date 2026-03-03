@@ -710,26 +710,6 @@ export default function CandidateDetailPage() {
               </SectionCard>
             )}
 
-            {/* 4. Data source */}
-            <div className="rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50 dark:bg-[#060d1f] px-5 py-3 flex items-start gap-3">
-              <span className="text-base shrink-0 mt-0.5">📋</span>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                {lang === "np"
-                  ? "यो पृष्ठमा प्रदर्शित सबै जानकारी "
-                  : "All information on this page is sourced from "}
-                <a
-                  href="https://result.election.gov.np"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  result.election.gov.np
-                </a>
-                {lang === "np"
-                  ? " बाट प्राप्त गरिएको हो। यो साइट निर्वाचन आयोगसँग आबद्ध छैन।"
-                  : " (Election Commission of Nepal). This site is not affiliated with the Election Commission."}
-              </p>
-            </div>
           </div>
         </div>
 
@@ -792,10 +772,20 @@ export default function CandidateDetailPage() {
                       >
                         <td className="px-3 py-2.5 font-bold text-slate-400 dark:text-slate-600">{i + 1}</td>
                         <td className="px-3 py-2.5">
-                          <span className={`font-medium leading-snug ${isThis ? "text-[#2563eb] dark:text-[#3b82f6]" : "text-slate-700 dark:text-slate-300"}`}>
-                            {lang === "np" ? c.nameNp : c.name}
-                            {c.isWinner && <span className="ml-1 text-emerald-500">🏆</span>}
-                          </span>
+                          {isThis ? (
+                            <span className="font-medium leading-snug text-[#2563eb] dark:text-[#3b82f6]">
+                              {lang === "np" ? c.nameNp : c.name}
+                              {c.isWinner && <span className="ml-1 text-emerald-500">🏆</span>}
+                            </span>
+                          ) : (
+                            <Link
+                              to={`/candidate/${c.candidateId}-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                              className="font-medium leading-snug text-slate-700 dark:text-slate-300 hover:text-[#2563eb] dark:hover:text-[#3b82f6] transition-colors"
+                            >
+                              {lang === "np" ? c.nameNp : c.name}
+                              {c.isWinner && <span className="ml-1 text-emerald-500">🏆</span>}
+                            </Link>
+                          )}
                         </td>
                         <td className="px-3 py-2.5 hidden sm:table-cell">
                           <div className="flex items-center gap-1.5">
@@ -816,6 +806,27 @@ export default function CandidateDetailPage() {
               </table>
             </div>
           </SectionCard>
+        </div>
+
+        {/* ── Data source notice ───────────────────────────────────────────── */}
+        <div className="mt-4 rounded-xl border border-slate-100 dark:border-slate-800/60 bg-slate-50 dark:bg-[#060d1f] px-5 py-3 flex items-start gap-3">
+          <span className="text-base shrink-0 mt-0.5">📋</span>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            {lang === "np"
+              ? "यो पृष्ठमा प्रदर्शित सबै जानकारी "
+              : "All information on this page is sourced from "}
+            <a
+              href="https://result.election.gov.np"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              result.election.gov.np
+            </a>
+            {lang === "np"
+              ? " बाट प्राप्त गरिएको हो। यो साइट निर्वाचन आयोगसँग आबद्ध छैन।"
+              : " (Election Commission of Nepal). This site is not affiliated with the Election Commission."}
+          </p>
         </div>
 
         {/* ── Bottom nav ───────────────────────────────────────────────────── */}
