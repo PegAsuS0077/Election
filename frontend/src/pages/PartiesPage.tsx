@@ -170,39 +170,69 @@ export default function PartiesPage() {
       subtitleNp="सबै प्रमुख दलहरूको सिट गणना, मत बांडफांट र उम्मेद्वार विवरण"
       badge={heroBadge}
     >
-      {/* ── Search bar ── */}
+      {/* ── Search bar + inline prev/next ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2">
-        <div className="relative max-w-sm">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none"
-            width="15" height="15" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={lang === "np" ? "दल खोज्नुस्…" : "Search parties…"}
-            className="w-full h-9 pl-9 pr-4 rounded-xl border border-slate-200 dark:border-slate-700/80
-                       bg-white dark:bg-slate-800/60 text-sm text-slate-900 dark:text-slate-100
-                       placeholder:text-slate-400 dark:placeholder:text-slate-500
-                       focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb]
-                       transition-all"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-              aria-label="Clear search"
+        <div className="flex items-center gap-3">
+          {/* Search input */}
+          <div className="relative flex-1 max-w-sm">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none"
+              width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={lang === "np" ? "दल खोज्नुस्…" : "Search parties…"}
+              className="w-full h-9 pl-9 pr-4 rounded-xl border border-slate-200 dark:border-slate-700/80
+                         bg-white dark:bg-slate-800/60 text-sm text-slate-900 dark:text-slate-100
+                         placeholder:text-slate-400 dark:placeholder:text-slate-500
+                         focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb]
+                         transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                aria-label="Clear search"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Inline prev / page indicator / next */}
+          {Math.ceil(filteredPartyData.length / PARTY_PAGE_SIZE) > 1 && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => { setPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                disabled={page === 1}
+                className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 text-xs font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-default hover:border-[#2563eb]/50 hover:text-[#2563eb] transition"
+                aria-label="Previous page"
+              >
+                ← {lang === "np" ? "अघिल्लो" : "Prev"}
+              </button>
+              <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums px-1 whitespace-nowrap">
+                {page} / {Math.ceil(filteredPartyData.length / PARTY_PAGE_SIZE)}
+              </span>
+              <button
+                type="button"
+                onClick={() => { setPage((p) => Math.min(Math.ceil(filteredPartyData.length / PARTY_PAGE_SIZE), p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                disabled={page === Math.ceil(filteredPartyData.length / PARTY_PAGE_SIZE)}
+                className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 text-xs font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-default hover:border-[#2563eb]/50 hover:text-[#2563eb] transition"
+                aria-label="Next page"
+              >
+                {lang === "np" ? "अर्को" : "Next"} →
+              </button>
+            </div>
           )}
         </div>
         {searchQuery && (

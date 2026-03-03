@@ -233,33 +233,6 @@ export default function ExplorePage() {
           </select>
         </div>
 
-        {/* ── Province pills ── */}
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => { setSelProv("All"); setSelDistrict("All"); }}
-            className={"h-7 px-3 rounded-full text-xs font-medium transition border " +
-              (selProv === "All"
-                ? "bg-[#2563eb] border-[#2563eb] text-white"
-                : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-[#2563eb]/50"
-              )}
-          >
-            {lang === "np" ? "सबै" : "All"}
-          </button>
-          {provinces.map((p) => (
-            <button
-              key={p}
-              onClick={() => { setSelProv(p); setSelDistrict("All"); }}
-              className={"h-7 px-3 rounded-full text-xs font-medium transition border " +
-                (selProv === p
-                  ? "bg-[#2563eb] border-[#2563eb] text-white"
-                  : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-[#2563eb]/50"
-                )}
-            >
-              {provinceName(p, lang)}
-            </button>
-          ))}
-        </div>
-
         {/* ── Status tabs ── */}
         <div className="flex gap-1 flex-wrap">
           {STATUS_TABS.map((tab) => {
@@ -326,7 +299,7 @@ export default function ExplorePage() {
                       key={r.code}
                       r={r}
                       lang={lang}
-                      onViewDetails={() => navigate(`/constituency/${encodeURIComponent(r.name.replace(/\s+/g, "-"))}`)}
+                      onViewDetails={() => { window.scrollTo(0, 0); navigate(`/constituency/${encodeURIComponent(r.name.replace(/\s+/g, "-"))}`); }}
                     />
                   ))}
                 </div>
