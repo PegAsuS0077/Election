@@ -18,7 +18,7 @@ import { getNeuLookup } from "./neuLookup";
 import { getVoterRolls } from "./voterRolls";
 import type { ConstituencyResult, UpstreamRecord } from "../types";
 
-const CACHE_KEY = "archive_constituencies_v2";
+const CACHE_KEY = "archive_constituencies_v3";
 const JSON_FILE = "/JSONFiles/ElectionResultCentral2082.txt";
 
 // In dev: blank → uses Vite proxy at /upstream.
