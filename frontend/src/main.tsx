@@ -1,5 +1,6 @@
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { registerSW } from "virtual:pwa-register";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import "./index.css";
 import App from "./App.tsx";
@@ -20,6 +21,9 @@ import ContactPage from "./pages/ContactPage.tsx";
 import CandidateDetailPage from "./pages/CandidateDetailPage.tsx";
 import PartyPage from "./pages/PartyPage.tsx";
 import ConstituencyPage from "./pages/ConstituencyPage.tsx";
+
+// Register service worker (autoUpdate — silently refreshes on new version)
+registerSW({ immediate: true });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

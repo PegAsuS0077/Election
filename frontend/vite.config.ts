@@ -1,10 +1,71 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: false, // we use our own /public/manifest.webmanifest
+      injectRegister: null, // we register manually in main.tsx
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+        navigateFallback: '/offline.html',
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/upstream\//,
+        ],
+        runtimeCaching: [
+          {
+            // Cache the Election Commission upstream JSON (NetworkFirst — always try live)
+            urlPattern: /^https:\/\/result\.election\.gov\.np\/JSONFiles\//,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'election-json',
+              networkTimeoutSeconds: 10,
+              expiration: {
+                maxAgeSeconds: 5 * 60, // 5 minutes
+                maxEntries: 5,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Cache candidate images (CacheFirst — images don't change)
+            urlPattern: /^https:\/\/result\.election\.gov\.np\/Images\/Candidate\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'candidate-images',
+              expiration: {
+                maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+                maxEntries: 500,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // CDN R2 data (StaleWhileRevalidate — fast + fresh)
+            urlPattern: /^https:\/\/.*\.r2\.cloudflarestorage\.com\//,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'cdn-r2',
+              expiration: {
+                maxAgeSeconds: 2 * 60, // 2 minutes
+                maxEntries: 10,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+      devOptions: {
+        enabled: false,
+      },
+    }),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

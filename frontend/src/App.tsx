@@ -10,6 +10,7 @@ import SeatShareBars from "./SeatShareBars";
 import HotSeats from "./HotSeats";
 import { SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
 import Layout from "./components/Layout";
+import InstallPrompt from "./components/InstallPrompt";
 
 
 function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
@@ -274,6 +275,8 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      <InstallPrompt />
     </Layout>
   );
 }
