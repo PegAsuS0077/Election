@@ -1,6 +1,6 @@
 # Frontend — Nepal Election Live Vote Counter
 
-React + TypeScript + Vite dashboard for the Nepal 2026 election results system.
+React + TypeScript + Vite dashboard for the Nepal 2026 election results system. Deployed on Vercel; reads pre-parsed JSON from Cloudflare R2.
 
 ## Commands
 
@@ -16,46 +16,100 @@ npm run test:coverage  # Coverage report
 npx tsc --noEmit       # Type-check without emitting
 ```
 
+## Modes
+
+### Archive mode (default — no backend needed)
+
+```bash
+npm run dev
+# Vite proxy fetches upstream JSON → all votes zeroed
+# No VITE_RESULTS_MODE env var needed
+```
+
+### Live mode (election day)
+
+```env
+# frontend/.env.local
+VITE_RESULTS_MODE=live
+VITE_CDN_URL=https://pub-<hash>.r2.dev
+```
+
 ## Structure
 
 ```
 src/
-├── App.tsx                        # Root component, routing, WebSocket wiring (pending Task 8)
-├── main.tsx                       # React Router: / dashboard, /admin panel
-├── mockData.ts                    # PartyKey, ConstituencyResult, Snapshot types + mock data
-├── ConstituencyTable.tsx          # Virtualized results table, DetailsModal, useCountUp hook
-├── NepalMap.tsx                   # SVG province map with real boundaries
-├── SummaryCards.tsx               # Seat count cards (wired to snapshot prop)
-├── SeatShareBars.tsx              # Proportional bar chart (wired to snapshot prop)
-├── ProvinceSummary.tsx
+├── App.tsx                          # Root component, routing
+├── main.tsx                         # React Router: routes for all pages
+├── types.ts                         # Canonical TypeScript types (shared)
+├── api.ts                           # CDN fetch helpers (live mode)
+├── i18n.ts                          # NP/EN label translations
+├── mockData.ts                      # Legacy mock — no production imports
+│
+├── ConstituencyTable.tsx            # Virtualized results table, DetailsModal, useCountUp
+├── NepalMap.tsx                     # SVG province map with real boundaries
+├── SummaryCards.tsx                 # Party seat count cards
+├── SeatShareBars.tsx                # Proportional bar chart
+├── HotSeats.tsx                     # Hot seats widget
 ├── ProgressBar.tsx
+├── ProvinceSummary.tsx
 ├── Skeleton.tsx
 ├── Tooltip.tsx
-├── api/
-│   └── results.ts                 # fetchSnapshot(), fetchConstituencies() — falls back to mock
+├── Footer.tsx
+│
+├── api/                             # (legacy path — api.ts now at src root)
+├── lib/
+│   ├── archiveData.ts               # Fetch upstream JSON, zero votes, sessionStorage cache
+│   ├── partyRegistry.ts             # Dynamic party registry built from upstream data
+│   ├── parseUpstreamData.ts         # Upstream JSON → frontend types
+│   ├── db.ts                        # In-memory data store
+│   ├── constants.ts
+│   ├── districtNames.ts
+│   ├── neuLookup.ts                 # NEU candidate lookup
+│   ├── transliterate.ts
+│   └── utils.ts
+│
 ├── store/
-│   └── electionStore.ts           # Zustand: results, selectedProvince, dark, isLoading, viewMode, sortBy
+│   └── electionStore.ts             # Zustand: results, parties, selectedProvince, dark, lang…
+│
 ├── hooks/
-│   └── useElectionSimulation.ts   # Mock simulation + API polling + WebSocket connection
+│   └── useElectionSimulation.ts     # Live: 30 s CDN polling; Archive: proxy fetch + zero
+│
+├── components/
+│   ├── Layout.tsx                   # Shell layout (header, nav, footer)
+│   └── ui/                          # Shared UI primitives
+│
 ├── pages/
-│   └── AdminPanel.tsx
+│   ├── AboutPage.tsx
+│   ├── AdminPanel.tsx
+│   ├── CandidateDetailPage.tsx
+│   ├── CandidatesPage.tsx
+│   ├── ContactPage.tsx
+│   ├── ExplorePage.tsx
+│   ├── MapPage.tsx
+│   ├── PartiesPage.tsx
+│   └── PrivacyPage.tsx
+│
 └── tests/
 ```
 
-## Environment
+## Environment Variables
 
-Set `VITE_API_URL` in `.env` to point at the backend:
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `VITE_RESULTS_MODE` | `live` | Enables live CDN polling; omit for archive mode |
+| `VITE_CDN_URL` | `https://pub-<hash>.r2.dev` | R2 public CDN (no trailing slash) |
 
-```
-VITE_API_URL=http://localhost:8000
-```
+## Key Data Architecture
 
-Omit the variable entirely to use mock data (default dev behaviour before backend is wired up).
+- **partyId**: `String(SYMBOLCODE)` from upstream, or `"IND"` for independents — never a closed enum
+- **partyName**: raw `PoliticalPartyName` from upstream — never invented or hardcoded
+- **constituencyId**: `${STATE_ID}-${DistrictName}-${SCConstID}` composite key
+- **Party registry**: built dynamically from upstream data in `lib/partyRegistry.ts`
 
 ## Key Dependencies
 
 - **React 18** + **TypeScript** (strict mode)
-- **Vite** — dev server + bundler
+- **Vite** — dev server + bundler + Vite proxy (archive mode fetches upstream JSON server-side)
 - **Zustand** — global state
 - **React Router v6** — client-side routing
 - **Tailwind CSS v4** — `darkMode: "class"`
@@ -66,4 +120,5 @@ Omit the variable entirely to use mock data (default dev behaviour before backen
 
 - TypeScript config enforces `noUnusedLocals`, `noUnusedParameters`, `erasableSyntaxOnly`
 - ESLint uses flat config (ESLint 9) — see `eslint.config.js`
-- Vite proxy for `/api` and `/ws` not yet configured (Task 5)
+- No WebSocket — frontend polls CDN; live updates arrive every 30 s via `setInterval`
+- `mockData.ts` still exists but no production code imports from it

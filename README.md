@@ -2,7 +2,7 @@
 
 > Real-time results dashboard for Nepal's **2082 House of Representatives general election** — March 5, 2026
 
-A full-stack web application that tracks live vote counts across all **165 FPTP constituencies** and **7 provinces**, fetching official results from the Election Commission of Nepal every 30 seconds and broadcasting updates instantly to every connected browser via WebSocket.
+A full-stack web application that tracks live vote counts across all **165 FPTP constituencies** and **7 provinces**, fetching official results from the Election Commission of Nepal and publishing pre-parsed JSON to a Cloudflare R2 CDN every 1–2 minutes, served instantly to every browser visit without a live backend.
 
 ---
 
@@ -10,91 +10,90 @@ A full-stack web application that tracks live vote counts across all **165 FPTP 
 
 When results start flowing on election night, this system:
 
-1. **Fetches** the official JSON feed from `result.election.gov.np` every 30 seconds
+1. **Fetches** the official JSON feed from `result.election.gov.np` (via Cloudflare Worker or GitHub Actions)
 2. **Parses** 3,406 candidate records, groups them into 165 constituencies, and identifies winners
-3. **Stores** each snapshot in SQLite with full candidate-level detail
-4. **Broadcasts** the update to all connected browsers over WebSocket — no page refresh needed
-5. **Displays** live seat tallies, a province map, and a scrollable constituency table
+3. **Uploads** `snapshot.json`, `constituencies.json`, and `parties.json` to Cloudflare R2
+4. **Frontend polls** the R2 CDN every 30 seconds — no backend server involved for reads
+5. **Displays** live seat tallies, a province map, a scrollable constituency table, party pages, and candidate search
 
 ---
 
-## Screenshots / Demo
-
-> The dashboard runs at `http://localhost:5173` when both servers are started.
-> The frontend operates fully with mock data even without the backend running.
-
----
-
-## Features
-
-| Feature | Detail |
-|---------|--------|
-| Live seat leaderboard | FPTP seat tally per party, updates every 30 s |
-| 165-constituency table | Virtualized scroll, search, province + district filter |
-| Interactive province map | Real SVG geographic boundaries, click-to-filter, party colour coding |
-| Seat share bars | Animated proportional bar chart per party |
-| Candidate detail modal | Click any constituency row for full candidate breakdown |
-| Dark mode | Toggle with persistence |
-| WebSocket live push | Backend pushes on each scrape — zero browser polling |
-| Admin panel | Protected route at `/admin` |
-| Mobile responsive | Tailwind CSS v4, fully optimized |
-| Mock data fallback | Works offline without a backend for development |
-
----
-
-## Tech Stack
-
-**Frontend**
-
-- React 18 + TypeScript (strict) + Vite
-- Zustand — global state management
-- React Router v6 — client-side routing
-- Tailwind CSS v4 — dark mode via `class` strategy
-- react-window — virtualized list for 165+ rows
-- Vitest — unit + component tests
-
-**Backend**
-
-- Python 3.13 + FastAPI 0.115 + uvicorn
-- httpx — async HTTP client (no browser/Playwright needed)
-- SQLite — stdlib `sqlite3`, 3 tables: `snapshots`, `constituencies`, `candidates`
-- pytest 8 + pytest-asyncio 0.24 — 33 tests, all passing
-
----
-
-## Architecture
+## Architecture — Spike-Safe (CDN-First)
 
 ```
-Browser ──WebSocket──► FastAPI (/ws)
-Browser ──HTTP GET──►  FastAPI (/api/snapshot, /api/constituencies)
-                            │
-                       SQLite DB
-                            │
-                   Background loop (every 30 s)
-                            │
-              httpx GET ──► result.election.gov.np
-                            JSON (~3 MB, 3,406 records)
+result.election.gov.np  (upstream JSON, ~3 MB, updates every ~30 s)
+        │
+        ▼
+  Producer (one of):
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  Option A: Cloudflare Worker (worker/)                          │
+  │    · TypeScript Worker, cron every */2 * * * *                  │
+  │    · Runs at Cloudflare edge — no server to manage              │
+  │                                                                 │
+  │  Option B: GitHub Actions (backend/publish_to_r2.py)           │
+  │    · Python script, cron every minute                           │
+  │    · May drift 5–15 min under load                              │
+  │                                                                 │
+  │  Option C: Render Background Worker (backend/worker.py)         │
+  │    · Python, true 30-second interval (always-on process)        │
+  └─────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+Cloudflare R2 (object storage + public CDN URL)
+  ├── snapshot.json          — seat tally + declared seats
+  ├── constituencies.json    — all 165 constituencies with candidates
+  └── parties.json           — party aggregates
+        │
+        ▼
+Vercel (frontend, polls CDN every 30 s)
+  · No backend dependency for reads
+  · Horizontally scalable — any traffic spike served from CDN
 ```
 
 ```
 New_Project/
-├── frontend/                       # React + TypeScript + Vite
+├── frontend/                       # React + TypeScript + Vite (Vercel)
 │   └── src/
-│       ├── App.tsx                 # Root, routing, WebSocket wiring
+│       ├── App.tsx                 # Root component, routing
+│       ├── types.ts                # Canonical TypeScript types
+│       ├── api.ts                  # CDN fetch helpers
 │       ├── ConstituencyTable.tsx   # Virtualized results table + modal
 │       ├── NepalMap.tsx            # SVG province map
 │       ├── SummaryCards.tsx        # Party seat count cards
 │       ├── SeatShareBars.tsx       # Proportional bar chart
-│       ├── api/results.ts          # fetchSnapshot(), fetchConstituencies()
-│       ├── store/electionStore.ts  # Zustand store
-│       └── hooks/useElectionSimulation.ts
+│       ├── HotSeats.tsx            # Hot seats widget
+│       ├── Footer.tsx
+│       ├── i18n.ts                 # NP/EN translations
+│       ├── lib/
+│       │   ├── archiveData.ts      # Upstream fetch + zero votes + sessionStorage cache
+│       │   ├── partyRegistry.ts    # Dynamic party registry from upstream data
+│       │   ├── parseUpstreamData.ts
+│       │   ├── db.ts               # In-memory data store
+│       │   └── ...
+│       ├── store/electionStore.ts  # Zustand global state
+│       ├── hooks/useElectionSimulation.ts  # CDN polling (live) or archive mode
+│       └── pages/
+│           ├── AboutPage.tsx
+│           ├── AdminPanel.tsx
+│           ├── CandidateDetailPage.tsx
+│           ├── CandidatesPage.tsx
+│           ├── ContactPage.tsx
+│           ├── ExplorePage.tsx
+│           ├── MapPage.tsx
+│           ├── PartiesPage.tsx
+│           └── PrivacyPage.tsx
 │
-└── backend/                        # Python FastAPI + SQLite
-    ├── main.py                     # API server + WebSocket + scraper loop
-    ├── scraper.py                  # Fetch + parse upstream JSON
-    ├── database.py                 # SQLite read/write layer
-    ├── validate_election_day.py    # Pre-election readiness check script
-    └── tests/                      # 33 tests (scraper, database, API)
+├── backend/                        # Python scraper + publisher
+│   ├── scraper.py                  # Fetch + parse upstream JSON (httpx)
+│   ├── worker.py                   # Render Background Worker entry point
+│   ├── publish_to_r2.py            # GitHub Actions one-shot publisher
+│   ├── r2.py                       # boto3 S3-compatible R2 upload helper
+│   ├── validate_election_day.py    # Pre-election readiness check
+│   └── tests/                      # pytest: test_scraper.py, test_worker.py
+│
+└── worker/                         # Cloudflare Worker (TypeScript)
+    ├── src/index.ts                # Cron handler + HTTP test handler
+    └── wrangler.toml               # Cron schedule + R2 binding
 ```
 
 ---
@@ -114,68 +113,111 @@ git clone <repo-url>
 cd New_Project
 ```
 
-### 2. Frontend
+### 2. Frontend (archive mode — no backend needed)
 
 ```bash
 cd frontend
 npm install
 npm run dev
 # Opens at http://localhost:5173
-# Runs with mock data by default — no backend needed
+# Fetches upstream JSON via Vite proxy, zeroes all votes (archive mode)
 ```
 
-### 3. Backend
+### 3. Frontend (live mode — reads from R2)
 
-```bash
-cd backend
-
-# Windows (Git Bash)
-source venv/Scripts/activate
-
-# Linux / macOS
-source venv/bin/activate
-
-pip install -r requirements.txt
-python main.py
-# API available at http://localhost:8000
-```
-
-### 4. Connect frontend to backend
-
-Create `frontend/.env`:
+Create `frontend/.env.local`:
 
 ```
-VITE_API_URL=http://localhost:8000
+VITE_RESULTS_MODE=live
+VITE_CDN_URL=https://pub-<hash>.r2.dev
 ```
 
-Then restart the Vite dev server. The frontend will switch from mock data to live API.
+Then `npm run dev`. The frontend polls the R2 CDN every 30 seconds.
 
 ---
 
-## API Reference
+## Deployment
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/snapshot` | Latest seat tally for all parties |
-| `GET` | `/api/constituencies` | All 165 constituency results with candidates |
-| `WS` | `/ws` | Live push on every scrape cycle (~30 s) |
+See [docs/deploy.md](docs/deploy.md) for the full guide covering:
+- Cloudflare R2 bucket setup
+- Render Background Worker deployment
+- Vercel frontend deployment
+- Environment variables
 
-**Example snapshot response:**
+### Cloudflare Worker (recommended producer)
 
-```json
-{
-  "taken_at": "2026-03-05T14:00:00Z",
-  "total_seats": 275,
-  "declared_seats": 42,
-  "seat_tally": {
-    "NC":      { "fptp": 18, "pr": 0 },
-    "CPN-UML": { "fptp": 15, "pr": 0 },
-    "NCP":     { "fptp":  6, "pr": 0 },
-    "RSP":     { "fptp":  2, "pr": 0 },
-    "OTH":     { "fptp":  1, "pr": 0 }
-  }
-}
-```
+See [docs/CLOUDFLARE_WORKER_R2.md](docs/CLOUDFLARE_WORKER_R2.md) — fires every 1–2 minutes with ~1-second jitter.
+
+### GitHub Actions (alternative producer)
+
+See [docs/GITHUB_ACTIONS_R2.md](docs/GITHUB_ACTIONS_R2.md) — easier setup, may drift 5–15 minutes under load.
+
+---
+
+## Features
+
+| Feature | Detail |
+|---------|--------|
+| Live seat leaderboard | FPTP seat tally per party, updates every 30 s |
+| 165-constituency table | Virtualized scroll, search, province + district filter |
+| Interactive province map | Real SVG geographic boundaries, click-to-filter, party colour coding |
+| Seat share bars | Animated proportional bar chart per party |
+| Candidate detail modal | Click any constituency row for full candidate breakdown |
+| Parties page | Party cards with seat counts and symbol names |
+| Candidates search | Full-text search across all 3,406 candidates |
+| NP/EN toggle | Switch UI labels between Nepali and English |
+| Dark mode | Toggle with persistence |
+| Admin panel | Protected route at `/admin` |
+| Mobile responsive | Tailwind CSS v4, fully optimized |
+| Archive mode | Pre-election mode: shows candidate data with votes zeroed |
+
+---
+
+## Tech Stack
+
+**Frontend**
+
+- React 18 + TypeScript (strict) + Vite
+- Zustand — global state management
+- React Router v6 — client-side routing
+- Tailwind CSS v4 — dark mode via `class` strategy
+- react-window — virtualized list for 165+ rows
+- Vitest — unit + component tests
+- Deployed on **Vercel**
+
+**Backend / Worker**
+
+- Python 3.13 + httpx — async JSON scraper (no Playwright, no HTML parsing)
+- boto3 — S3-compatible Cloudflare R2 uploads
+- pytest 8 — 31 tests passing (scraper + worker)
+- Deployed as **Render Background Worker** OR **Cloudflare Worker** (TypeScript) OR **GitHub Actions**
+
+**Infrastructure**
+
+- Cloudflare R2 — object storage + public CDN
+- No database — stateless producer, CDN-served JSON
+
+---
+
+## Environment Variables
+
+### Frontend (Vercel)
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `VITE_RESULTS_MODE` | `live` | Enables live CDN polling (omit for archive mode) |
+| `VITE_CDN_URL` | `https://pub-<hash>.r2.dev` | R2 public CDN URL (no trailing slash) |
+
+### Backend / Worker (Render or GitHub Actions)
+
+| Variable | Description |
+|----------|-------------|
+| `R2_ACCOUNT_ID` | Cloudflare account ID |
+| `R2_ACCESS_KEY_ID` | R2 API token access key |
+| `R2_SECRET_ACCESS_KEY` | R2 API token secret |
+| `R2_BUCKET` | R2 bucket name (e.g. `nepal-election-results`) |
+| `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| `SCRAPE_INTERVAL_SECONDS` | Scrape interval (default: `30`) |
 
 ---
 
@@ -189,7 +231,7 @@ Then restart the Vite dev server. The frontend will switch from mock data to liv
 | Constituencies | 165 (grouped by STATE_ID + DistrictName + SCConstID) |
 | Winner field | `E_STATUS == "W"` |
 | Auth required | None |
-| Poll interval | 30 seconds |
+| Poll interval | 30 seconds (producer-side) |
 
 ---
 
@@ -205,6 +247,8 @@ Then restart the Vite dev server. The frontend will switch from mock data to liv
 | `JSP` | Janata Samajwadi Party | जनता समाजवादी पार्टी, नेपाल |
 | `IND` | Independent | स्वतन्त्र |
 | `OTH` | All other parties | (~59 minor parties) |
+
+> Party IDs are dynamic (`String(SYMBOLCODE)` or `"IND"` for independents). The system never assumes a closed party enum.
 
 ---
 
@@ -222,20 +266,8 @@ npm run test
 ```bash
 cd backend
 source venv/Scripts/activate   # Windows
-pytest -v                      # 33 tests
+pytest tests/test_scraper.py tests/test_worker.py -v   # 31 tests
 ```
-
-### Election-day readiness check
-
-Run this before March 5 to validate the full pipeline against live data:
-
-```bash
-cd backend
-source venv/Scripts/activate
-PYTHONIOENCODING=utf-8 python validate_election_day.py
-```
-
-Expected output: `VERDICT: READY` with 0 failures.
 
 ### Lint + type-check
 
@@ -245,24 +277,39 @@ npm run lint
 npx tsc --noEmit
 ```
 
+### Publish to R2 locally (one-shot)
+
+```bash
+cd backend
+source venv/Scripts/activate
+export R2_ACCOUNT_ID=... R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... R2_BUCKET=... R2_ENDPOINT=...
+python publish_to_r2.py
+```
+
 ---
 
 ## Build Status
 
 | Component | Status |
 |-----------|--------|
-| Frontend (20 features) | Complete |
-| Backend API + scraper | Complete |
-| Backend tests | 33 / 33 passing |
-| Frontend ↔ Backend wiring | In progress |
-| Election-day validation | READY |
+| Frontend | Complete — all features implemented |
+| Backend scraper | Complete — httpx + JSON, 0 Playwright |
+| Backend worker | Complete — Render / GitHub Actions / Cloudflare Worker |
+| Backend tests | 31 / 31 passing |
+| Spike-safe CDN architecture | Complete |
+| Cloudflare Worker producer | Complete |
 
-**Remaining tasks before election day:**
+---
 
-- [ ] Vite proxy config (`/api` → `:8000`, `/ws` → `ws://:8000`)
-- [ ] Shared TypeScript types for API responses
-- [ ] Wire live API into `App.tsx` WebSocket handler
-- [ ] End-to-end smoke test with both servers running
+## Election-Day Checklist (March 5, 2026)
+
+- [ ] Confirm R2 bucket is public and `constituencies.json` is accessible via CDN URL
+- [ ] Confirm producer is running (Cloudflare Worker cron logs or Render worker logs)
+- [ ] Confirm `TotalVoteReceived > 0` in live data (votes start after polls close ~18:00 NPT)
+- [ ] Check `E_STATUS` values — if anything other than `"W"` appears for winners, update `_WINNER_STATUS` in `backend/scraper.py` and `isWinner()` in `worker/src/index.ts`
+- [ ] Verify NCP/Maoist party name string is unchanged (two spellings handled in `PARTY_MAP`)
+- [ ] Check for PR results file: `GET /JSONFiles/ElectionResultPR2082.txt` (may go live on election day)
+- [ ] Run `pytest tests/test_scraper.py tests/test_worker.py -v` after any scraper changes
 
 ---
 

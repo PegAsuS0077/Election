@@ -6,22 +6,27 @@
 
 ---
 
-## Project State Snapshot (as of 2026-02-23)
+## Project State Snapshot (as of 2026-03-03)
+
+> **Architecture has changed.** The original FastAPI + SQLite + WebSocket backend has been replaced by a spike-safe CDN-first architecture. FastAPI/SQLite/WebSocket are removed; the producer is now a Cloudflare Worker, Render Background Worker, or GitHub Actions script that writes to Cloudflare R2.
 
 | Layer | Status |
 |-------|--------|
-| Frontend (20 features) | ✅ Complete |
-| Backend Task 1 (scaffold) | ✅ Complete |
-| Backend Task 2 (database.py) | ✅ Complete |
-| Backend Task 3 (scraper.py) | ⚠️ Wrong approach — targets HTML/Playwright; must switch to httpx + JSON |
-| Backend Task 4 (main.py + WS) | ⚠️ Endpoints incomplete vs discovery spec |
-| Backend Task 5 (Vite proxy) | ❌ Not done |
-| Backend Task 6 (frontend API module) | ❌ Not done |
-| Backend Task 7–8 (wire frontend) | ❌ Not done |
-| Mock data | ⚠️ Shape mismatch with real upstream API; no Devanagari; 65 of 165 constituencies |
-| i18n (NP/EN toggle) | ❌ Not started |
-| New pages (/constituency/:id, /parties, /search) | ❌ Not started |
-| Candidate photos | ❌ Not integrated |
+| Frontend — all features | ✅ Complete |
+| Scraper (httpx + JSON) | ✅ Complete — `backend/scraper.py` |
+| Backend — spike-safe producer | ✅ Complete — `backend/worker.py`, `backend/publish_to_r2.py`, `worker/` |
+| Cloudflare Worker (TypeScript) | ✅ Complete — `worker/src/index.ts` |
+| R2 upload helper | ✅ Complete — `backend/r2.py` |
+| Frontend LIVE mode (CDN polling) | ✅ Complete — `VITE_RESULTS_MODE=live` |
+| Frontend ARCHIVE mode (proxy + zero) | ✅ Complete — `lib/archiveData.ts` |
+| Types (`types.ts`) | ✅ Complete — canonical TypeScript types |
+| Party registry (dynamic) | ✅ Complete — `lib/partyRegistry.ts` |
+| i18n (NP/EN toggle) | ✅ Complete — `i18n.ts` |
+| New pages (parties, candidates, search, etc.) | ✅ Complete — see `pages/` |
+| FastAPI server (`main.py`) | ❌ Removed — legacy, safe to delete |
+| SQLite layer (`database.py`) | ❌ Removed — legacy, safe to delete |
+| WebSocket | ❌ Removed — replaced by CDN polling |
+| Vite proxy for `/api` + `/ws` | ❌ Not needed — architecture changed |
 
 ---
 
@@ -196,21 +201,21 @@ lastScrapedAt: string | null
 
 ---
 
-## Implementation Order
+## Implementation Order (Updated 2026-03-03)
 
-Execute these in dependency order:
+All gaps from this plan have been resolved. The architecture pivoted from FastAPI+SQLite+WebSocket to a spike-safe CDN-first design:
 
-| Priority | Gap | Effort | Impact |
-|----------|-----|--------|--------|
-| 🔴 1 | Gap 1+2: Fix scraper to use httpx+JSON | Medium | Unblocks all backend data flow |
-| 🔴 2 | Gap 5: Rebuild realistic mock data | Medium | Unblocks all frontend realism |
-| 🟡 3 | Gap 3: Add missing API endpoints | Small | Enables constituency+party+candidate detail |
-| 🟡 4 | Gap 4: Fix PARTY_MAP NCP variants | Tiny | Correctness on election day |
-| 🟡 5 | Gap 6: i18n NP/EN toggle | Medium | High UX value |
-| 🟡 6 | Gap 7: Candidate photos | Small | Visual polish |
-| 🟢 7 | Gap 8: New pages (3 routes) | Large | Feature completeness |
-| 🟢 8 | Gap 9: PR stub | Small | Election-day readiness |
-| 🟢 9 | Gap 10: Zustand store fields | Tiny | Wiring prerequisite |
+| Priority | Gap | Status |
+|----------|-----|--------|
+| 🔴 1 | Gap 1+2: Fix scraper to use httpx+JSON | ✅ Done |
+| 🔴 2 | Gap 5: Rebuild realistic mock data | ✅ Done (dynamic from upstream) |
+| 🟡 3 | Gap 3: Add missing API endpoints | N/A — no API server; CDN JSON instead |
+| 🟡 4 | Gap 4: Fix PARTY_MAP NCP variants | ✅ Done — both spellings handled |
+| 🟡 5 | Gap 6: i18n NP/EN toggle | ✅ Done — `i18n.ts` |
+| 🟡 6 | Gap 7: Candidate photos | ✅ Done |
+| 🟢 7 | Gap 8: New pages (parties, candidates, search) | ✅ Done — see `pages/` |
+| 🟢 8 | Gap 9: PR stub | Pending — probe on election day |
+| 🟢 9 | Gap 10: Zustand store fields | ✅ Done |
 
 ---
 
