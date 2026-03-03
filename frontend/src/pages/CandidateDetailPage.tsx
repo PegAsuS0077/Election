@@ -717,7 +717,7 @@ export default function CandidateDetailPage() {
         <div className="mt-6">
           <SectionCard title="Constituency Race" titleNp="निर्वाचन क्षेत्रको प्रतिस्पर्धा" lang={lang}>
             {/* Summary stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               <StatBox
                 value={String(constituency.candidates.length)}
                 label={lang === "np" ? "कुल उम्मेदवार" : "Total Candidates"}
@@ -727,9 +727,13 @@ export default function CandidateDetailPage() {
                 label={lang === "np" ? "कुल मत" : "Total Votes Cast"}
               />
               <StatBox
+                value={cand.votes > 0 ? cand.votes.toLocaleString("en-IN") : "—"}
+                label={lang === "np" ? "प्राप्त मत" : "Votes Received"}
+                highlight
+              />
+              <StatBox
                 value={candRank > 0 && cand.votes > 0 ? `#${candRank}` : "—"}
                 label={lang === "np" ? "यो उम्मेदवारको क्रम" : "This Candidate's Rank"}
-                highlight
               />
             </div>
 
