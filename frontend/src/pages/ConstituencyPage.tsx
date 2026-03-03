@@ -12,7 +12,7 @@ import { useElectionStore } from "../store/electionStore";
 import { getParty, partyColor, partyHex } from "../lib/partyRegistry";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
-import type { Candidate, ConstituencyResult } from "../types";
+import type { Candidate } from "../types";
 import Layout from "../components/Layout";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -140,10 +140,10 @@ export default function ConstituencyPage() {
   const lang     = useElectionStore((s) => s.lang);
   const navigate = useNavigate();
 
-  const r = useMemo(
-    () => results.find((x) => x.code === decodeURIComponent(code ?? "")) ?? null,
-    [results, code]
-  );
+  const r = useMemo(() => {
+    const slug = decodeURIComponent(code ?? "");
+    return results.find((x) => x.name.replace(/\s+/g, "-") === slug) ?? null;
+  }, [results, code]);
 
   // Redirect if not found after data loads
   useEffect(() => {
@@ -159,7 +159,7 @@ export default function ConstituencyPage() {
       `${r.name} constituency results — Nepal House of Representatives Election 2082. ${r.candidates.length} candidates, ${r.district}, ${r.province}.`
     );
     const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/constituency/${encodeURIComponent(r.code)}`);
+    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/constituency/${encodeURIComponent(r.name.replace(/\s+/g, "-"))}`);
     return () => {
       document.title = "Nepal Election Results 2082 Live | Real-Time Vote Count – NepalVotes";
       if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/");

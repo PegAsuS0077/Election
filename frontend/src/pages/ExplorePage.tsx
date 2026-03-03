@@ -324,7 +324,7 @@ export default function ExplorePage() {
                       key={r.code}
                       r={r}
                       lang={lang}
-                      onViewDetails={() => navigate(`/constituency/${encodeURIComponent(r.code)}`)}
+                      onViewDetails={() => navigate(`/constituency/${encodeURIComponent(r.name.replace(/\s+/g, "-"))}`)}
                     />
                   ))}
                 </div>
