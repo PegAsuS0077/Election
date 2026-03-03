@@ -85,8 +85,12 @@ interface ElectionStore {
   setSortBy: (s: SortKey) => void;
   resetBaseline: () => void;
   toggleLang: () => void;
-  favorites: Set<string>;
+  favorites: Set<string>;          // constituency codes
+  favCandidates: Set<number>;      // candidateIds
+  favParties: Set<string>;         // partyIds
   toggleFavorite: (code: string) => void;
+  toggleFavCandidate: (id: number) => void;
+  toggleFavParty: (partyId: string) => void;
 }
 
 const BASELINE_KEY = "election_baseline_tally_v2";
@@ -115,13 +119,31 @@ function loadOrCreateBaseline(currentTally: SeatTally): SeatTally {
   return currentTally;
 }
 
-const FAVORITES_KEY = "nv_favorites";
+const FAVORITES_KEY      = "nv_favorites";
+const FAV_CANDIDATES_KEY = "nv_fav_candidates";
+const FAV_PARTIES_KEY    = "nv_fav_parties";
 
 function loadFavorites(): Set<string> {
   try {
     const raw = localStorage.getItem(FAVORITES_KEY);
     if (raw) return new Set(JSON.parse(raw) as string[]);
   } catch { /* corrupted — start empty */ }
+  return new Set();
+}
+
+function loadFavCandidates(): Set<number> {
+  try {
+    const raw = localStorage.getItem(FAV_CANDIDATES_KEY);
+    if (raw) return new Set(JSON.parse(raw) as number[]);
+  } catch { /* corrupted */ }
+  return new Set();
+}
+
+function loadFavParties(): Set<string> {
+  try {
+    const raw = localStorage.getItem(FAV_PARTIES_KEY);
+    if (raw) return new Set(JSON.parse(raw) as string[]);
+  } catch { /* corrupted */ }
   return new Set();
 }
 
@@ -142,6 +164,8 @@ export const useElectionStore = create<ElectionStore>((set) => ({
   sortBy:           "status",
   lang:             "en",
   favorites:        loadFavorites(),
+  favCandidates:    loadFavCandidates(),
+  favParties:       loadFavParties(),
 
   setResults: (results) => {
     // Rebuild party registry whenever new data arrives
@@ -223,6 +247,24 @@ export const useElectionStore = create<ElectionStore>((set) => ({
       else next.add(code);
       localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
       return { favorites: next };
+    }),
+
+  toggleFavCandidate: (id) =>
+    set((state) => {
+      const next = new Set(state.favCandidates);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      localStorage.setItem(FAV_CANDIDATES_KEY, JSON.stringify([...next]));
+      return { favCandidates: next };
+    }),
+
+  toggleFavParty: (partyId) =>
+    set((state) => {
+      const next = new Set(state.favParties);
+      if (next.has(partyId)) next.delete(partyId);
+      else next.add(partyId);
+      localStorage.setItem(FAV_PARTIES_KEY, JSON.stringify([...next]));
+      return { favParties: next };
     }),
 }));
 

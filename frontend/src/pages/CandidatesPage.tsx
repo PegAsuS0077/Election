@@ -10,6 +10,7 @@ import type { Lang } from "../i18n";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
 import { candidatePhotoUrl } from "../lib/parseUpstreamData";
+import { requestNotificationPermission } from "../hooks/useConstituencyNotifications";
 
 function fmt(n: number) { return n.toLocaleString("en-IN"); }
 
@@ -97,7 +98,16 @@ function StatusBadge({ status, isWinner, lang }: { status: string; isWinner: boo
 
 // ── Candidate card ────────────────────────────────────────────────────────────
 function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onClick: () => void }) {
-  const provCls = PROVINCE_COLORS[c.province] ?? "bg-slate-100 text-slate-700";
+  const provCls        = PROVINCE_COLORS[c.province] ?? "bg-slate-100 text-slate-700";
+  const isFav          = useElectionStore((s) => s.favCandidates.has(c.candidateId));
+  const toggleFav      = useElectionStore((s) => s.toggleFavCandidate);
+
+  const handleStar = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!isFav) await requestNotificationPermission();
+    toggleFav(c.candidateId);
+  };
 
   return (
     <button
@@ -120,8 +130,19 @@ function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onC
             <CandidatePhoto id={c.candidateId} name={c.name} size="lg" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight truncate">
-              {lang === "np" ? c.nameNp : c.name}
+            <div className="flex items-start justify-between gap-1">
+              <div className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight truncate">
+                {lang === "np" ? c.nameNp : c.name}
+              </div>
+              <button
+                onClick={handleStar}
+                aria-label={isFav ? "Unwatch candidate" : "Watch candidate"}
+                className={`shrink-0 p-0.5 rounded-full transition-colors focus:outline-none ${isFav ? "text-amber-400" : "text-slate-300 hover:text-amber-400 dark:text-slate-600 dark:hover:text-amber-400"}`}
+              >
+                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill={isFav ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </button>
             </div>
             <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">
               {lang === "np" ? c.name : c.nameNp}
@@ -249,9 +270,10 @@ export default function CandidatesPage() {
     return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/"); };
   }, []);
 
-  const results  = useElectionStore((s) => s.results);
-  const lang     = useElectionStore((s) => s.lang);
-  const navigate = useNavigate();
+  const results        = useElectionStore((s) => s.results);
+  const lang           = useElectionStore((s) => s.lang);
+  const favCandidates  = useElectionStore((s) => s.favCandidates);
+  const navigate       = useNavigate();
 
   const [search, setSearch]           = useState("");
   const [selParty, setSelParty]       = useState<string>("All");
@@ -261,6 +283,7 @@ export default function CandidatesPage() {
   const [selGender, setSelGender]     = useState<"All" | "M" | "F">("All");
   const [statusTab, setStatusTab]     = useState<StatusTab>("all");
   const [sortKey, setSortKey]         = useState<SortKey>("votes");
+  const [favOnly, setFavOnly]         = useState(false);
   const [page, setPage] = useState(1);
 
   // Flatten all candidates from all results
@@ -326,6 +349,7 @@ export default function CandidatesPage() {
 
   const filtered = useMemo(() => {
     let list = allCandidates.filter((c) => {
+      if (favOnly && !favCandidates.has(c.candidateId))           return false;
       if (selProv     !== "All" && c.province    !== selProv)     return false;
       if (selDistrict !== "All" && c.district    !== selDistrict) return false;
       if (selConst    !== "All" && c.constCode   !== selConst)    return false;
@@ -351,10 +375,10 @@ export default function CandidatesPage() {
     });
 
     return list;
-  }, [allCandidates, selParty, selProv, selDistrict, selConst, selGender, statusTab, search, sortKey]);
+  }, [allCandidates, favOnly, favCandidates, selParty, selProv, selDistrict, selConst, selGender, statusTab, search, sortKey]);
 
   // Reset to page 1 whenever filters/sort change
-  useEffect(() => { setPage(1); }, [selParty, selProv, selDistrict, selConst, selGender, statusTab, search, sortKey]);
+  useEffect(() => { setPage(1); }, [selParty, selProv, selDistrict, selConst, selGender, statusTab, search, sortKey, favOnly]);
 
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -443,7 +467,7 @@ export default function CandidatesPage() {
           </select>
         </div>
 
-        {/* ── Status tabs ── */}
+        {/* ── Status tabs + Favorites toggle ── */}
         <div className="flex gap-1 flex-wrap">
           {STATUS_TABS.map((tab) => {
             const label =
@@ -468,6 +492,20 @@ export default function CandidatesPage() {
               </button>
             );
           })}
+          <button
+            onClick={() => setFavOnly((v) => !v)}
+            className={"h-8 px-3 rounded-lg text-xs font-semibold transition border flex items-center gap-1.5 " +
+              (favOnly
+                ? "bg-amber-500 border-amber-500 text-white"
+                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] text-slate-500 dark:text-slate-400 hover:border-amber-400/60 hover:text-amber-500"
+              )}
+          >
+            <svg viewBox="0 0 24 24" className="w-3 h-3" fill={favOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            {lang === "np" ? "मनपर्ने" : "Favorites"}
+            {favCandidates.size > 0 && <span className="opacity-70">{favCandidates.size}</span>}
+          </button>
         </div>
 
         {/* ── Gender + Sort row ── */}

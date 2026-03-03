@@ -21,6 +21,7 @@ import ContactPage from "./pages/ContactPage.tsx";
 import CandidateDetailPage from "./pages/CandidateDetailPage.tsx";
 import PartyPage from "./pages/PartyPage.tsx";
 import ConstituencyPage from "./pages/ConstituencyPage.tsx";
+import FavoritesPage from "./pages/FavoritesPage.tsx";
 
 // Register service worker (autoUpdate — silently refreshes on new version)
 registerSW({ immediate: true });
@@ -42,6 +43,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/about" element={<AboutPage />} />
         <Route path="/privacy-policy" element={<PrivacyPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/favorites" element={<FavoritesPage />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>

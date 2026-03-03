@@ -68,9 +68,11 @@ export default function PartiesPage() {
     return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/"); };
   }, []);
 
-  const results   = useElectionStore((s) => s.results);
-  const seatTally = useElectionStore((s) => s.seatTally);
-  const lang      = useElectionStore((s) => s.lang);
+  const results          = useElectionStore((s) => s.results);
+  const seatTally        = useElectionStore((s) => s.seatTally);
+  const lang             = useElectionStore((s) => s.lang);
+  const favParties       = useElectionStore((s) => s.favParties);
+  const toggleFavParty   = useElectionStore((s) => s.toggleFavParty);
 
   const totalSeats = 275;
 
@@ -139,21 +141,24 @@ export default function PartiesPage() {
 
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
+  const [favOnly, setFavOnly]         = useState(false);
+  const [page, setPage]               = useState(1);
   const PARTY_PAGE_SIZE = 20;
 
   const filteredPartyData = useMemo(() => {
+    let data = partyData;
+    if (favOnly) data = data.filter(({ key }) => favParties.has(key));
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return partyData;
-    return partyData.filter(({ key, pInfo }) =>
+    if (!q) return data;
+    return data.filter(({ key, pInfo }) =>
       pInfo.nameEn.toLowerCase().includes(q) ||
       pInfo.partyName.toLowerCase().includes(q) ||
       key.toLowerCase().includes(q)
     );
-  }, [partyData, searchQuery]);
+  }, [partyData, searchQuery, favOnly, favParties]);
 
-  // Reset to page 1 when search changes
-  useEffect(() => { setPage(1); }, [searchQuery]);
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1); }, [searchQuery, favOnly]);
 
   const paginatedPartyData = useMemo(
     () => filteredPartyData.slice((page - 1) * PARTY_PAGE_SIZE, page * PARTY_PAGE_SIZE),
@@ -174,7 +179,7 @@ export default function PartiesPage() {
       subtitleNp="सबै प्रमुख दलहरूको सिट गणना, मत बांडफांट र उम्मेद्वार विवरण"
       badge={heroBadge}
     >
-      {/* ── Search bar + inline prev/next ── */}
+      {/* ── Search bar + Favorites toggle + inline prev/next ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2">
         <div className="flex items-center gap-3">
           {/* Search input */}
@@ -211,6 +216,22 @@ export default function PartiesPage() {
               </button>
             )}
           </div>
+
+          {/* Favorites toggle */}
+          <button
+            onClick={() => setFavOnly((v) => !v)}
+            className={"h-9 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 shrink-0 transition " +
+              (favOnly
+                ? "bg-amber-500 border-amber-500 text-white"
+                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:border-amber-400/60 hover:text-amber-500"
+              )}
+          >
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill={favOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            {lang === "np" ? "मनपर्ने" : "Favorites"}
+            {favParties.size > 0 && <span className="opacity-70">{favParties.size}</span>}
+          </button>
 
           {/* Inline prev / page indicator / next */}
           {Math.ceil(filteredPartyData.length / PARTY_PAGE_SIZE) > 1 && (
@@ -274,6 +295,7 @@ export default function PartiesPage() {
               {/* Header */}
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
+
                   {pInfo.symbolUrl
                     ? <img src={pInfo.symbolUrl} alt={pInfo.symbol} className="h-10 w-10 object-contain flex-shrink-0" />
                     : <span className="text-3xl leading-none">{pInfo.symbol}</span>}
@@ -302,7 +324,17 @@ export default function PartiesPage() {
                     })()}
                   </div>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleFavParty(key); }}
+                    aria-label={favParties.has(key) ? "Unwatch party" : "Watch party"}
+                    title={favParties.has(key) ? "Unwatch party" : "Watch party"}
+                    className={`rounded-full p-1 transition-colors focus:outline-none ${favParties.has(key) ? "text-amber-400 hover:text-amber-300" : "text-slate-300 hover:text-amber-400 dark:text-slate-600 dark:hover:text-amber-400"}`}
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill={favParties.has(key) ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  </button>
                   <div className="text-3xl font-bold tabular-nums leading-none" style={{ color: hex, fontFamily: "'DM Mono', monospace" }}>
                     {total}
                   </div>

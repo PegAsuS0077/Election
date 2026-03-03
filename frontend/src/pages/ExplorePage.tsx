@@ -144,6 +144,7 @@ export default function ExplorePage() {
 
   const results       = useElectionStore((s) => s.results);
   const lang          = useElectionStore((s) => s.lang);
+  const favorites     = useElectionStore((s) => s.favorites);
   const navigate      = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -155,6 +156,7 @@ export default function ExplorePage() {
   const [statusTab, setStatusTab]     = useState<StatusTab>(
     STATUS_TABS.includes(initialStatus) ? initialStatus : "all"
   );
+  const [favOnly, setFavOnly]         = useState(false);
 
   // Dynamically build district list based on selected province — en → np
   const districts = useMemo(() => {
@@ -167,7 +169,8 @@ export default function ExplorePage() {
   // Apply all filters
   const filtered = useMemo(() => {
     return results.filter((r) => {
-      if (selProv !== "All" && r.province !== selProv) return false;
+      if (favOnly && !favorites.has(r.code))            return false;
+      if (selProv !== "All" && r.province !== selProv)  return false;
       if (selDistrict !== "All" && r.district !== selDistrict) return false;
       if (statusTab !== "all" && r.status !== statusTab) return false;
       if (search) {
@@ -179,7 +182,7 @@ export default function ExplorePage() {
       }
       return true;
     });
-  }, [results, selProv, selDistrict, statusTab, search]);
+  }, [results, favOnly, favorites, selProv, selDistrict, statusTab, search]);
 
   // Group filtered results by district — value includes [constList, districtNp]
   const grouped = useMemo(() => {
@@ -267,6 +270,20 @@ export default function ExplorePage() {
               </button>
             );
           })}
+          <button
+            onClick={() => setFavOnly((v) => !v)}
+            className={"h-8 px-3 rounded-lg text-xs font-semibold transition border flex items-center gap-1.5 " +
+              (favOnly
+                ? "bg-amber-500 border-amber-500 text-white"
+                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] text-slate-500 dark:text-slate-400 hover:border-amber-400/60 hover:text-amber-500"
+              )}
+          >
+            <svg viewBox="0 0 24 24" className="w-3 h-3" fill={favOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            {lang === "np" ? "मनपर्ने" : "Favorites"}
+            {favorites.size > 0 && <span className="opacity-70">{favorites.size}</span>}
+          </button>
         </div>
 
         {/* ── Results summary ── */}
