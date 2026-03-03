@@ -11,16 +11,6 @@ import HotSeats from "./HotSeats";
 import { SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
 import Layout from "./components/Layout";
 
-const STATS: {
-  value: () => string;
-  labelKey: "statsConstituencies" | "statsProvinces" | "statsParties" | "statsTotalSeats";
-  icon: string;
-}[] = [
-  { value: () => "165",                            labelKey: "statsConstituencies", icon: "⬡" },
-  { value: () => "7",                              labelKey: "statsProvinces",      icon: "◈" },
-  { value: () => "66",                             labelKey: "statsParties",      icon: "◉" },
-  { value: () => "275",                            labelKey: "statsTotalSeats",     icon: "◆" },
-];
 
 function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
