@@ -13,10 +13,12 @@ export default defineConfig({
       injectRegister: null, // we register manually in main.tsx
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
-        navigateFallback: '/offline.html',
+        // SPA: all navigation falls back to index.html (React Router handles routing)
+        navigateFallback: '/index.html',
         navigateFallbackDenylist: [
           /^\/api\//,
           /^\/upstream\//,
+          /\/offline\.html$/,
         ],
         runtimeCaching: [
           {
