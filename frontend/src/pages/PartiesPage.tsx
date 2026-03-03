@@ -6,7 +6,6 @@ import { getParty, partyHex } from "../lib/partyRegistry";
 import { getPartyMeta } from "../lib/db";
 import { provinceName } from "../i18n";
 import Layout from "../components/Layout";
-import { PROVINCE_COLORS } from "../components/Layout";
 
 function fmt(n: number) { return n.toLocaleString("en-IN"); }
 
