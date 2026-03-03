@@ -1,8 +1,9 @@
+import { Link } from "react-router-dom";
 import { useElectionStore } from "./store/electionStore";
 import type { Lang } from "./i18n";
 import type { Snapshot } from "./api";
 import Tooltip from "./Tooltip";
-import { getParty } from "./lib/partyRegistry";
+import { getParty, partySlug } from "./lib/partyRegistry";
 
 function seatsToMajority(totalSeats: number) { return Math.floor(totalSeats / 2) + 1; }
 
@@ -100,20 +101,28 @@ export default function SeatShareBars({
             {lang === "np" ? "मतगणना सुरु भएको छैन" : "No results yet — counting has not started"}
           </p>
         ) : (
-          rows.map((r) => (
-            <div key={r.partyId}>
+          rows.map((r) => {
+            const canLink = !r.isOthers && r.partyId !== "IND";
+            const rowLabel = (
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <span className={`h-3 w-3 rounded-full ${r.color}`} />
                   {r.symbolUrl
                     ? <img src={r.symbolUrl} alt={r.symbol} className="h-5 w-5 object-contain" />
                     : <span className="text-base leading-none">{r.symbol}</span>}
-                  <span className="font-medium text-slate-900 dark:text-slate-100">{r.name}</span>
+                  <span className={`font-medium text-slate-900 dark:text-slate-100${canLink ? " group-hover:underline" : ""}`}>{r.name}</span>
                 </div>
                 <Tooltip text={`${r.name}: ${r.total} seats (${r.percent.toFixed(1)}%)`}>
                   <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-200 cursor-default">{r.total}</span>
                 </Tooltip>
               </div>
+            );
+            return (
+            <div key={r.partyId} className={canLink ? "group" : ""}>
+              {canLink
+                ? <Link to={`/party/${partySlug(getParty(r.partyId).nameEn)}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb] rounded">{rowLabel}</Link>
+                : rowLabel
+              }
               <div className="mt-2 relative h-3 w-full rounded-full bg-slate-200 overflow-hidden dark:bg-slate-700">
                 <div className="absolute top-0 h-full w-[2px] bg-slate-900/60 dark:bg-slate-100/60" style={{ left: `${majorityPct}%` }} aria-hidden="true" />
                 <div
@@ -132,7 +141,8 @@ export default function SeatShareBars({
                 </div>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </section>

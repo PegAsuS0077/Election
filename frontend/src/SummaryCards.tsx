@@ -1,9 +1,10 @@
+import { Link } from "react-router-dom";
 import { useElectionStore } from "./store/electionStore";
 import { t } from "./i18n";
 import type { Lang } from "./i18n";
 import type { Snapshot } from "./api";
 import { SummaryCardsSkeleton } from "./Skeleton";
-import { getParty } from "./lib/partyRegistry";
+import { getParty, partySlug } from "./lib/partyRegistry";
 
 function seatsToMajority(totalSeats: number) {
   return Math.floor(totalSeats / 2) + 1;
@@ -70,36 +71,42 @@ export default function SummaryCards({
   return (
     <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <Card title={t("majority", lang)} big={`${majority}`} sub={t("majorityDesc", lang)} />
-      <Card
-        title={t("leadingParty", lang)}
-        big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
-        sub={`${leader.total} ${t("seats", lang)}`}
-        dotColor={leaderInfo.color}
-        symbol={leaderInfo.symbol}
-        symbolUrl={leaderInfo.symbolUrl}
-        right={<ChangePill delta={leader.delta} />}
-      />
-      <Card
-        title={t("runnerUp", lang)}
-        big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
-        sub={`${runnerUp.total} ${t("seats", lang)}`}
-        dotColor={runnerUpInfo.color}
-        symbol={runnerUpInfo.symbol}
-        symbolUrl={runnerUpInfo.symbolUrl}
-        right={<ChangePill delta={runnerUp.delta} />}
-      />
+      <Link to={`/party/${partySlug(leaderInfo.nameEn)}`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+        <Card
+          title={t("leadingParty", lang)}
+          big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
+          sub={`${leader.total} ${t("seats", lang)}`}
+          dotColor={leaderInfo.color}
+          symbol={leaderInfo.symbol}
+          symbolUrl={leaderInfo.symbolUrl}
+          right={<ChangePill delta={leader.delta} />}
+          clickable
+        />
+      </Link>
+      <Link to={`/party/${partySlug(runnerUpInfo.nameEn)}`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+        <Card
+          title={t("runnerUp", lang)}
+          big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
+          sub={`${runnerUp.total} ${t("seats", lang)}`}
+          dotColor={runnerUpInfo.color}
+          symbol={runnerUpInfo.symbol}
+          symbolUrl={runnerUpInfo.symbolUrl}
+          right={<ChangePill delta={runnerUp.delta} />}
+          clickable
+        />
+      </Link>
     </section>
   );
 }
 
 function Card({
-  title, big, sub, dotColor, symbol, symbolUrl, right,
+  title, big, sub, dotColor, symbol, symbolUrl, right, clickable,
 }: {
   title: string; big: string; sub: string;
-  dotColor?: string; symbol?: string; symbolUrl?: string; right?: React.ReactNode;
+  dotColor?: string; symbol?: string; symbolUrl?: string; right?: React.ReactNode; clickable?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+    <div className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800${clickable ? " transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 active:scale-[0.99]" : ""}`}>
       <div className="text-sm font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {dotColor ? <span className={`h-3 w-3 rounded-full ${dotColor}`} /> : null}
