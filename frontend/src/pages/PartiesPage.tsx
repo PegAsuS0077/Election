@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES } from "../types";
@@ -8,6 +8,54 @@ import { provinceName } from "../i18n";
 import Layout from "../components/Layout";
 
 function fmt(n: number) { return n.toLocaleString("en-IN"); }
+
+// ── Pagination ─────────────────────────────────────────────────────────────────
+function Pagination({ page, total, pageSize, onChange }: { page: number; total: number; pageSize: number; onChange: (p: number) => void }) {
+  const pageCount = Math.ceil(total / pageSize);
+  if (pageCount <= 1) return null;
+
+  const pages: (number | "…")[] = [];
+  const add = new Set<number>();
+  for (let p = 1; p <= pageCount; p++) {
+    if (p === 1 || p === pageCount || (p >= page - 2 && p <= page + 2)) add.add(p);
+  }
+  let prev = 0;
+  for (const p of Array.from(add).sort((a, b) => a - b)) {
+    if (prev && p - prev > 1) pages.push("…");
+    pages.push(p);
+    prev = p;
+  }
+
+  const btn = (label: React.ReactNode, target: number, disabled: boolean, active = false) => (
+    <button
+      key={String(label)}
+      onClick={() => { if (!disabled) onChange(target); }}
+      disabled={disabled}
+      className={
+        "h-8 min-w-[2rem] px-2 rounded-lg text-xs font-semibold transition border " +
+        (active
+          ? "bg-[#2563eb] border-[#2563eb] text-white"
+          : disabled
+            ? "border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 cursor-default bg-white dark:bg-[#0c1525]"
+            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] text-slate-600 dark:text-slate-400 hover:border-[#2563eb]/50 hover:text-[#2563eb] cursor-pointer")
+      }
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="flex items-center justify-center gap-1 flex-wrap py-6">
+      {btn("←", page - 1, page === 1)}
+      {pages.map((p, i) =>
+        p === "…"
+          ? <span key={`ellipsis-${i}`} className="h-8 flex items-center px-1 text-xs text-slate-400">…</span>
+          : btn(p, p, false, p === page)
+      )}
+      {btn("→", page + 1, page === pageCount)}
+    </div>
+  );
+}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function PartiesPage() {
@@ -87,6 +135,8 @@ export default function PartiesPage() {
 
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const PARTY_PAGE_SIZE = 20;
 
   const filteredPartyData = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -97,6 +147,14 @@ export default function PartiesPage() {
       key.toLowerCase().includes(q)
     );
   }, [partyData, searchQuery]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => { setPage(1); }, [searchQuery]);
+
+  const paginatedPartyData = useMemo(
+    () => filteredPartyData.slice((page - 1) * PARTY_PAGE_SIZE, page * PARTY_PAGE_SIZE),
+    [filteredPartyData, page]
+  );
 
   const heroBadge = (
     <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1 text-xs font-semibold text-blue-400 uppercase tracking-widest">
@@ -156,9 +214,22 @@ export default function PartiesPage() {
         )}
       </div>
 
+      {/* ── Result count ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-1">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {lang === "np" ? "देखाउँदै" : "Showing"}{" "}
+          <span className="font-semibold text-slate-700 dark:text-slate-300">
+            {Math.min((page - 1) * PARTY_PAGE_SIZE + 1, filteredPartyData.length)}–{Math.min(page * PARTY_PAGE_SIZE, filteredPartyData.length)}
+          </span>{" "}
+          {lang === "np" ? "मध्ये" : "of"}{" "}
+          <span className="font-semibold text-slate-700 dark:text-slate-300">{filteredPartyData.length}</span>{" "}
+          {lang === "np" ? "दलहरू · कुल सिटको आधारमा क्रमबद्ध" : "parties · sorted by total seats"}
+        </p>
+      </div>
+
       {/* ── Party cards grid ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-2">
-        {filteredPartyData.map(({ key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount }) => (
+        {paginatedPartyData.map(({ key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount }) => (
           <div
             key={key}
             className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0c1525] overflow-hidden shadow-sm hover:shadow-md transition-shadow"
@@ -285,6 +356,16 @@ export default function PartiesPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ── Pagination ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <Pagination
+          page={page}
+          total={filteredPartyData.length}
+          pageSize={PARTY_PAGE_SIZE}
+          onChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+        />
       </div>
 
     </Layout>
