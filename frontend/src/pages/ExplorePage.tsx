@@ -196,14 +196,23 @@ export default function ExplorePage() {
       subtitleNp="जिल्ला अनुसार निर्वाचन क्षेत्र सूची"
       badge={heroBadge}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-4">
 
-        {/* ── Filter row: Province + District dropdowns + Search ── */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* ── Search ── */}
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={lang === "np" ? "निर्वाचन क्षेत्र / उम्मेद्वार खोज्नुहोस्…" : "Search constituency or candidate…"}
+          className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-4 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-[#2563eb] transition"
+        />
+
+        {/* ── Cascading dropdowns: Province → District ── */}
+        <div className="grid grid-cols-2 gap-2">
           <select
             value={selProv}
             onChange={(e) => { setSelProv(e.target.value as "All" | Province); setSelDistrict("All"); }}
-            className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-3 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition"
+            className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-3 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition min-w-0"
           >
             <option value="All">{lang === "np" ? "सबै प्रदेश" : "All Provinces"}</option>
             {provinces.map((p) => (
@@ -214,21 +223,14 @@ export default function ExplorePage() {
           <select
             value={selDistrict}
             onChange={(e) => setSelDistrict(e.target.value)}
-            className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-3 text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition"
+            className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-3 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition min-w-0"
+            disabled={districts.length === 0}
           >
             <option value="All">{lang === "np" ? "सबै जिल्ला" : "All Districts"}</option>
             {districts.map(([en, np]) => (
               <option key={en} value={en}>{lang === "np" ? np : en}</option>
             ))}
           </select>
-
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={lang === "np" ? "निर्वाचन क्षेत्र / उम्मेद्वार खोज्नुहोस्…" : "Search constituency or candidate…"}
-            className="flex-1 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-[#2563eb] transition"
-          />
         </div>
 
         {/* ── Province pills ── */}

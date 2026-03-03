@@ -234,6 +234,10 @@ const SELECT_CLS =
   "h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] " +
   "px-3 text-xs text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition min-w-0";
 
+// ── Status tabs (mirrors ExplorePage) ─────────────────────────────────────────
+const STATUS_TABS = ["all", "DECLARED", "COUNTING", "PENDING"] as const;
+type StatusTab = typeof STATUS_TABS[number];
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CandidatesPage() {
   useEffect(() => {
@@ -255,6 +259,7 @@ export default function CandidatesPage() {
   const [selDistrict, setSelDistrict] = useState<string>("All");
   const [selConst, setSelConst]       = useState<string>("All");
   const [selGender, setSelGender]     = useState<"All" | "M" | "F">("All");
+  const [statusTab, setStatusTab]     = useState<StatusTab>("all");
   const [sortKey, setSortKey]         = useState<SortKey>("votes");
   const [page, setPage] = useState(1);
 
@@ -321,11 +326,12 @@ export default function CandidatesPage() {
 
   const filtered = useMemo(() => {
     let list = allCandidates.filter((c) => {
-      if (selProv     !== "All" && c.province  !== selProv)     return false;
-      if (selDistrict !== "All" && c.district  !== selDistrict) return false;
-      if (selConst    !== "All" && c.constCode !== selConst)    return false;
-      if (selParty    !== "All" && c.partyId   !== selParty)    return false;
-      if (selGender   !== "All" && c.gender    !== selGender)   return false;
+      if (selProv     !== "All" && c.province    !== selProv)     return false;
+      if (selDistrict !== "All" && c.district    !== selDistrict) return false;
+      if (selConst    !== "All" && c.constCode   !== selConst)    return false;
+      if (selParty    !== "All" && c.partyId     !== selParty)    return false;
+      if (selGender   !== "All" && c.gender      !== selGender)   return false;
+      if (statusTab   !== "all" && c.constStatus !== statusTab)   return false;
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -345,10 +351,10 @@ export default function CandidatesPage() {
     });
 
     return list;
-  }, [allCandidates, selParty, selProv, selDistrict, selConst, selGender, search, sortKey]);
+  }, [allCandidates, selParty, selProv, selDistrict, selConst, selGender, statusTab, search, sortKey]);
 
   // Reset to page 1 whenever filters/sort change
-  useEffect(() => { setPage(1); }, [selParty, selProv, selDistrict, selConst, selGender, search, sortKey]);
+  useEffect(() => { setPage(1); }, [selParty, selProv, selDistrict, selConst, selGender, statusTab, search, sortKey]);
 
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -431,10 +437,37 @@ export default function CandidatesPage() {
             <option value="All">{lang === "np" ? "सबै दल" : "All Parties"}</option>
             {partyOptions.map((p) => (
               <option key={p.partyId} value={p.partyId}>
-                {(lang === "np" ? p.partyName : p.nameEn).split(" (")[0]}
+                {lang === "np" ? p.partyName : p.nameEn}
               </option>
             ))}
           </select>
+        </div>
+
+        {/* ── Status tabs ── */}
+        <div className="flex gap-1 flex-wrap">
+          {STATUS_TABS.map((tab) => {
+            const label =
+              tab === "all"      ? (lang === "np" ? "सबै" : "All") :
+              tab === "DECLARED" ? (lang === "np" ? "घोषित" : "Declared") :
+              tab === "COUNTING" ? (lang === "np" ? "मतगणना" : "Counting") :
+                                   (lang === "np" ? "बांकी" : "Pending");
+            const count = tab === "all"
+              ? allCandidates.length
+              : allCandidates.filter((c) => c.constStatus === tab).length;
+            return (
+              <button
+                key={tab}
+                onClick={() => setStatusTab(tab)}
+                className={"h-8 px-3 rounded-lg text-xs font-semibold transition border " +
+                  (statusTab === tab
+                    ? "bg-[#2563eb] border-[#2563eb] text-white"
+                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] text-slate-600 dark:text-slate-400 hover:border-[#2563eb]/40"
+                  )}
+              >
+                {label} <span className="opacity-60 ml-1">{count}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Gender + Sort row ── */}
