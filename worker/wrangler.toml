@@ -1,6 +1,7 @@
 name = "nepalvotes-scraper"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
+compatibility_flags = []
 # Workers + R2 are available on the free tier — no paid plan required.
 
 [[r2_buckets]]
