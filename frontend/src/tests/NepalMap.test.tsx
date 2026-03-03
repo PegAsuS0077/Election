@@ -28,6 +28,9 @@ describe("NepalMap", () => {
         results={constituencyResults}
         selectedProvince="All"
         onSelect={vi.fn()}
+        mode="district"
+        selectedSeat={null}
+        onSelectSeat={vi.fn()}
       />
     );
     for (const p of PROVINCES) {
@@ -42,6 +45,9 @@ describe("NepalMap", () => {
         results={constituencyResults}
         selectedProvince="All"
         onSelect={onSelect}
+        mode="district"
+        selectedSeat={null}
+        onSelectSeat={vi.fn()}
       />
     );
     fireEvent.click(screen.getByRole("button", { name: /Bagmati/i }));
