@@ -302,6 +302,15 @@ export default function CandidateDetailPage() {
     return null;
   }, [results, targetId]);
 
+  // Must be declared before any conditional returns to satisfy Rules of Hooks
+  const sortedCands = useMemo(
+    () =>
+      found
+        ? [...found.constituency.candidates].sort((a, b) => b.votes - a.votes)
+        : [],
+    [found]
+  );
+
   useEffect(() => {
     if (!found) return;
     const { cand, constituency } = found;
@@ -382,11 +391,6 @@ export default function CandidateDetailPage() {
     ? `${((cand.votes / constituency.votesCast) * 100).toFixed(1)}%`
     : "—";
 
-  // Sorted candidates in this constituency
-  const sortedCands = useMemo(
-    () => [...constituency.candidates].sort((a, b) => b.votes - a.votes),
-    [constituency.candidates]
-  );
   const candRank = sortedCands.findIndex((c) => c.candidateId === cand.candidateId) + 1;
 
   // About text

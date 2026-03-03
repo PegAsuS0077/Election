@@ -130,7 +130,11 @@ export default function PartiesPage() {
       );
 
       return { key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount };
-    }).sort((a, b) => b.total - a.total);
+    }).sort((a, b) => {
+      // Primary: total seats descending; Secondary: votes received descending
+      if (b.total !== a.total) return b.total - a.total;
+      return b.partyVotes - a.partyVotes;
+    });
   }, [results, seatTally]);
 
 
