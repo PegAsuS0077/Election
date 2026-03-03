@@ -17,7 +17,8 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { candidatePhotoUrl } from "../lib/parseUpstreamData";
-import { partyHex, getParty } from "../lib/partyRegistry";
+import { getParty } from "../lib/partyRegistry";
+import PartySymbol from "../components/PartySymbol";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import Layout from "../components/Layout";
@@ -366,9 +367,9 @@ export default function CandidateDetailPage() {
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const { cand, constituency } = found;
-  const hex       = partyHex(cand.partyId);
   const provCls   = PROVINCE_COLORS[constituency.province as Province] ?? "bg-slate-100 text-slate-700";
   const partyInfo = getParty(cand.partyId);
+  const hex       = partyInfo.hex;
 
   const genderNpRaw  = cand.gender === "F" ? "महिला" : "पुरुष";
   const genderEnRaw  = GENDER_EN[genderNpRaw] ?? (cand.gender === "F" ? "Female" : "Male");
@@ -451,10 +452,7 @@ export default function CandidateDetailPage() {
 
               {/* Party */}
               <div className="flex items-center gap-2">
-                <span
-                  className="h-3 w-3 rounded-full shrink-0"
-                  style={{ backgroundColor: hex }}
-                />
+                <PartySymbol partyId={cand.partyId} size="lg" />
                 <span className="text-sm font-semibold text-white/80">
                   {lang === "np" ? partyNameNp : partyNameEn}
                 </span>
@@ -778,7 +776,6 @@ export default function CandidateDetailPage() {
                 <tbody>
                   {sortedCands.map((c, i) => {
                     const isThis   = c.candidateId === cand.candidateId;
-                    const ph       = partyHex(c.partyId);
                     const pInfo    = getParty(c.partyId);
                     const pName    = lang === "np" ? c.partyName : pInfo.nameEn;
                     const pct      = constituency.votesCast > 0
@@ -802,7 +799,7 @@ export default function CandidateDetailPage() {
                         </td>
                         <td className="px-3 py-2.5 hidden sm:table-cell">
                           <div className="flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: ph }} />
+                            <PartySymbol partyId={c.partyId} size="sm" />
                             <span className="text-slate-500 dark:text-slate-400 truncate max-w-[160px]">{pName}</span>
                           </div>
                         </td>

@@ -3,30 +3,12 @@ import { useElectionStore } from "../store/electionStore";
 import { PROVINCES as provinces } from "../types";
 import type { ConstituencyResult, Province } from "../types";
 import { getParty } from "../lib/partyRegistry";
-import type { PartyInfo } from "../types";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
-
-function PartySymbol({ party }: { party: PartyInfo }) {
-  const [imgErr, setImgErr] = useState(false);
-  if (party.symbolUrl && !imgErr) {
-    return (
-      <img
-        src={party.symbolUrl}
-        alt={party.nameEn}
-        onError={() => setImgErr(true)}
-        className="h-5 w-5 rounded-sm object-contain shrink-0 bg-white"
-      />
-    );
-  }
-  if (party.symbol && party.symbol !== "•") {
-    return <span className="h-5 w-5 flex items-center justify-center text-sm shrink-0">{party.symbol}</span>;
-  }
-  return <span className="h-5 w-5 rounded-full shrink-0" style={{ backgroundColor: party.hex }} />;
-}
+import PartySymbol from "../components/PartySymbol";
 
 const STATUS_TABS = ["all", "DECLARED", "COUNTING", "PENDING"] as const;
 type StatusTab = typeof STATUS_TABS[number];
@@ -95,10 +77,9 @@ function ConstituencyCard({
       {/* Top candidates */}
       <div className="space-y-1.5">
         {top3.map((c) => {
-          const party = getParty(c.partyId);
           return (
             <div key={c.candidateId} className="flex items-center gap-2">
-              <PartySymbol party={party} />
+              <PartySymbol partyId={c.partyId} size="md" />
               <span className="text-xs text-slate-700 dark:text-slate-300 truncate flex-1">
                 {lang === "np" ? c.nameNp : c.name}
                 <span className="text-[10px] text-slate-400 ml-1">

@@ -2,7 +2,8 @@ import { useNavigate } from "react-router-dom";
 import type { ConstituencyResult } from "./types";
 import { t, provinceName } from "./i18n";
 import type { Lang } from "./i18n";
-import { partyHex, getParty } from "./lib/partyRegistry";
+import { getParty } from "./lib/partyRegistry";
+import PartySymbol from "./components/PartySymbol";
 
 const PROVINCE_COLORS: Record<string, string> = {
   Koshi:          "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300",
@@ -72,8 +73,8 @@ export default function HotSeats({
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {hotSeats.map(({ result, top1, top2, marginPct }) => {
-              const p1hex = partyHex(top1.partyId);
-              const p2hex = partyHex(top2.partyId);
+              const p1hex = getParty(top1.partyId).hex;
+              const p2hex = getParty(top2.partyId).hex;
               const totalVotes = top1.votes + top2.votes;
               const top1Pct = totalVotes > 0 ? (top1.votes / totalVotes) * 100 : 50;
               const constName = lang === "np" ? result.nameNp : result.name;
@@ -105,7 +106,7 @@ export default function HotSeats({
 
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: p1hex }} />
+                      <PartySymbol partyId={top1.partyId} size="md" />
                       <span className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{lang === "np" ? top1.nameNp : top1.name}</span>
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{(lang === "np" ? top1.partyName : getParty(top1.partyId).nameEn).split(" (")[0]}</span>
                     </div>
@@ -119,7 +120,7 @@ export default function HotSeats({
 
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: p2hex }} />
+                      <PartySymbol partyId={top2.partyId} size="md" />
                       <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{lang === "np" ? top2.nameNp : top2.name}</span>
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{(lang === "np" ? top2.partyName : getParty(top2.partyId).nameEn).split(" (")[0]}</span>
                     </div>

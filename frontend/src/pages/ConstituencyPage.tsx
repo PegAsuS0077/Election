@@ -9,7 +9,8 @@
 import { useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
-import { getParty, partyColor, partyHex } from "../lib/partyRegistry";
+import { getParty, partyColor } from "../lib/partyRegistry";
+import PartySymbol from "../components/PartySymbol";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import type { Candidate } from "../types";
@@ -105,7 +106,6 @@ function CandidateHeroCard({
     );
   }
   const pInfo = getParty(candidate.partyId);
-  const hex   = partyHex(candidate.partyId);
   return (
     <Link
       to={`/candidate/${candidate.candidateId}-${candidate.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
@@ -113,7 +113,7 @@ function CandidateHeroCard({
     >
       <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{title}</div>
       <div className="flex items-center gap-2 mb-1">
-        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
+        <PartySymbol partyId={candidate.partyId} size="md" />
         <div className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-tight">
           {lang === "np" ? candidate.nameNp : candidate.name}
         </div>
@@ -122,7 +122,7 @@ function CandidateHeroCard({
       <div className="text-xs text-slate-500 mb-3">
         {lang === "np" ? candidate.partyName : pInfo.nameEn}
       </div>
-      <div className="text-xl font-bold tabular-nums" style={{ color: hex, fontFamily: "'DM Mono', monospace" }}>
+      <div className="text-xl font-bold tabular-nums" style={{ color: pInfo.hex, fontFamily: "'DM Mono', monospace" }}>
         {candidate.votes > 0 ? fmt(candidate.votes) : "—"}
       </div>
       {pctVal > 0 && (
@@ -333,7 +333,6 @@ export default function ConstituencyPage() {
               </thead>
               <tbody>
                 {cands.sorted.map((c, i) => {
-                  const ph    = partyHex(c.partyId);
                   const pInfo = getParty(c.partyId);
                   const pName = lang === "np" ? c.partyName : pInfo.nameEn;
                   const pBar  = partyColor(c.partyId);
@@ -357,7 +356,7 @@ export default function ConstituencyPage() {
                       </td>
                       <td className="px-4 py-2.5 hidden sm:table-cell align-middle">
                         <div className="flex items-center gap-1.5">
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: ph }} />
+                          <PartySymbol partyId={c.partyId} size="sm" />
                           <span className="text-slate-500 dark:text-slate-400 truncate max-w-[180px]">{pName}</span>
                         </div>
                       </td>

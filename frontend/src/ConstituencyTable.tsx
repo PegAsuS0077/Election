@@ -8,6 +8,7 @@ import { useElectionStore } from "./store/electionStore";
 import { t as i18n, provinceName, statusLabel } from "./i18n";
 import type { Lang } from "./i18n";
 import { partyColor, getParty } from "./lib/partyRegistry";
+import PartySymbol from "./components/PartySymbol";
 
 type SortKey = "margin" | "province" | "alpha" | "status";
 
@@ -342,7 +343,7 @@ const Row = memo(function Row({ r, onClick, lang = "en" }: { r: ConstituencyResu
 
             {leader && leadParty && (
               <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${leadParty.color}`} />
+                <PartySymbol partyId={leadParty.partyId} size="md" />
                 <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{lang === "np" ? leader.nameNp : leader.name}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">{number(leader.votes)}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">

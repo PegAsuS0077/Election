@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES as provinces } from "../types";
 import type { Province } from "../types";
-import { getParties, getParty, partyHex } from "../lib/partyRegistry";
+import { getParties, getParty } from "../lib/partyRegistry";
+import PartySymbol from "../components/PartySymbol";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import Layout from "../components/Layout";
@@ -96,7 +97,6 @@ function StatusBadge({ status, isWinner, lang }: { status: string; isWinner: boo
 
 // ── Candidate card ────────────────────────────────────────────────────────────
 function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onClick: () => void }) {
-  const hex = partyHex(c.partyId);
   const provCls = PROVINCE_COLORS[c.province] ?? "bg-slate-100 text-slate-700";
 
   return (
@@ -128,7 +128,7 @@ function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onC
             </div>
             {/* Party */}
             <div className="flex items-center gap-1.5 mt-1.5">
-              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
+              <PartySymbol partyId={c.partyId} size="md" />
               <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 truncate">
                 {lang === "np" ? getParty(c.partyId).partyName : getParty(c.partyId).nameEn}
               </span>
