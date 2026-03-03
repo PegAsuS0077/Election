@@ -169,6 +169,11 @@ const WORD_OVERRIDES: Record<string, string> = {
   "सूर्य": "surya",
   "कार्य": "karya",
   "इन्द्र": "indra",
+  // EC data inconsistently appends ा to some names (male candidates written with
+  // a feminising suffix in the official data). Override to conventional spelling.
+  "दिपका": "dipak",
+  "दीपका": "deepak",
+  "प्रेमा": "prem",
 };
 
 /**
