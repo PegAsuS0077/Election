@@ -85,6 +85,8 @@ interface ElectionStore {
   setSortBy: (s: SortKey) => void;
   resetBaseline: () => void;
   toggleLang: () => void;
+  favorites: Set<string>;
+  toggleFavorite: (code: string) => void;
 }
 
 const BASELINE_KEY = "election_baseline_tally_v2";
@@ -113,6 +115,16 @@ function loadOrCreateBaseline(currentTally: SeatTally): SeatTally {
   return currentTally;
 }
 
+const FAVORITES_KEY = "nv_favorites";
+
+function loadFavorites(): Set<string> {
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    if (raw) return new Set(JSON.parse(raw) as string[]);
+  } catch { /* corrupted — start empty */ }
+  return new Set();
+}
+
 // Start with empty results — data is loaded asynchronously by useElectionSimulation
 const initialResults: ConstituencyResult[] = [];
 const initialTally: SeatTally = {};
@@ -129,6 +141,7 @@ export const useElectionStore = create<ElectionStore>((set) => ({
   viewMode:         "table",
   sortBy:           "status",
   lang:             "en",
+  favorites:        loadFavorites(),
 
   setResults: (results) => {
     // Rebuild party registry whenever new data arrives
@@ -201,6 +214,15 @@ export const useElectionStore = create<ElectionStore>((set) => ({
       const next: Lang = state.lang === "en" ? "np" : "en";
       localStorage.setItem("lang", next);
       return { lang: next };
+    }),
+
+  toggleFavorite: (code) =>
+    set((state) => {
+      const next = new Set(state.favorites);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+      return { favorites: next };
     }),
 }));
 

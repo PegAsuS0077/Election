@@ -11,13 +11,16 @@
  *   - Fetches constituencies.json from the R2 CDN immediately.
  *   - Polls every 30 s for updates.
  *   - No WebSocket — the CDN is a static file store with no push capability.
+ *   - After each poll, fires browser notifications for favorited constituencies
+ *     that newly transitioned to DECLARED status.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useElectionStore } from "../store/electionStore";
 import { loadArchiveData } from "../lib/archiveData";
 import { RESULTS_MODE } from "../types";
 import type { ConstituencyResult } from "../types";
+import { notifyDeclared } from "./useConstituencyNotifications";
 
 const CDN_BASE = (import.meta.env.VITE_CDN_URL as string | undefined) ?? "";
 const POLL_INTERVAL_MS = 30_000;
@@ -33,6 +36,9 @@ export function useElectionSimulation() {
   const mergeResults = useElectionStore((s) => s.mergeResults);
   const setIsLoading = useElectionStore((s) => s.setIsLoading);
 
+  // Track which constituencies we've already notified to avoid duplicates
+  const notifiedRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     let cancelled = false;
 
@@ -44,6 +50,11 @@ export function useElectionSimulation() {
           if (cancelled) return;
           setResults(data);
           setIsLoading(false);
+          // Seed notifiedRef with already-declared constituencies so we don't
+          // fire spurious notifications for results that existed on first load
+          data.forEach((r) => {
+            if (r.status === "DECLARED") notifiedRef.current.add(r.code);
+          });
         })
         .catch((err) => {
           console.error("[cdn] initial fetch failed:", err);
@@ -55,7 +66,28 @@ export function useElectionSimulation() {
         if (cancelled) return;
         try {
           const data = await fetchConstituenciesFromCDN();
-          if (!cancelled) mergeResults(data);
+          if (cancelled) return;
+
+          // Snapshot status BEFORE merge to detect transitions
+          const prevByCode = new Map(
+            useElectionStore.getState().results.map((r) => [r.code, r.status])
+          );
+
+          mergeResults(data);
+
+          // Notify for favorited constituencies newly declared this poll
+          const { favorites } = useElectionStore.getState();
+          for (const incoming of data) {
+            if (
+              incoming.status === "DECLARED" &&
+              !notifiedRef.current.has(incoming.code) &&
+              favorites.has(incoming.code) &&
+              prevByCode.get(incoming.code) !== "DECLARED"
+            ) {
+              notifiedRef.current.add(incoming.code);
+              notifyDeclared(incoming);
+            }
+          }
         } catch (err) {
           console.error("[cdn] poll error:", err);
         }
@@ -87,5 +119,5 @@ export function useElectionSimulation() {
     return () => {
       cancelled = true;
     };
-  }, [setResults, setIsLoading]);
+  }, [setResults, setIsLoading, mergeResults]);
 }

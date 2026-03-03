@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
 import PartySymbol from "../components/PartySymbol";
+import FavoriteButton from "../components/FavoriteButton";
 
 const STATUS_TABS = ["all", "DECLARED", "COUNTING", "PENDING"] as const;
 type StatusTab = typeof STATUS_TABS[number];
@@ -63,9 +64,12 @@ function ConstituencyCard({
             <StatusBadge status={r.status} lang={lang} />
           </div>
         </div>
-        {r.status === "COUNTING" && (
-          <span className="shrink-0 h-2 w-2 rounded-full bg-red-500 animate-pulse mt-1" />
-        )}
+        <div className="flex items-center gap-1 shrink-0">
+          {r.status === "COUNTING" && (
+            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse mt-1" />
+          )}
+          <FavoriteButton code={r.code} name={r.name} lang={lang} />
+        </div>
       </div>
 
       {/* Candidate count */}

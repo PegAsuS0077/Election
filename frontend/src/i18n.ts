@@ -126,6 +126,9 @@ export const UI: Record<string, { np: string; en: string }> = {
   footerDisclaimer:   { np: "यो साइट शैक्षिक उद्देश्यका लागि मात्र हो। नेपाल निर्वाचन आयोगसँग सम्बद्ध छैन।", en: "This site is for educational purposes only. Not affiliated with the Election Commission of Nepal." },
   dataSource:         { np: "डेटा स्रोत",                          en: "Data source" },
   hotSeatsEmpty:      { np: "निर्वाचन राति नतिजा आउँदा यहाँ देखिनेछ।", en: "Hot seat results will appear here on election night." },
+  addFavorite:        { np: "अनुगमन गर्नुहोस्",   en: "Watch constituency" },
+  removeFavorite:     { np: "अनुगमन हटाउनुहोस्",  en: "Unwatch constituency" },
+  notifDeclared:      { np: "नतिजा घोषित",         en: "Result declared" },
 };
 
 /** Get a label in the current language. Falls back to English key if missing. */

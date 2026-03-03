@@ -15,6 +15,7 @@ import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import type { Candidate } from "../types";
 import Layout from "../components/Layout";
+import FavoriteButton from "../components/FavoriteButton";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -194,6 +195,7 @@ export default function ConstituencyPage() {
       </Link>
       <span className="text-white/20">·</span>
       <StatusChip status={r.status} />
+      <FavoriteButton code={r.code} name={r.name} lang={lang} />
     </div>
   );
 

@@ -6,13 +6,24 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
+function isAlreadyInstalled() {
+  // True when running as installed PWA (standalone) or via iOS "Add to Home Screen"
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true)
+  );
+}
+
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(() =>
-    sessionStorage.getItem("pwa-install-dismissed") === "1"
+    localStorage.getItem("pwa-install-dismissed") === "1"
   );
 
   useEffect(() => {
+    // Don't show if already running as installed PWA
+    if (isAlreadyInstalled()) return;
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -26,13 +37,15 @@ export default function InstallPrompt() {
   const handleInstall = async () => {
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted" || outcome === "dismissed") {
-      setDeferredPrompt(null);
+    // Hide banner regardless of outcome — user has seen the prompt
+    setDeferredPrompt(null);
+    if (outcome === "dismissed") {
+      localStorage.setItem("pwa-install-dismissed", "1");
     }
   };
 
   const handleDismiss = () => {
-    sessionStorage.setItem("pwa-install-dismissed", "1");
+    localStorage.setItem("pwa-install-dismissed", "1");
     setDismissed(true);
   };
 
