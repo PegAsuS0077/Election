@@ -296,6 +296,22 @@ export default function CandidateDetailPage() {
     return null;
   }, [results, targetId]);
 
+  useEffect(() => {
+    if (!found) return;
+    const { cand, constituency } = found;
+    document.title = `${cand.name} – ${constituency.name} | Nepal Election 2082`;
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content",
+      `${cand.name} (${cand.partyName}) — ${constituency.name}, ${constituency.district}. Nepal House of Representatives Election 2082 vote count and results.`
+    );
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/candidate/${cand.candidateId}`);
+    return () => {
+      document.title = "Nepal Election Results 2082 Live | Real-Time Vote Count – NepalVotes";
+      if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/");
+    };
+  }, [found]);
+
   // ── Loading state ───────────────────────────────────────────────────────────
   if (results.length === 0) {
     return (

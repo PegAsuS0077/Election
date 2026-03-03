@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES as provinces } from "../types";
 import type { ConstituencyResult, Province } from "../types";
 import { partyHex } from "../lib/partyRegistry";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
-import { DetailsModal } from "../ConstituencyTable";
 
 const STATUS_TABS = ["all", "DECLARED", "COUNTING", "PENDING"] as const;
 type StatusTab = typeof STATUS_TABS[number];
@@ -129,14 +129,23 @@ function ConstituencyCard({
 }
 
 export default function ExplorePage() {
-  const results = useElectionStore((s) => s.results);
-  const lang    = useElectionStore((s) => s.lang);
+  useEffect(() => {
+    document.title = "Explore Constituencies – Nepal Election Results 2082 | NepalVotes";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content", "Browse all 165 constituencies for Nepal's House of Representatives Election 2082. Filter by province, district, or party. Live vote counts.");
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/explore");
+    return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/"); };
+  }, []);
+
+  const results  = useElectionStore((s) => s.results);
+  const lang     = useElectionStore((s) => s.lang);
+  const navigate = useNavigate();
 
   const [search, setSearch]           = useState("");
   const [selProv, setSelProv]         = useState<"All" | Province>("All");
   const [selDistrict, setSelDistrict] = useState("All");
   const [statusTab, setStatusTab]     = useState<StatusTab>("all");
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
   // Dynamically build district list based on selected province — en → np
   const districts = useMemo(() => {
@@ -172,12 +181,6 @@ export default function ExplorePage() {
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
-
-  // Find selected constituency for modal
-  const selectedResult = useMemo(
-    () => selectedCode ? results.find((r) => r.code === selectedCode) ?? null : null,
-    [results, selectedCode]
-  );
 
   const heroBadge = (
     <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1 text-xs font-semibold text-blue-400 uppercase tracking-widest">
@@ -321,7 +324,7 @@ export default function ExplorePage() {
                       key={r.code}
                       r={r}
                       lang={lang}
-                      onViewDetails={() => setSelectedCode(r.code)}
+                      onViewDetails={() => navigate(`/constituency/${encodeURIComponent(r.code)}`)}
                     />
                   ))}
                 </div>
@@ -331,14 +334,6 @@ export default function ExplorePage() {
         )}
       </div>
 
-      {/* ── Details Modal ── */}
-      {selectedResult && (
-        <DetailsModal
-          r={selectedResult}
-          onClose={() => setSelectedCode(null)}
-          lang={lang}
-        />
-      )}
     </Layout>
   );
 }

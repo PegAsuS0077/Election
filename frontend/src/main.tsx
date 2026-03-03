@@ -12,6 +12,8 @@ import AboutPage from "./pages/AboutPage.tsx";
 import PrivacyPage from "./pages/PrivacyPage.tsx";
 import ContactPage from "./pages/ContactPage.tsx";
 import CandidateDetailPage from "./pages/CandidateDetailPage.tsx";
+import PartyPage from "./pages/PartyPage.tsx";
+import ConstituencyPage from "./pages/ConstituencyPage.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -22,6 +24,8 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/parties" element={<PartiesPage />} />
+        <Route path="/party/:partyId" element={<PartyPage />} />
+        <Route path="/constituency/:code" element={<ConstituencyPage />} />
         <Route path="/candidates" element={<CandidatesPage />} />
         <Route path="/candidate/:candidateId" element={<CandidateDetailPage />} />
         <Route path="/about" element={<AboutPage />} />

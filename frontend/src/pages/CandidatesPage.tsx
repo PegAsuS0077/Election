@@ -236,6 +236,15 @@ const SELECT_CLS =
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CandidatesPage() {
+  useEffect(() => {
+    document.title = "Candidates – Nepal Election 2082 | NepalVotes";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content", "Search all 3,406 candidates in Nepal's House of Representatives Election 2082. Filter by province, district, constituency, party, or gender.");
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/candidates");
+    return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/"); };
+  }, []);
+
   const results  = useElectionStore((s) => s.results);
   const lang     = useElectionStore((s) => s.lang);
   const navigate = useNavigate();

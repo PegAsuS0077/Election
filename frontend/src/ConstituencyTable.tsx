@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { FocusTrap } from "focus-trap-react";
 import type { Candidate, ConstituencyResult, Province } from "./types";
 import { TableRowsSkeleton } from "./Skeleton";
@@ -502,14 +503,25 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
             </div>
           </div>
 
-          <button
-            onClick={requestClose}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700
-                       transition-transform duration-150 hover:bg-slate-50 active:scale-95
-                       dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            {i18n("close", lang)}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to={`/constituency/${encodeURIComponent(r.code)}`}
+              onClick={requestClose}
+              className="rounded-xl border border-[#2563eb]/40 bg-white px-3 py-2 text-sm font-semibold text-[#2563eb]
+                         transition-transform duration-150 hover:bg-blue-50 active:scale-95
+                         dark:bg-slate-900 dark:border-[#3b82f6]/40 dark:text-[#3b82f6] dark:hover:bg-[#3b82f6]/10"
+            >
+              {lang === "np" ? "पूर्ण पृष्ठ →" : "Full page →"}
+            </Link>
+            <button
+              onClick={requestClose}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700
+                         transition-transform duration-150 hover:bg-slate-50 active:scale-95
+                         dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              {i18n("close", lang)}
+            </button>
+          </div>
         </div>
 
         <div className="p-5 space-y-5">
@@ -601,29 +613,35 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
                 const cPartyColor = partyColor(c.partyId);
                 const isTop2 = idx < 2;
                 return (
-                  <div
+                  <Link
                     key={`${c.candidateId}`}
+                    to={`/candidate/${c.candidateId}`}
                     className={`flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2
-                      dark:border-slate-800
+                      dark:border-slate-800 hover:border-[#2563eb]/40 dark:hover:border-[#3b82f6]/40
+                      hover:bg-blue-50/50 dark:hover:bg-[#3b82f6]/5 transition-colors
                       ${isTop2 ? "bg-slate-50 dark:bg-slate-800/60" : "bg-white dark:bg-slate-900"}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className={`h-3 w-3 rounded-full ${cPartyColor}`} />
+                      <span className={`h-3 w-3 rounded-full shrink-0 ${cPartyColor}`} />
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                           {lang === "np" ? c.nameNp : c.name}
+                          {c.isWinner && <span className="ml-1 text-emerald-500">🏆</span>}
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{lang === "np" ? c.partyName : getParty(c.partyId).nameEn}</div>
                       </div>
                     </div>
 
-                    <div className="text-sm font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-                      {number(c.votes)}
-                      <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">
-                        {totalAllVotes > 0 ? `(${((c.votes / totalAllVotes) * 100).toFixed(1)}%)` : ""}
-                      </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-sm font-bold text-slate-900 dark:text-slate-100 tabular-nums text-right">
+                        {number(c.votes)}
+                        <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">
+                          {totalAllVotes > 0 ? `(${((c.votes / totalAllVotes) * 100).toFixed(1)}%)` : ""}
+                        </span>
+                      </div>
+                      <span className="text-slate-300 dark:text-slate-600 text-xs">›</span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

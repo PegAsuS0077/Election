@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useElectionStore } from "./store/electionStore";
 import { t } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
@@ -237,7 +238,18 @@ export default function App() {
             <p>
               {lang === "np"
                 ? "यस ड्यासबोर्डले प्रदेश सारांश दृश्य पनि प्रदान गर्दछ जसले सातवटा प्रदेशका प्रत्येकमा दलको प्रदर्शनलाई छुट्टाछुट्टै देखाउँछ। दल पृष्ठले ठूला र साना दुवै दलको सिट तथ्याङ्क एकत्र गर्दछ, जसमा मत प्रतिशत र प्रत्येक प्रतिस्पर्धी दलको FPTP उम्मेदवारहरू समावेश छन्। उम्मेदवार खोज पृष्ठले नागरिकहरूलाई कुनै विशेष व्यक्ति खोज्न र उनीहरूको वर्तमान मत स्थिति हेर्न सक्षम बनाउँछ।"
-                : "The dashboard also provides a province summary view that breaks down party performance across each of the seven provinces separately. The parties page aggregates seat tallies for both major and minor parties, including vote percentages and FPTP candidates for each contesting party. The candidates search page enables citizens to look up a specific individual and see their current vote standing."}
+                : <>
+                    The dashboard also provides a province summary view via the{" "}
+                    <Link to="/map" className="text-blue-600 dark:text-blue-400 hover:underline">interactive map</Link>
+                    {" "}that breaks down party performance across each of the seven provinces separately. The{" "}
+                    <Link to="/parties" className="text-blue-600 dark:text-blue-400 hover:underline">parties page</Link>
+                    {" "}aggregates seat tallies for both major and minor parties, including vote percentages and FPTP candidates for each contesting party. The{" "}
+                    <Link to="/candidates" className="text-blue-600 dark:text-blue-400 hover:underline">candidates search page</Link>
+                    {" "}enables citizens to look up a specific individual and see their current vote standing. You can also{" "}
+                    <Link to="/explore" className="text-blue-600 dark:text-blue-400 hover:underline">explore all 165 constituencies</Link>
+                    {" "}filtered by province or district.
+                  </>
+              }
             </p>
 
             <p>

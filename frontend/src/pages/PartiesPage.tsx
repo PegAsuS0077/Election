@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES } from "../types";
 import { getParty, partyHex } from "../lib/partyRegistry";
@@ -206,11 +206,18 @@ function PartyCandidatesPanel({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function PartiesPage() {
+  useEffect(() => {
+    document.title = "Political Parties – Nepal Election 2082 Seat Tally | NepalVotes";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content", "Live seat tally for all 66+ political parties in Nepal's House of Representatives Election 2082. FPTP wins and proportional representation breakdown.");
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/parties");
+    return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/"); };
+  }, []);
+
   const results   = useElectionStore((s) => s.results);
   const seatTally = useElectionStore((s) => s.seatTally);
   const lang      = useElectionStore((s) => s.lang);
-
-  const [selectedParty, setSelectedParty] = useState<string | null>(null);
 
   const totalSeats = 275;
 
@@ -273,39 +280,6 @@ export default function PartiesPage() {
     }).sort((a, b) => b.total - a.total);
   }, [results, seatTally]);
 
-  // Build flat candidate list for selected party
-  const partyCandidates = useMemo<CandidateRow[]>(() => {
-    if (!selectedParty) return [];
-    const flat: CandidateRow[] = [];
-    for (const r of results) {
-      const sorted   = [...r.candidates].sort((a, b) => b.votes - a.votes);
-      const topVotes = sorted[0]?.votes ?? 0;
-      const topParty = sorted[0]?.partyId;
-      for (const c of r.candidates) {
-        if (c.partyId !== selectedParty) continue;
-        const isWinner =
-          r.status === "DECLARED" &&
-          c.partyId === topParty &&
-          c.votes === topVotes &&
-          topVotes > 0;
-        flat.push({
-          candidateId:  c.candidateId,
-          name:         c.name,
-          nameNp:       c.nameNp,
-          votes:        c.votes,
-          gender:       c.gender,
-          constCode:    r.code,
-          constName:    r.name,
-          constNameNp:  r.nameNp,
-          district:     r.district,
-          province:     r.province,
-          constStatus:  r.status,
-          isWinner,
-        });
-      }
-    }
-    return flat.sort((a, b) => b.votes - a.votes);
-  }, [results, selectedParty]);
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -382,12 +356,7 @@ export default function PartiesPage() {
         {filteredPartyData.map(({ key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount }) => (
           <div
             key={key}
-            className={
-              "rounded-2xl border bg-white dark:bg-[#0c1525] overflow-hidden shadow-sm hover:shadow-md transition-shadow " +
-              (selectedParty === key
-                ? "border-[#2563eb] ring-2 ring-[#2563eb]/30"
-                : "border-slate-200 dark:border-slate-800/80")
-            }
+            className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0c1525] overflow-hidden shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="h-1.5 w-full" style={{ backgroundColor: hex }} />
 
@@ -405,6 +374,13 @@ export default function PartiesPage() {
                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                       {lang === "np" ? pInfo.nameEn : pInfo.partyName}
                     </p>
+                    <Link
+                      to={`/party/${encodeURIComponent(key)}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-[10px] text-blue-500 dark:text-blue-400 hover:underline mt-0.5 inline-block"
+                    >
+                      {lang === "np" ? "विस्तृत विवरण →" : "Full details →"}
+                    </Link>
                     {(() => {
                       const meta = getPartyMeta(key);
                       if (!meta || meta.founded === 0) return null;
@@ -495,33 +471,17 @@ export default function PartiesPage() {
               )}
 
               {/* View candidates button */}
-              <button
-                onClick={() => setSelectedParty(selectedParty === key ? null : key)}
-                className={
-                  "w-full h-9 rounded-xl text-xs font-semibold transition-all border " +
-                  (selectedParty === key
-                    ? "bg-[#2563eb] border-[#2563eb] text-white"
-                    : "border-[#2563eb]/40 text-[#2563eb] dark:text-[#3b82f6] hover:bg-[#2563eb] hover:text-white")
-                }
+              <Link
+                to={`/party/${encodeURIComponent(key)}`}
+                className="flex items-center justify-center w-full h-9 rounded-xl text-xs font-semibold transition-all border border-[#2563eb]/40 text-[#2563eb] dark:text-[#3b82f6] hover:bg-[#2563eb] hover:text-white hover:border-[#2563eb]"
               >
-                {selectedParty === key
-                  ? (lang === "np" ? "▲ बन्द गर्नुस्" : "▲ Hide Candidates")
-                  : `${lang === "np" ? "▼ उम्मेद्वार हेर्नुस्" : "▼ View Candidates"} (${candidateCount})`}
-              </button>
+                {`${lang === "np" ? "▼ उम्मेद्वार हेर्नुस्" : "▼ View Candidates"} (${candidateCount})`}
+              </Link>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── Party candidates drill-down panel ── */}
-      {selectedParty && partyCandidates.length > 0 && (
-        <PartyCandidatesPanel
-          partyKey={selectedParty}
-          candidates={partyCandidates}
-          lang={lang}
-          onClose={() => setSelectedParty(null)}
-        />
-      )}
     </Layout>
   );
 }

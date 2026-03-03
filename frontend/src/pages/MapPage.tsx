@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES as provinces } from "../types";
 import type { Province } from "../types";
@@ -7,6 +7,15 @@ import Layout from "../components/Layout";
 import NepalMap from "../NepalMap";
 
 export default function MapPage() {
+  useEffect(() => {
+    document.title = "Nepal Election Map 2082 – Province Results | NepalVotes";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute("content", "Interactive map showing Nepal's 2082 election results by province. See leading parties across Koshi, Madhesh, Bagmati, Gandaki, Lumbini, Karnali, and Sudurpashchim.");
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/map");
+    return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/"); };
+  }, []);
+
   const results = useElectionStore((s) => s.results);
   const lang    = useElectionStore((s) => s.lang);
   const [selected, setSelected] = useState<"All" | Province>("All");
