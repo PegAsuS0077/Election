@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES as provinces } from "../types";
 import type { Province } from "../types";
@@ -6,6 +7,10 @@ import { provinceName } from "../i18n";
 import Layout from "../components/Layout";
 import NepalMap from "../NepalMap";
 import type { MapMode } from "../NepalMap";
+
+const SELECT_CLS =
+  "h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] " +
+  "px-3 text-[11px] text-slate-700 dark:text-slate-300 outline-none focus:border-[#2563eb] transition min-w-0";
 
 // ── Competitive-seat calculation ───────────────────────────────────────────────
 
@@ -53,25 +58,73 @@ export default function MapPage() {
     return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/"); };
   }, []);
 
-  const results = useElectionStore((s) => s.results);
-  const lang    = useElectionStore((s) => s.lang);
+  const results  = useElectionStore((s) => s.results);
+  const lang     = useElectionStore((s) => s.lang);
+  const navigate = useNavigate();
 
-  const [mode, setMode]                 = useState<MapMode>("district");
-  const [selected, setSelected]         = useState<"All" | Province>("All");
-  const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
+  const [mode, setMode]                   = useState<MapMode>("district");
+  const [selected, setSelected]           = useState<"All" | Province>("All");
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [selectedConst, setSelectedConst] = useState<string>("All");
+  const [selectedSeat, setSelectedSeat]   = useState<string | null>(null);
 
   function handleModeSwitch(m: MapMode) {
     setMode(m);
     if (m === "district") setSelectedSeat(null);
   }
 
+  // ── Cascading district options ─────────────────────────────────────────────
+  const districtOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of results) {
+      if (selected === "All" || r.province === selected) seen.set(r.district, r.districtNp ?? r.district);
+    }
+    return Array.from(seen.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [results, selected]);
+
+  // ── Cascading constituency options ─────────────────────────────────────────
+  const constOptions = useMemo(() => {
+    const seen = new Map<string, [string, string]>();
+    for (const r of results) {
+      if (selected !== "All" && r.province !== selected) continue;
+      if (selectedDistrict && r.district !== selectedDistrict) continue;
+      seen.set(r.code, [r.name, r.nameNp]);
+    }
+    return Array.from(seen.entries()).sort((a, b) => a[1][0].localeCompare(b[1][0]));
+  }, [results, selected, selectedDistrict]);
+
   // ── Derived ───────────────────────────────────────────────────────────────
-  const filtered   = selected === "All" ? results : results.filter((r) => r.province === selected);
-  const declared   = filtered.filter((r) => r.status === "DECLARED").length;
-  const counting   = filtered.filter((r) => r.status === "COUNTING").length;
-  const total      = filtered.length;
+  const filtered = useMemo(() => {
+    let list = selected === "All" ? results : results.filter((r) => r.province === selected);
+    if (selectedDistrict) list = list.filter((r) => r.district === selectedDistrict);
+    if (selectedConst !== "All") list = list.filter((r) => r.code === selectedConst);
+    return list;
+  }, [results, selected, selectedDistrict, selectedConst]);
+  const declared = filtered.filter((r) => r.status === "DECLARED").length;
+  const counting = filtered.filter((r) => r.status === "COUNTING").length;
+  const total    = filtered.length;
   const competitive = useMemo(() => computeCompetitive(results), [results]);
   const selectedResult = selectedSeat ? results.find((r) => r.name === selectedSeat) ?? null : null;
+
+  // Hot seat codes — constituencies with margin < 10% (matches HotSeats component logic)
+  const hotSeatCodes = useMemo<Set<string>>(() => {
+    const s = new Set<string>();
+    for (const r of results) {
+      if (r.status === "PENDING") continue;
+      const withVotes = r.candidates.filter((c) => c.votes > 0);
+      if (withVotes.length < 2) continue;
+      const sorted = [...withVotes].sort((a, b) => b.votes - a.votes);
+      const marginPct = sorted[0].votes > 0
+        ? ((sorted[0].votes - sorted[1].votes) / sorted[0].votes) * 100
+        : 100;
+      if (marginPct < 10) s.add(r.name);
+    }
+    return s;
+  }, [results]);
+
+  function candidateSlug(id: number, name: string) {
+    return `${id}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  }
 
   const heroBadge = (
     <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1 text-xs font-semibold text-blue-400 uppercase tracking-widest">
@@ -114,7 +167,7 @@ export default function MapPage() {
 
           {/* Province pills */}
           <div className="flex flex-wrap gap-1.5">
-            <button onClick={() => setSelected("All")}
+            <button onClick={() => { setSelected("All"); setSelectedDistrict(null); setSelectedConst("All"); }}
               className={"h-6 px-3 rounded-full text-[11px] font-medium transition border " +
                 (selected === "All"
                   ? "bg-[#2563eb] border-[#2563eb] text-white"
@@ -124,7 +177,11 @@ export default function MapPage() {
               {lang === "np" ? "सबै" : "All"}
             </button>
             {provinces.map((p) => (
-              <button key={p} onClick={() => setSelected(selected === p ? "All" : p)}
+              <button key={p} onClick={() => {
+                setSelected(selected === p ? "All" : p);
+                setSelectedDistrict(null);
+                setSelectedConst("All");
+              }}
                 className={"h-6 px-3 rounded-full text-[11px] font-medium transition border " +
                   (selected === p
                     ? "bg-[#2563eb] border-[#2563eb] text-white"
@@ -134,7 +191,6 @@ export default function MapPage() {
                 {provinceName(p, lang)}
               </button>
             ))}
-            {/* Clear seat selection pill */}
             {selectedSeat && (
               <button onClick={() => setSelectedSeat(null)}
                 className="h-6 px-3 rounded-full text-[11px] font-medium transition border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
@@ -143,60 +199,106 @@ export default function MapPage() {
               </button>
             )}
           </div>
+
+          {/* District + Constituency dropdowns */}
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={selectedDistrict ?? "All"}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedDistrict(v === "All" ? null : v);
+                setSelectedConst("All");
+              }}
+              className={SELECT_CLS}
+              disabled={districtOptions.length === 0}
+            >
+              <option value="All">{lang === "np" ? "सबै जिल्ला" : "All Districts"}</option>
+              {districtOptions.map(([en, np]) => (
+                <option key={en} value={en}>{lang === "np" ? np : en}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedConst}
+              onChange={(e) => {
+                setSelectedConst(e.target.value);
+                if (e.target.value !== "All" && mode !== "constituency") setMode("constituency");
+              }}
+              className={SELECT_CLS}
+              disabled={constOptions.length === 0}
+            >
+              <option value="All">{lang === "np" ? "सबै क्षेत्र" : "All Constituencies"}</option>
+              {constOptions.map(([code, [nameEn, nameNp]]) => (
+                <option key={code} value={code}>{lang === "np" ? nameNp : nameEn}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* ── Main content: map + sidebar ───────────────────────────────────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_288px] gap-4">
+        {/* ── Map card — full width ─────────────────────────────────────────── */}
+        <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-3 shadow-sm">
 
-          {/* Map card */}
-          <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-4 shadow-sm">
+          {/* Mode toggle */}
+          <div className="flex items-center gap-1.5 mb-2">
+            {(["district", "constituency"] as MapMode[]).map((m) => (
+              <button key={m} onClick={() => handleModeSwitch(m)}
+                className={"h-7 px-4 rounded-full text-xs font-semibold transition border " +
+                  (mode === m
+                    ? "bg-[#2563eb] border-[#2563eb] text-white"
+                    : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-[#2563eb]/50"
+                  )}
+              >
+                {m === "district"
+                  ? (lang === "np" ? "जिल्ला" : "Districts")
+                  : (lang === "np" ? "निर्वाचन क्षेत्र" : "Constituencies")}
+              </button>
+            ))}
+            {mode === "constituency" && (
+              <span className="ml-auto flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500">
+                <span className="inline-block w-3 h-3 rounded-sm bg-[#fca5a5] border border-[#ef4444]" />
+                {lang === "np" ? "कडा प्रतिस्पर्धा" : "Hot seat"}
+              </span>
+            )}
+          </div>
 
-            {/* Mode toggle — inside map card, above the SVG */}
-            <div className="flex items-center gap-1.5 mb-3">
-              {(["district", "constituency"] as MapMode[]).map((m) => (
-                <button key={m} onClick={() => handleModeSwitch(m)}
-                  className={"h-7 px-4 rounded-full text-xs font-semibold transition border " +
-                    (mode === m
-                      ? "bg-[#2563eb] border-[#2563eb] text-white"
-                      : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-[#2563eb]/50"
-                    )}
-                >
-                  {m === "district"
-                    ? (lang === "np" ? "जिल्ला" : "Districts")
-                    : (lang === "np" ? "निर्वाचन क्षेत्र" : "Constituencies")}
-                </button>
-              ))}
-            </div>
-
-            <NepalMap
+          <NepalMap
               results={results}
               selectedProvince={selected}
               onSelect={setSelected}
               lang={lang}
               mode={mode}
-              selectedSeat={selectedSeat}
+              selectedSeat={selectedSeat ?? (selectedConst !== "All" ? selectedConst : null)}
               onSelectSeat={(code) => {
                 setSelectedSeat(code);
+                setSelectedConst(code ?? "All");
                 if (code && mode !== "constituency") setMode("constituency");
               }}
+              selectedDistrict={selectedDistrict}
+              onSelectDistrict={(d) => {
+                setSelectedDistrict(d);
+                setSelectedConst("All");
+                setSelectedSeat(null);
+              }}
+              hotSeatCodes={hotSeatCodes}
             />
-          </div>
+        </div>
 
-          {/* Sidebar */}
-          <div className="space-y-3">
+        {/* ── Sidebar panels — horizontal scroll row below map ──────────────── */}
+        <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollSnapType: "x mandatory" }}>
+          <div className="flex gap-3 min-w-0" style={{ scrollSnapAlign: "start" }}>
 
-            {/* ── Selected seat detail ──────────────────────────────────── */}
+            {/* ── Selected constituency detail (constituency mode) ───────── */}
             {selectedResult && (
-              <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-amber-400/50 p-4 shadow-sm">
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div>
+              <div className="w-80 shrink-0 bg-white dark:bg-[#0c1525] rounded-2xl border border-amber-400/50 p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
                     <div className="text-[10px] font-semibold text-amber-500 uppercase tracking-widest mb-0.5">
-                      {lang === "np" ? "चयनित क्षेत्र" : "Selected Seat"}
+                      {lang === "np" ? "चयनित क्षेत्र" : "Selected Constituency"}
                     </div>
-                    <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <div className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                       {lang === "np" ? selectedResult.nameNp : selectedResult.name}
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                       {selectedResult.province} · {selectedResult.district}
                     </div>
                   </div>
@@ -208,40 +310,56 @@ export default function MapPage() {
                     {selectedResult.status}
                   </span>
                 </div>
-                <div className="space-y-1">
+
+                {/* Top 5 candidates — clickable */}
+                <div className="space-y-1 mb-3">
                   {[...selectedResult.candidates]
                     .sort((a, b) => b.votes - a.votes)
                     .slice(0, 5)
-                    .map((c) => (
-                      <div key={c.candidateId}
-                        className={"flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs " +
+                    .map((c, rank) => (
+                      <button key={c.candidateId}
+                        onClick={() => navigate(`/candidate/${candidateSlug(c.candidateId, c.name)}`)}
+                        className={"w-full flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs text-left transition " +
                           (c.isWinner
-                            ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800"
-                            : "bg-slate-50 dark:bg-slate-800/50")}
+                            ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                            : "bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/60")}
                       >
-                        <span className="truncate font-medium text-slate-800 dark:text-slate-200">
-                          {lang === "np" ? c.nameNp : c.name}
-                          {c.isWinner && <span className="ml-1 text-emerald-600">✓</span>}
+                        <span className="flex items-center gap-1.5 min-w-0">
+                          <span className="shrink-0 text-[10px] font-bold text-slate-400 dark:text-slate-500 w-3">
+                            {rank + 1}
+                          </span>
+                          <span className="truncate font-medium text-slate-800 dark:text-slate-200">
+                            {lang === "np" ? c.nameNp : c.name}
+                            {c.isWinner && <span className="ml-1 text-emerald-600">✓</span>}
+                          </span>
                         </span>
                         <span className="shrink-0 tabular-nums text-slate-500 dark:text-slate-400">
                           {c.votes > 0 ? c.votes.toLocaleString() : "—"}
                         </span>
-                      </div>
+                      </button>
                     ))}
                 </div>
+
+                {/* View full race button */}
+                <button
+                  onClick={() => navigate(`/constituency/${encodeURIComponent(selectedResult.code)}`)}
+                  className="w-full rounded-lg border border-[#2563eb]/30 bg-[#2563eb]/5 hover:bg-[#2563eb]/10 px-3 py-1.5 text-[11px] font-semibold text-[#2563eb] dark:text-blue-400 transition text-center"
+                >
+                  {lang === "np" ? "पूर्ण दौड हेर्नुहोस् →" : "View full race →"}
+                </button>
               </div>
             )}
 
             {/* ── Competitive seats ─────────────────────────────────────── */}
             {competitive.length > 0 && (
-              <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-4 shadow-sm">
+              <div className="w-72 shrink-0 bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-4 shadow-sm">
                 <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
                   {lang === "np" ? "कडा प्रतिस्पर्धा (शीर्ष २०)" : "Closest Races (top 20)"}
                 </div>
                 <div className="space-y-0.5">
                   {competitive.map((seat: CompetitiveSeat) => (
                     <button key={seat.name}
-                      onClick={() => { setSelectedSeat(seat.name); setMode("constituency"); }}
+                      onClick={() => { setSelectedSeat(seat.name); setSelectedConst(seat.name); setMode("constituency"); }}
                       className={"w-full text-left rounded-lg px-2.5 py-1.5 transition " +
                         (selectedSeat === seat.name
                           ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700"
@@ -264,39 +382,96 @@ export default function MapPage() {
               </div>
             )}
 
-            {/* ── Province constituency list (district mode, province selected) */}
-            {mode === "district" && selected !== "All" && (
-              <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-4 shadow-sm">
+            {/* ── District constituency list (district mode, district selected) */}
+            {mode === "district" && selectedDistrict && (
+              <div className="w-72 shrink-0 bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-4 shadow-sm">
                 <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
-                  {provinceName(selected, lang)} — {lang === "np" ? "क्षेत्रहरू" : "Constituencies"} ({filtered.length})
+                  {selectedDistrict} — {lang === "np" ? "क्षेत्रहरू" : "Constituencies"} ({filtered.length})
                 </div>
                 <div className="space-y-1">
                   {filtered.map((r) => {
                     const top = [...r.candidates].sort((a, b) => b.votes - a.votes)[0];
+                    const isHot = hotSeatCodes.has(r.name);
                     const accent =
                       r.status === "DECLARED" ? "border-l-emerald-500" :
                       r.status === "COUNTING"  ? "border-l-amber-400"   : "border-l-slate-300";
                     return (
-                      <div key={r.code}
-                        className={"rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 border-l-2 " + accent}
+                      <button key={r.code}
+                        onClick={() => navigate(`/constituency/${encodeURIComponent(r.code)}`)}
+                        className={"w-full text-left rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 border-l-2 transition hover:bg-slate-100 dark:hover:bg-slate-700/60 " + accent}
                       >
-                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                          {lang === "np" ? r.nameNp : r.name}
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {lang === "np" ? r.nameNp : r.name}
+                          </div>
+                          {isHot && (
+                            <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
+                              🔥
+                            </span>
+                          )}
                         </div>
-                        {top && top.votes > 0 && (
+                        {top && top.votes > 0 ? (
                           <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                             {lang === "np" ? top.nameNp : top.name}
                           </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-600">
+                            {lang === "np" ? "मत अद्यावधिक छैन" : "No votes yet"}
+                          </div>
                         )}
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
               </div>
             )}
 
-          </div>
-        </div>
+            {/* ── Province constituency list (district mode, province selected, no district) */}
+            {mode === "district" && selected !== "All" && !selectedDistrict && (
+              <div className="w-72 shrink-0 bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-4 shadow-sm">
+                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                  {provinceName(selected, lang)} — {lang === "np" ? "क्षेत्रहरू" : "Constituencies"} ({filtered.length})
+                </div>
+                <div className="space-y-1">
+                  {filtered.map((r) => {
+                    const top = [...r.candidates].sort((a, b) => b.votes - a.votes)[0];
+                    const isHot = hotSeatCodes.has(r.name);
+                    const accent =
+                      r.status === "DECLARED" ? "border-l-emerald-500" :
+                      r.status === "COUNTING"  ? "border-l-amber-400"   : "border-l-slate-300";
+                    return (
+                      <button key={r.code}
+                        onClick={() => navigate(`/constituency/${encodeURIComponent(r.code)}`)}
+                        className={"w-full text-left rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 border-l-2 transition hover:bg-slate-100 dark:hover:bg-slate-700/60 " + accent}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {lang === "np" ? r.nameNp : r.name}
+                          </div>
+                          {isHot && (
+                            <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
+                              🔥
+                            </span>
+                          )}
+                        </div>
+                        {top && top.votes > 0 ? (
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                            {lang === "np" ? top.nameNp : top.name} · {r.district}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-600">
+                            {r.district}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+          </div>{/* end inner flex */}
+        </div>{/* end scroll row */}
       </div>
     </Layout>
   );
