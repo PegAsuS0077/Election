@@ -2,12 +2,31 @@ import { useState, useMemo, useEffect } from "react";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES as provinces } from "../types";
 import type { ConstituencyResult, Province } from "../types";
-import { partyHex } from "../lib/partyRegistry";
+import { getParty } from "../lib/partyRegistry";
+import type { PartyInfo } from "../types";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
+
+function PartySymbol({ party }: { party: PartyInfo }) {
+  const [imgErr, setImgErr] = useState(false);
+  if (party.symbolUrl && !imgErr) {
+    return (
+      <img
+        src={party.symbolUrl}
+        alt={party.nameEn}
+        onError={() => setImgErr(true)}
+        className="h-5 w-5 rounded-sm object-contain shrink-0 bg-white"
+      />
+    );
+  }
+  if (party.symbol && party.symbol !== "•") {
+    return <span className="h-5 w-5 flex items-center justify-center text-sm shrink-0">{party.symbol}</span>;
+  }
+  return <span className="h-5 w-5 rounded-full shrink-0" style={{ backgroundColor: party.hex }} />;
+}
 
 const STATUS_TABS = ["all", "DECLARED", "COUNTING", "PENDING"] as const;
 type StatusTab = typeof STATUS_TABS[number];
@@ -76,10 +95,10 @@ function ConstituencyCard({
       {/* Top candidates */}
       <div className="space-y-1.5">
         {top3.map((c) => {
-          const hex   = partyHex(c.partyId);
+          const party = getParty(c.partyId);
           return (
             <div key={c.candidateId} className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: hex }} />
+              <PartySymbol party={party} />
               <span className="text-xs text-slate-700 dark:text-slate-300 truncate flex-1">
                 {lang === "np" ? c.nameNp : c.name}
                 <span className="text-[10px] text-slate-400 ml-1">
@@ -106,12 +125,12 @@ function ConstituencyCard({
         const top = sorted[0];
         const sec = sorted[1];
         const total = top.votes + sec.votes;
-        const pHex = partyHex(top.partyId);
+        const topParty = getParty(top.partyId);
         return (
           <div className="h-1.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
             <div
               className="h-full rounded-l-full transition-all duration-700"
-              style={{ width: `${(top.votes / total) * 100}%`, backgroundColor: pHex }}
+              style={{ width: `${(top.votes / total) * 100}%`, backgroundColor: topParty.hex }}
             />
           </div>
         );
