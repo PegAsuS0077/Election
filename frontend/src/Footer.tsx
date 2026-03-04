@@ -20,9 +20,9 @@ export default function Footer({ lang = "en" }: { lang?: Lang }) {
             </p>
           </div>
 
-          {/* Right: Facebook + data source */}
-          <div className="text-xs text-slate-500 dark:text-slate-400 sm:text-right">
-            <div className="mb-3">
+          {/* Right: data source + Facebook side by side */}
+          <div className="flex gap-8 text-xs text-slate-500 dark:text-slate-400 sm:text-right">
+            <div>
               <div className="font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {lang === "np" ? "हामीलाई फलो गर्नुहोस्" : "Follow Us"}
               </div>
@@ -38,19 +38,21 @@ export default function Footer({ lang = "en" }: { lang?: Lang }) {
                 {lang === "np" ? "फेसबुकमा फलो गर्नुहोस्" : "Follow us on Facebook"}
               </a>
             </div>
-            <div className="font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t("dataSource", lang)}
-            </div>
-            <a
-              href="https://result.election.gov.np"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:underline text-blue-600 dark:text-blue-400 break-all"
-            >
-              result.election.gov.np
-            </a>
-            <div className="mt-2">
-              {lang === "np" ? "हरेक ३० सेकेन्डमा अपडेट" : "Updates every 30 seconds"}
+            <div>
+              <div className="font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {t("dataSource", lang)}
+              </div>
+              <a
+                href="https://result.election.gov.np"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline text-blue-600 dark:text-blue-400 break-all"
+              >
+                result.election.gov.np
+              </a>
+              <div className="mt-2">
+                {lang === "np" ? "हरेक ३० सेकेन्डमा अपडेट" : "Updates every 30 seconds"}
+              </div>
             </div>
           </div>
         </div>
