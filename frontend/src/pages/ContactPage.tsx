@@ -48,6 +48,27 @@ export default function ContactPage() {
                 </a>
               </div>
             </div>
+
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50">
+              <span className="text-2xl">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true">
+                  <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+                </svg>
+              </span>
+              <div>
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-500 uppercase tracking-wide mb-0.5">
+                  {lang === "np" ? "फेसबुक" : "Facebook"}
+                </div>
+                <a
+                  href="https://www.facebook.com/nepalvoteslive"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                >
+                  {lang === "np" ? "फेसबुकमा फलो गर्नुहोस्" : "Follow us on Facebook"}
+                </a>
+              </div>
+            </div>
           </section>
 
           <section>
