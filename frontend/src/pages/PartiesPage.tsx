@@ -91,7 +91,7 @@ export default function PartiesPage() {
     return seenIds.map((key) => {
       const pInfo = getParty(key);
       const tally  = seatTally[key] ?? { fptp: 0, pr: 0 };
-      const total  = tally.fptp + tally.pr;
+      const total  = tally.fptp;
       const pct    = (total / totalSeats) * 100;
 
       let totalVotes = 0;
@@ -133,7 +133,7 @@ export default function PartiesPage() {
 
       return { key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount };
     }).sort((a, b) => {
-      // Primary: total seats descending; Secondary: votes received descending
+      // Primary: declared FPTP wins descending; Secondary: votes received descending
       if (b.total !== a.total) return b.total - a.total;
       return b.partyVotes - a.partyVotes;
     });
@@ -278,7 +278,7 @@ export default function PartiesPage() {
           </span>{" "}
           {lang === "np" ? "मध्ये" : "of"}{" "}
           <span className="font-semibold text-slate-700 dark:text-slate-300">{filteredPartyData.length}</span>{" "}
-          {lang === "np" ? "दलहरू · कुल सिटको आधारमा क्रमबद्ध" : "parties · sorted by total seats"}
+          {lang === "np" ? "दलहरू · घोषित सिटको आधारमा क्रमबद्ध" : "parties · sorted by declared seats"}
         </p>
       </div>
 
@@ -339,7 +339,7 @@ export default function PartiesPage() {
                     {total}
                   </div>
                   <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">
-                    {lang === "np" ? "कुल सिट" : "total seats"}
+                    {lang === "np" ? "घोषित सिट" : "declared seats"}
                   </div>
                 </div>
               </div>

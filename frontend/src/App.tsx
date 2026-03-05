@@ -8,6 +8,7 @@ import { RESULTS_MODE } from "./types";
 import SummaryCards from "./SummaryCards";
 import SeatShareBars from "./SeatShareBars";
 import HotSeats from "./HotSeats";
+import LatestUpdates from "./LatestUpdates";
 import { SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
 import Layout from "./components/Layout";
 import InstallPrompt from "./components/InstallPrompt";
@@ -142,6 +143,8 @@ export default function App() {
 
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        <LatestUpdates results={results} lang={lang} />
+
         <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <HotSeats results={results} lang={lang} />
         </section>

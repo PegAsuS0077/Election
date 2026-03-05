@@ -34,9 +34,9 @@ export default function SummaryCards({
   if (isLoading) return <SummaryCardsSkeleton />;
 
   const totals = Object.entries(seatTally).map(([partyId, v]) => {
-    const current   = v.fptp + v.pr;
+    const current   = v.fptp;
     const base      = baselineTally[partyId];
-    const baseTotal = base ? base.fptp + base.pr : 0;
+    const baseTotal = base ? base.fptp : 0;
     return { partyId, total: current, delta: current - baseTotal };
   });
 
