@@ -318,6 +318,12 @@ const UPSTREAM_HOR_TOP5_URLS = [
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
   "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json",
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
+  "?file=JSONFiles/Election2082/Common/HOR-T5Winner.json",
+  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
+  "?file=JSONFiles/Election2082/Common/HOR-T6Leader.json",
+  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
+  "?file=JSONFiles/Election2082/Common/HOR-T6Winner.json",
+  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
   "?file=JSONFiles/Election2082/Common/HoRPartyTop5.txt",
 ];
 const HOR_TOP5_REFERER_URL = "https://result.election.gov.np/FPTPWLChartResult2082.aspx";
@@ -551,12 +557,12 @@ function recordDistrictNp(rec: UpstreamRecord): string {
 
 function mergeHigherVotesFromRows(
   baseRecords: UpstreamRecord[],
-  fresherRows: Partial<UpstreamRecord>[],
+  fresherRows: Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>,
 ): { upgraded: number; missingCandidateRows: number; usableRows: number } {
   const fresherVoteByCandidateId = new Map<number, number>();
   for (const row of fresherRows) {
-    const candidateId = toInt(row.CandidateID);
-    const votes = toInt(row.TotalVoteReceived);
+    const candidateId = toInt(row.CandidateID ?? row.CandidateId);
+    const votes = toInt(row.TotalVoteReceived ?? row.TotalVote);
     if (candidateId === null || votes === null || votes < 0) continue;
     const prev = fresherVoteByCandidateId.get(candidateId);
     if (prev === undefined || votes > prev) {
@@ -1008,7 +1014,10 @@ async function fetchPrHorPartySnapshot(
 async function fetchHorTop5Rows(
   csrfToken: string,
   cookieHeader: string,
-): Promise<Partial<UpstreamRecord>[] | null> {
+): Promise<Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }> | null> {
+  const mergedRows: Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }> = [];
+  let successfulSources = 0;
+
   for (const sourceUrl of UPSTREAM_HOR_TOP5_URLS) {
     let res: Response;
     try {
@@ -1050,9 +1059,9 @@ async function fetchHorTop5Rows(
     }
     if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
 
-    let rows: Partial<UpstreamRecord>[];
+    let rows: Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>;
     try {
-      rows = JSON.parse(text) as Partial<UpstreamRecord>[];
+      rows = JSON.parse(text) as Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>;
     } catch (err) {
       console.warn(`[scraper] optional HOR Top5 JSON parse failed (${sourceUrl}):`, err);
       continue;
@@ -1061,9 +1070,13 @@ async function fetchHorTop5Rows(
       console.warn(`[scraper] optional HOR Top5 payload empty (${sourceUrl})`);
       continue;
     }
-    return rows;
+    successfulSources++;
+    mergedRows.push(...rows);
   }
-  return null;
+
+  if (mergedRows.length === 0) return null;
+  console.log(`[scraper] optional HOR Top5 collected ${mergedRows.length} rows from ${successfulSources} sources`);
+  return mergedRows;
 }
 
 // ── Scheduled handler ─────────────────────────────────────────────────────────

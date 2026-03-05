@@ -51,6 +51,12 @@ UPSTREAM_HOR_TOP5_URLS = (
     "https://result.election.gov.np/Handlers/SecureJson.ashx"
     "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json",
     "https://result.election.gov.np/Handlers/SecureJson.ashx"
+    "?file=JSONFiles/Election2082/Common/HOR-T5Winner.json",
+    "https://result.election.gov.np/Handlers/SecureJson.ashx"
+    "?file=JSONFiles/Election2082/Common/HOR-T6Leader.json",
+    "https://result.election.gov.np/Handlers/SecureJson.ashx"
+    "?file=JSONFiles/Election2082/Common/HOR-T6Winner.json",
+    "https://result.election.gov.np/Handlers/SecureJson.ashx"
     "?file=JSONFiles/Election2082/Common/HoRPartyTop5.txt",
 )
 HOR_TOP5_REFERER_URL = "https://result.election.gov.np/FPTPWLChartResult2082.aspx"
@@ -166,7 +172,12 @@ def map_party_key(party_name: str) -> str:
 
 def constituency_id(record: dict[str, Any]) -> str:
     """Derive a stable global constituency key from the composite fields."""
-    return f"{record['STATE_ID']}-{record['DistrictName']}-{record['SCConstID']}"
+    state_id = _state_id(record)
+    const_id = _const_id(record)
+    district_name = (record.get("DistrictName") or record.get("District") or "").strip()
+    if state_id is None or const_id is None or not district_name:
+        return ""
+    return f"{state_id}-{district_name}-{const_id}"
 
 
 # Confirmed winner value from live upstream JSON (validated 2026-02-23).
@@ -184,7 +195,11 @@ def is_winner(record: dict[str, Any]) -> bool:
     if status is not None:
         return status in _WINNER_STATUS
     # Fallback for partial counts before official declaration
-    if record.get("R") == 1 and record.get("TotalVoteReceived", 0) > 0:
+    rank = _to_int(record.get("R"))
+    if rank is None:
+        rank = _to_int(record.get("Rank"))
+    votes = _vote_total(record) or 0
+    if rank == 1 and votes > 0:
         return True
     return False
 
@@ -198,7 +213,18 @@ def _derive_party_id(rec: dict[str, Any]) -> str:
     """
     if (rec.get("PoliticalPartyName") or "") == "स्वतन्त्र":
         return "IND"
-    return str(rec.get("SYMBOLCODE", "0"))
+    symbol_code = _to_int(rec.get("SYMBOLCODE"))
+    if symbol_code is None:
+        symbol_code = _to_int(rec.get("SymbolID"))
+    if symbol_code is None:
+        symbol_code = _to_int(rec.get("SymbolId"))
+    if symbol_code is None:
+        symbol_code = _to_int(rec.get("PartyID"))
+    if symbol_code is None:
+        symbol_code = _to_int(rec.get("PartyId"))
+    if symbol_code is None:
+        return "0"
+    return str(symbol_code)
 
 
 def _district_en(np_name: str, state_id: int) -> str:
@@ -229,6 +255,34 @@ def _to_int(value: Any) -> int | None:
     return None
 
 
+def _state_id(rec: dict[str, Any]) -> int | None:
+    state_id = _to_int(rec.get("STATE_ID"))
+    if state_id is None:
+        state_id = _to_int(rec.get("State"))
+    return state_id
+
+
+def _const_id(rec: dict[str, Any]) -> int | None:
+    const_id = _to_int(rec.get("SCConstID"))
+    if const_id is None:
+        const_id = _to_int(rec.get("ScConstId"))
+    return const_id
+
+
+def _candidate_id(rec: dict[str, Any]) -> int | None:
+    candidate_id = _to_int(rec.get("CandidateID"))
+    if candidate_id is None:
+        candidate_id = _to_int(rec.get("CandidateId"))
+    return candidate_id
+
+
+def _vote_total(rec: dict[str, Any]) -> int | None:
+    votes = _to_int(rec.get("TotalVoteReceived"))
+    if votes is None:
+        votes = _to_int(rec.get("TotalVote"))
+    return votes
+
+
 def _merge_higher_votes(
     base_records: list[dict[str, Any]],
     fresher_rows: list[dict[str, Any]],
@@ -238,7 +292,11 @@ def _merge_higher_votes(
         if not isinstance(row, dict):
             continue
         candidate_id = _to_int(row.get("CandidateID"))
+        if candidate_id is None:
+            candidate_id = _to_int(row.get("CandidateId"))
         votes = _to_int(row.get("TotalVoteReceived"))
+        if votes is None:
+            votes = _to_int(row.get("TotalVote"))
         if candidate_id is None or votes is None or votes < 0:
             continue
         prev = fresher_vote_by_candidate.get(candidate_id)
@@ -293,6 +351,8 @@ def parse_candidates_json(raw_candidates: list[dict[str, Any]]) -> list[dict[str
     grouped: dict[str, list[dict[str, Any]]] = {}
     for rec in raw_candidates:
         cid = constituency_id(rec)
+        if not cid:
+            continue
         grouped.setdefault(cid, []).append(rec)
 
     results: list[dict[str, Any]] = []
@@ -300,16 +360,16 @@ def parse_candidates_json(raw_candidates: list[dict[str, Any]]) -> list[dict[str
 
     for cid, recs in grouped.items():
         first = recs[0]
-        state_id    = first.get("STATE_ID", 0)
-        district_np = first.get("DistrictName", "")
+        state_id    = _state_id(first) or 0
+        district_np = first.get("DistrictName") or first.get("District") or ""
         district_en = _district_en(district_np, state_id)
-        const_num   = first.get("SCConstID", 0)
+        const_num   = _const_id(first) or 0
         province    = _state_id_to_province_key(state_id)
 
         candidates: list[dict[str, Any]] = []
         for rec in recs:
             name_np = rec.get("CandidateName") or ""
-            cid_int = rec.get("CandidateID")
+            cid_int = _candidate_id(rec)
             neu = _NEU.get(cid_int) if cid_int is not None else None
             name_en = neu["n"] if neu and neu.get("n") else name_np
             cand: dict[str, Any] = {
@@ -318,12 +378,14 @@ def parse_candidates_json(raw_candidates: list[dict[str, Any]]) -> list[dict[str
                 "nameNp":      name_np,
                 "partyId":     _derive_party_id(rec),
                 "partyName":   rec.get("PoliticalPartyName") or "",
-                "votes":       rec.get("TotalVoteReceived", 0),
+                "votes":       _vote_total(rec) or 0,
                 "gender":      _gender(rec),
                 "isWinner":    is_winner(rec),
             }
             # Optional biographical fields — omit when absent or placeholder
-            age = rec.get("AGE_YR")
+            age = _to_int(rec.get("AGE_YR"))
+            if age is None:
+                age = _to_int(rec.get("Age"))
             if age:
                 cand["age"] = age
             father = rec.get("FATHER_NAME", "")
@@ -439,8 +501,11 @@ async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
             raw = raw[3:]
         candidates = json.loads(raw.decode("utf-8"))
 
-        # Optional fast stream: top-leader feed usually updates before the full
-        # central candidate feed. Merge only if it has higher vote values.
+        # Optional fast streams from the FPTP win/lead chart.
+        # Rule: match candidate by ID and keep whichever vote total is higher.
+        merged_updates = 0
+        merged_rows = 0
+        merged_missing = 0
         for top5_url in UPSTREAM_HOR_TOP5_URLS:
             try:
                 top5_resp = await client.get(
@@ -460,14 +525,19 @@ async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
                 if not isinstance(top5_rows, list) or not top5_rows:
                     continue
                 stats = _merge_higher_votes(candidates, top5_rows)
-                print(
-                    "[scraper] optional HOR Top5 merged: "
-                    f"{stats['upgraded']} candidate vote updates from "
-                    f"{stats['usable_rows']} usable rows"
-                )
-                break
+                merged_updates += stats["upgraded"]
+                merged_rows += stats["usable_rows"]
+                merged_missing += stats["missing_candidates"]
             except Exception:
                 continue
+
+        if merged_rows > 0:
+            extra = f", {merged_missing} rows missing in primary feed" if merged_missing > 0 else ""
+            print(
+                "[scraper] optional HOR fast feeds merged: "
+                f"{merged_updates} candidate vote updates from "
+                f"{merged_rows} usable rows{extra}"
+            )
 
         return candidates
 
