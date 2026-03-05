@@ -40,6 +40,9 @@ export default function App() {
   const results       = useElectionStore((s) => s.results);
   const seatTally     = useElectionStore((s) => s.seatTally);
   const declaredSeats = useElectionStore((s) => s.declaredSeats);
+  const partyCount = new Set(
+    results.flatMap((r) => r.candidates.map((c) => c.partyId)).filter((id) => id !== "IND"),
+  ).size;
 
 
   const totalSeats = 275;
@@ -72,7 +75,7 @@ export default function App() {
         {([
           { value: "165", labelKey: "statsConstituencies", icon: "⬡", to: "/explore" },
           { value: "7",   labelKey: "statsProvinces",      icon: "◈", to: "/map" },
-          { value: "66",  labelKey: "statsParties",        icon: "◉", to: "/parties" },
+          { value: String(partyCount), labelKey: "statsParties", icon: "◉", to: "/parties" },
           { value: "275", labelKey: "statsTotalSeats",     icon: "◆", to: null },
         ] as const).map((s) => {
           const inner = (
