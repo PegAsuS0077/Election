@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { useElectionStore } from "./store/electionStore";
 import { t } from "./i18n";
 import type { Lang } from "./i18n";
-import type { Snapshot } from "./api";
 import { SummaryCardsSkeleton } from "./Skeleton";
 import { getParty, partySlug } from "./lib/partyRegistry";
 
@@ -27,7 +26,6 @@ export default function SummaryCards({
   lang = "en",
 }: {
   isLoading?: boolean;
-  snapshot?: Snapshot;
   lang?: Lang;
 }) {
   const seatTally    = useElectionStore((s) => s.seatTally);
@@ -46,6 +44,7 @@ export default function SummaryCards({
   const namedTotals = totals.filter((t) => t.partyId !== "IND");
   const leader   = namedTotals[0];
   const runnerUp = namedTotals[1];
+  const nextThree = namedTotals.slice(2, 5);
 
   if (!leader || !runnerUp) {
     return (
@@ -60,31 +59,60 @@ export default function SummaryCards({
   const runnerUpInfo = getParty(runnerUp.partyId);
 
   return (
-    <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Link to={`/party/${partySlug(leaderInfo.nameEn)}`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
-        <Card
-          title={t("leadingParty", lang)}
-          big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
-          sub={`${leader.total} ${t("seats", lang)}`}
-          dotHex={leaderInfo.hex}
-          symbol={leaderInfo.symbol}
-          symbolUrl={leaderInfo.symbolUrl}
-          right={<ChangePill delta={leader.delta} />}
-          clickable
-        />
-      </Link>
-      <Link to={`/party/${partySlug(runnerUpInfo.nameEn)}`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
-        <Card
-          title={t("runnerUp", lang)}
-          big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
-          sub={`${runnerUp.total} ${t("seats", lang)}`}
-          dotHex={runnerUpInfo.hex}
-          symbol={runnerUpInfo.symbol}
-          symbolUrl={runnerUpInfo.symbolUrl}
-          right={<ChangePill delta={runnerUp.delta} />}
-          clickable
-        />
-      </Link>
+    <section className="space-y-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Link to={`/party/${partySlug(leaderInfo.nameEn)}`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+          <Card
+            title={t("leadingParty", lang)}
+            big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
+            sub={`${leader.total} ${t("seats", lang)}`}
+            dotHex={leaderInfo.hex}
+            symbol={leaderInfo.symbol}
+            symbolUrl={leaderInfo.symbolUrl}
+            right={<ChangePill delta={leader.delta} />}
+            clickable
+          />
+        </Link>
+        <Link to={`/party/${partySlug(runnerUpInfo.nameEn)}`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+          <Card
+            title={t("runnerUp", lang)}
+            big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
+            sub={`${runnerUp.total} ${t("seats", lang)}`}
+            dotHex={runnerUpInfo.hex}
+            symbol={runnerUpInfo.symbol}
+            symbolUrl={runnerUpInfo.symbolUrl}
+            right={<ChangePill delta={runnerUp.delta} />}
+            clickable
+          />
+        </Link>
+      </div>
+
+      {nextThree.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {nextThree.map((party, idx) => {
+            const partyInfo = getParty(party.partyId);
+            const partyName = (lang === "np" ? partyInfo.partyName : partyInfo.nameEn).split(" (")[0];
+            return (
+              <Link
+                key={party.partyId}
+                to={`/party/${partySlug(partyInfo.nameEn)}`}
+                className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]"
+              >
+                <CompactCard
+                  rank={idx + 3}
+                  name={partyName}
+                  seats={party.total}
+                  seatsLabel={t("seats", lang)}
+                  dotHex={partyInfo.hex}
+                  symbol={partyInfo.symbol}
+                  symbolUrl={partyInfo.symbolUrl}
+                  clickable
+                />
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -113,6 +141,39 @@ function Card({
         <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{big}</span>
       </div>
       <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{sub}</div>
+    </div>
+  );
+}
+
+function CompactCard({
+  rank, name, seats, seatsLabel, dotHex, symbol, symbolUrl, clickable,
+}: {
+  rank: number;
+  name: string;
+  seats: number;
+  seatsLabel: string;
+  dotHex?: string;
+  symbol?: string;
+  symbolUrl?: string;
+  clickable?: boolean;
+}) {
+  return (
+    <div className={`rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:bg-slate-900 dark:border-slate-800${clickable ? " transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 active:scale-[0.99]" : ""}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">#{rank}</span>
+          {dotHex ? <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: dotHex }} /> : null}
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{name}</span>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        {symbolUrl
+          ? <img src={symbolUrl} alt={symbol} className="h-5 w-5 object-contain" />
+          : symbol
+          ? <span className="text-base leading-none">{symbol}</span>
+          : null}
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{seats} {seatsLabel}</span>
+      </div>
     </div>
   );
 }

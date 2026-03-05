@@ -9,17 +9,32 @@ function SkeletonBox({ className }: { className?: string }) {
 
 export function SummaryCardsSkeleton() {
   return (
-    <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800"
-        >
-          <SkeletonBox className="h-4 w-24" />
-          <SkeletonBox className="mt-3 h-7 w-32" />
-          <SkeletonBox className="mt-2 h-4 w-20" />
-        </div>
-      ))}
+    <section className="space-y-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {[0, 1].map((i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800"
+          >
+            <SkeletonBox className="h-4 w-24" />
+            <SkeletonBox className="mt-3 h-7 w-32" />
+            <SkeletonBox className="mt-2 h-4 w-20" />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={`compact-${i}`}
+            className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:bg-slate-900 dark:border-slate-800"
+          >
+            <SkeletonBox className="h-3 w-20" />
+            <SkeletonBox className="mt-3 h-4 w-full" />
+            <SkeletonBox className="mt-2 h-3 w-16" />
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
