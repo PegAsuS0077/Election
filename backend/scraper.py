@@ -1,13 +1,15 @@
 """
 scraper.py — Fetch and parse election results from result.election.gov.np.
 
-Discovery (2026-02-23): The site serves a flat JSON file, not HTML.
-Primary endpoint: GET /JSONFiles/ElectionResultCentral2082.txt
+Discovery (2026-03-05): The site now requires a browser session (ASP.NET cookie
++ CSRF token) to access the JSON data via SecureJson.ashx handler.
+Primary endpoint: POST /Handlers/SecureJson.ashx?file=JSONFiles/ElectionResultCentral2082.txt
+  - Requires: ASP.NET_SessionId cookie + CsrfToken cookie + X-CSRF-Token header
   - Returns a UTF-8 (BOM-prefixed) JSON array of 3,406 candidate records.
-  - No authentication, no pagination — always returns full dataset.
+  - No pagination — always returns full dataset.
   - Update frequency: every ~30 s on election day.
 
-No Playwright required — plain httpx async client is sufficient.
+Two-step fetch: GET the page first to establish session cookies, then GET data.
 """
 
 import json
@@ -36,15 +38,25 @@ _NEU: dict[int, dict] = _load_neu_lookup()
 
 
 # ── Upstream endpoint ────────────────────────────────────────────────────────
-UPSTREAM_URL = (
-    "https://result.election.gov.np/JSONFiles/ElectionResultCentral2082.txt"
+# Step 1: GET this page to establish ASP.NET session + CsrfToken cookies
+SESSION_PAGE_URL = (
+    "https://result.election.gov.np/ElectionResultCentral2082.aspx"
 )
-HEADERS = {
+# Step 2: GET data via secure handler using session cookies
+UPSTREAM_URL = (
+    "https://result.election.gov.np/Handlers/SecureJson.ashx"
+    "?file=JSONFiles/ElectionResultCentral2082.txt"
+)
+_BASE_HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (compatible; NepalElectionBot/1.0; +https://localhost)"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
     ),
-    "Accept": "application/json, text/plain, */*",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
 }
+# Keep old name for backwards compat in tests
+HEADERS = _BASE_HEADERS
 
 
 # ── Party name → frontend PartyKey mapping ───────────────────────────────────
@@ -326,13 +338,30 @@ def build_snapshot_from_constituencies(
 
 async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
     """
-    Fetch the full candidate+results array from the upstream static JSON file.
+    Fetch the full candidate+results array from the upstream secure JSON handler.
 
-    The file is served as text/plain with a UTF-8 BOM prefix.
-    httpx handles TLS; no browser/Playwright required.
+    Requires a two-step session establishment:
+    1. GET the results page to receive ASP.NET_SessionId + CsrfToken cookies.
+    2. GET the data endpoint with those cookies + X-CSRF-Token header.
     """
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-        resp = await client.get(url, headers=HEADERS)
+    async with httpx.AsyncClient(
+        timeout=30.0,
+        follow_redirects=True,
+        headers=_BASE_HEADERS,
+    ) as client:
+        # Step 1 — establish session
+        await client.get(SESSION_PAGE_URL)
+
+        # Step 2 — fetch data using session cookies
+        csrf = client.cookies.get("CsrfToken", "")
+        resp = await client.get(
+            url,
+            headers={
+                "X-CSRF-Token": csrf,
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": SESSION_PAGE_URL,
+            },
+        )
         resp.raise_for_status()
         raw = resp.content
         if raw.startswith(b"\xef\xbb\xbf"):   # strip UTF-8 BOM

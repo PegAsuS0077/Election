@@ -281,8 +281,12 @@ function nepaliNameToEnglish(name: string): string {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+const SESSION_PAGE_URL =
+  "https://result.election.gov.np/ElectionResultCentral2082.aspx";
+
 const UPSTREAM_URL =
-  "https://result.election.gov.np/JSONFiles/ElectionResultCentral2082.txt";
+  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
+  "?file=JSONFiles/ElectionResultCentral2082.txt";
 
 const TOTAL_SEATS = 275;
 const PR_SEATS = 110;
@@ -672,13 +676,54 @@ async function runOnce(env: Env): Promise<void> {
   const t0 = Date.now();
   console.log("[scraper] scheduled run — fetching upstream JSON…");
 
-  // ── Phase 1B: fetch upstream — retry up to 3x on transient errors (503/502/429) ──
-  // Bail out WITHOUT touching R2 if all attempts fail.
+  // ── Step 1: establish ASP.NET session (required since 2026-03-05) ────────────
+  // The upstream now gates data behind SecureJson.ashx which requires a valid
+  // browser session. We GET the results page first to receive the session cookies,
+  // then use them to fetch the actual JSON data.
+  let csrfToken = "";
+  let sessionCookie = "";
+  try {
+    const pageRes = await fetch(SESSION_PAGE_URL, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+      cf: { cacheTtl: 0 },
+    });
+    // Extract cookies from Set-Cookie headers
+    const setCookie = pageRes.headers.get("set-cookie") ?? "";
+    const csrfMatch = setCookie.match(/CsrfToken=([^;,\s]+)/);
+    const sessionMatch = setCookie.match(/ASP\.NET_SessionId=([^;,\s]+)/);
+    if (csrfMatch) csrfToken = csrfMatch[1];
+    if (sessionMatch) sessionCookie = sessionMatch[1];
+    console.log(`[scraper] session established — csrf=${!!csrfToken} session=${!!sessionCookie}`);
+  } catch (err) {
+    console.error("[scraper] failed to establish session — R2 NOT updated:", err);
+    return;
+  }
+
+  // ── Step 2: fetch data — retry up to 3x on transient errors (503/502/429) ──
   const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+  const cookieHeader = [
+    csrfToken ? `CsrfToken=${csrfToken}` : "",
+    sessionCookie ? `ASP.NET_SessionId=${sessionCookie}` : "",
+  ].filter(Boolean).join("; ");
+
   let res: Response | null = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      res = await fetch(UPSTREAM_URL, { headers: { "Accept-Encoding": "gzip" }, cf: { cacheTtl: 0 } });
+      res = await fetch(UPSTREAM_URL, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "X-CSRF-Token": csrfToken,
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": SESSION_PAGE_URL,
+          "Cookie": cookieHeader,
+          "Accept-Encoding": "gzip",
+        },
+        cf: { cacheTtl: 0 },
+      });
     } catch (err) {
       if (attempt === 3) {
         console.error("[scraper] upstream network error after 3 attempts — R2 NOT updated:", err);
