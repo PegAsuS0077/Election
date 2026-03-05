@@ -25,6 +25,18 @@ import type { ConstituencyResult, Snapshot, PartyInfo } from "./types";
 
 const CDN_BASE = (import.meta.env.VITE_CDN_URL as string | undefined) ?? "";
 
+export type PrPartiesSnapshot = {
+  lastUpdated: string;
+  totalPrVotes: number;
+  parties: Array<{
+    partyId: string;
+    partyName: string;
+    prVotes: number;
+    voteShare: number;
+  }>;
+  sourceFile: string;
+};
+
 /** Returns null if CDN URL is not configured. */
 export async function fetchSnapshot(): Promise<Snapshot | null> {
   if (!CDN_BASE) return null;
@@ -47,4 +59,12 @@ export async function fetchParties(): Promise<PartyInfo[] | null> {
   const res = await fetch(`${CDN_BASE}/parties.json`);
   if (!res.ok) return null;
   return res.json() as Promise<PartyInfo[]>;
+}
+
+/** Optional PR feed. Returns null when unavailable. */
+export async function fetchPrParties(): Promise<PrPartiesSnapshot | null> {
+  if (!CDN_BASE) return null;
+  const res = await fetch(`${CDN_BASE}/pr_parties.json`);
+  if (!res.ok) return null;
+  return res.json() as Promise<PrPartiesSnapshot>;
 }

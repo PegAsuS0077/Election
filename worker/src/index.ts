@@ -104,6 +104,20 @@ interface PartyInfo {
   candidateCount: number;
 }
 
+interface PrPartySnapshotEntry {
+  partyId: string;
+  partyName: string;
+  prVotes: number;
+  voteShare: number;
+}
+
+interface PrPartySnapshot {
+  lastUpdated: string;
+  totalPrVotes: number;
+  parties: PrPartySnapshotEntry[];
+  sourceFile: string;
+}
+
 // ── Env bindings ──────────────────────────────────────────────────────────────
 
 interface Env {
@@ -297,6 +311,9 @@ const SESSION_BOOTSTRAP_URLS = [
 const UPSTREAM_URL =
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
   "?file=JSONFiles/ElectionResultCentral2082.txt";
+const UPSTREAM_PR_HOR_URL =
+  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
+  "?file=JSONFiles/Election2082/Common/PRHoRPartyTop5.txt";
 
 const TOTAL_SEATS = 275;
 const PR_SEATS = 110;
@@ -466,7 +483,7 @@ const GENERIC_COLORS = [
 
 // ── Helper functions ───────────────────────────────────────────────────────────
 
-function derivePartyId(rec: UpstreamRecord): string {
+function derivePartyId(rec: Partial<UpstreamRecord>): string {
   const partyName = (rec.PoliticalPartyName ?? "").trim();
   if (partyName === "स्वतन्त्र") return "IND";
 
@@ -837,6 +854,101 @@ function extractSessionCookies(headers: Headers): { sessionId: string; csrfToken
   return { sessionId, csrfToken };
 }
 
+async function fetchPrHorPartySnapshot(
+  csrfToken: string,
+  cookieHeader: string,
+  refererUrl: string,
+): Promise<PrPartySnapshot | null> {
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      "secure PR HOR json GET",
+      UPSTREAM_PR_HOR_URL,
+      {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
+          "Accept": "*/*",
+          "X-CSRF-Token": csrfToken,
+          "X-Requested-With": "XMLHttpRequest",
+          "Origin": "https://result.election.gov.np",
+          "Referer": refererUrl,
+          "Cookie": cookieHeader,
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+        },
+        cf: { cacheTtl: 0 },
+      },
+      RETRYABLE_STATUS,
+    );
+  } catch (err) {
+    console.warn("[scraper] optional PR HOR fetch failed:", err);
+    return null;
+  }
+  if (!res.ok) {
+    console.warn(`[scraper] optional PR HOR returned ${res.status} ${res.statusText}`);
+    return null;
+  }
+
+  let text: string;
+  try {
+    text = await res.text();
+  } catch (err) {
+    console.warn("[scraper] optional PR HOR response body read failed:", err);
+    return null;
+  }
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
+  let rows: Partial<UpstreamRecord>[];
+  try {
+    rows = JSON.parse(text) as Partial<UpstreamRecord>[];
+  } catch (err) {
+    console.warn("[scraper] optional PR HOR JSON parse failed:", err);
+    return null;
+  }
+  if (!Array.isArray(rows) || rows.length === 0) {
+    console.warn("[scraper] optional PR HOR payload empty; skipping pr_parties.json update");
+    return null;
+  }
+
+  const totals = new Map<string, { partyName: string; votes: number }>();
+  let totalPrVotes = 0;
+  for (const row of rows) {
+    const votes = Math.max(0, toInt(row.TotalVoteReceived) ?? 0);
+    const partyId = derivePartyId(row);
+    const partyName = (row.PoliticalPartyName ?? "").trim() || partyId;
+
+    const existing = totals.get(partyId);
+    if (existing) {
+      existing.votes += votes;
+      if (!existing.partyName && partyName) existing.partyName = partyName;
+    } else {
+      totals.set(partyId, { partyName, votes });
+    }
+    totalPrVotes += votes;
+  }
+  if (totals.size === 0) {
+    console.warn("[scraper] optional PR HOR had no valid party rows");
+    return null;
+  }
+
+  const parties: PrPartySnapshotEntry[] = Array.from(totals.entries())
+    .map(([partyId, v]) => ({
+      partyId,
+      partyName: v.partyName,
+      prVotes: v.votes,
+      voteShare: totalPrVotes > 0 ? Number(((v.votes / totalPrVotes) * 100).toFixed(4)) : 0,
+    }))
+    .sort((a, b) => b.prVotes - a.prVotes);
+
+  return {
+    lastUpdated: new Date().toISOString(),
+    totalPrVotes,
+    parties,
+    sourceFile: "JSONFiles/Election2082/Common/PRHoRPartyTop5.txt",
+  };
+}
+
 // ── Scheduled handler ─────────────────────────────────────────────────────────
 
 async function runOnce(env: Env): Promise<void> {
@@ -990,6 +1102,22 @@ async function runOnce(env: Env): Promise<void> {
   console.log(
     `[scraper] uploaded 3 files to R2 in ${uploadMs} ms (total ${Date.now() - t0} ms)`,
   );
+
+  // Optional PR dataset (110 PR-seat vote stream). This must never block or
+  // alter the primary 3-file pipeline on failures.
+  try {
+    const prSnapshot = await fetchPrHorPartySnapshot(csrfToken, cookieHeader, bootstrapUrlUsed);
+    if (!prSnapshot) {
+      console.warn("[scraper] optional PR snapshot unavailable — primary outputs kept unchanged");
+      return;
+    }
+    await putJson(env.RESULTS_BUCKET, "pr_parties.json", prSnapshot);
+    console.log(
+      `[scraper] uploaded optional pr_parties.json (${prSnapshot.parties.length} parties, ${prSnapshot.totalPrVotes} votes)`,
+    );
+  } catch (err) {
+    console.warn("[scraper] optional PR snapshot processing failed — primary outputs kept unchanged:", err);
+  }
 }
 
 // ── Worker export ─────────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ import { loadArchiveData } from "../lib/archiveData";
 import { RESULTS_MODE } from "../types";
 import type { ConstituencyResult } from "../types";
 import { notifyDeclared } from "./useConstituencyNotifications";
+import { fetchPrParties } from "../api";
 
 const CDN_BASE = (import.meta.env.VITE_CDN_URL as string | undefined) ?? "";
 const POLL_INTERVAL_MS = 30_000;
@@ -31,9 +32,19 @@ async function fetchConstituenciesFromCDN(): Promise<ConstituencyResult[]> {
   return res.json() as Promise<ConstituencyResult[]>;
 }
 
+function toPrVoteMap(snapshot: Awaited<ReturnType<typeof fetchPrParties>>): Record<string, number> {
+  if (!snapshot?.parties) return {};
+  const map: Record<string, number> = {};
+  for (const p of snapshot.parties) {
+    map[p.partyId] = p.prVotes;
+  }
+  return map;
+}
+
 export function useElectionSimulation() {
   const setResults   = useElectionStore((s) => s.setResults);
   const mergeResults = useElectionStore((s) => s.mergeResults);
+  const setPrVotes   = useElectionStore((s) => s.setPrVotes);
   const setIsLoading = useElectionStore((s) => s.setIsLoading);
 
   // Track which constituencies we've already notified to avoid duplicates
@@ -45,10 +56,11 @@ export function useElectionSimulation() {
     // ── LIVE MODE ─────────────────────────────────────────────────────────────
     if (RESULTS_MODE === "live" && CDN_BASE) {
       // Initial fetch — full replace to seed static candidate data + party registry
-      fetchConstituenciesFromCDN()
-        .then((data) => {
+      Promise.all([fetchConstituenciesFromCDN(), fetchPrParties()])
+        .then(([data, prSnapshot]) => {
           if (cancelled) return;
           setResults(data);
+          setPrVotes(toPrVoteMap(prSnapshot));
           setIsLoading(false);
           // Seed notifiedRef with already-declared constituencies so we don't
           // fire spurious notifications for results that existed on first load
@@ -65,7 +77,7 @@ export function useElectionSimulation() {
       const interval = setInterval(async () => {
         if (cancelled) return;
         try {
-          const data = await fetchConstituenciesFromCDN();
+          const [data, prSnapshot] = await Promise.all([fetchConstituenciesFromCDN(), fetchPrParties()]);
           if (cancelled) return;
 
           // Snapshot status BEFORE merge to detect transitions
@@ -74,6 +86,9 @@ export function useElectionSimulation() {
           );
 
           mergeResults(data);
+          if (prSnapshot) {
+            setPrVotes(toPrVoteMap(prSnapshot));
+          }
 
           // Notify for favorited constituencies newly declared this poll
           const { favorites } = useElectionStore.getState();
@@ -119,5 +134,5 @@ export function useElectionSimulation() {
     return () => {
       cancelled = true;
     };
-  }, [setResults, setIsLoading, mergeResults]);
+  }, [setResults, setPrVotes, setIsLoading, mergeResults]);
 }

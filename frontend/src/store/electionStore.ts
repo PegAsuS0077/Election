@@ -5,6 +5,7 @@ import { buildRegistry, getParties } from "../lib/partyRegistry";
 
 type SortKey = "margin" | "province" | "alpha" | "status";
 type ViewMode = "table" | "map";
+type PrVoteByParty = Record<string, number>;
 
 // ── Seat tally derivation ─────────────────────────────────────────────────────
 
@@ -12,10 +13,13 @@ function emptyTally(partyIds: string[]): SeatTally {
   return Object.fromEntries(partyIds.map((k) => [k, { fptp: 0, pr: 0 }]));
 }
 
-function deriveSeatTally(results: ConstituencyResult[]): SeatTally {
+function deriveSeatTally(results: ConstituencyResult[], prVotes: PrVoteByParty): SeatTally {
   // Collect all partyIds present in results
   const partyIds = Array.from(
-    new Set(results.flatMap((r) => r.candidates.map((c) => c.partyId)))
+    new Set([
+      ...results.flatMap((r) => r.candidates.map((c) => c.partyId)),
+      ...Object.keys(prVotes),
+    ])
   );
   const tally = emptyTally(partyIds);
 
@@ -34,13 +38,22 @@ function deriveSeatTally(results: ConstituencyResult[]): SeatTally {
     }
   }
 
-  // PR: distribute 110 seats proportionally by total vote share
+  // PR: if pr_parties.json is available, use it; otherwise fallback to
+  // constituency vote-derived estimation.
   let totalVotes = 0;
   const voteShare: Record<string, number> = {};
-  for (const r of results) {
-    for (const c of r.candidates) {
-      voteShare[c.partyId] = (voteShare[c.partyId] ?? 0) + c.votes;
-      totalVotes += c.votes;
+  const hasPrVotes = Object.keys(prVotes).length > 0;
+  if (hasPrVotes) {
+    for (const [pid, votes] of Object.entries(prVotes)) {
+      voteShare[pid] = (voteShare[pid] ?? 0) + votes;
+      totalVotes += votes;
+    }
+  } else {
+    for (const r of results) {
+      for (const c of r.candidates) {
+        voteShare[c.partyId] = (voteShare[c.partyId] ?? 0) + c.votes;
+        totalVotes += c.votes;
+      }
     }
   }
   const PR_SEATS = 110;
@@ -61,6 +74,7 @@ function deriveSeatTally(results: ConstituencyResult[]): SeatTally {
 interface ElectionStore {
   results: ConstituencyResult[];
   seatTally: SeatTally;
+  prVoteByParty: PrVoteByParty;
   baselineTally: SeatTally;
   declaredSeats: number;
   selectedProvince: "All" | Province;
@@ -78,6 +92,7 @@ interface ElectionStore {
    * Matched by constituency `code`.
    */
   mergeResults: (incoming: ConstituencyResult[]) => void;
+  setPrVotes: (votes: PrVoteByParty) => void;
   setSelectedProvince: (p: "All" | Province) => void;
   toggleDark: () => void;
   setIsLoading: (v: boolean) => void;
@@ -149,12 +164,14 @@ function loadFavParties(): Set<string> {
 
 // Start with empty results — data is loaded asynchronously by useElectionSimulation
 const initialResults: ConstituencyResult[] = [];
+const initialPrVotes: PrVoteByParty = {};
 const initialTally: SeatTally = {};
 const initialBaseline = loadOrCreateBaseline(initialTally);
 
 export const useElectionStore = create<ElectionStore>((set) => ({
   results:          initialResults,
   seatTally:        initialTally,
+  prVoteByParty:    initialPrVotes,
   baselineTally:    initialBaseline,
   declaredSeats:    0,
   selectedProvince: "All",
@@ -170,11 +187,11 @@ export const useElectionStore = create<ElectionStore>((set) => ({
   setResults: (results) => {
     // Rebuild party registry whenever new data arrives
     buildRegistry(results);
-    set({
+    set((state) => ({
       results,
-      seatTally:     deriveSeatTally(results),
+      seatTally:     deriveSeatTally(results, state.prVoteByParty),
       declaredSeats: results.filter((r) => r.status === "DECLARED").length,
-    });
+    }));
   },
 
   mergeResults: (incoming) =>
@@ -207,10 +224,16 @@ export const useElectionStore = create<ElectionStore>((set) => ({
 
       return {
         results:      merged,
-        seatTally:    deriveSeatTally(merged),
+        seatTally:    deriveSeatTally(merged, state.prVoteByParty),
         declaredSeats: merged.filter((r) => r.status === "DECLARED").length,
       };
     }),
+
+  setPrVotes: (votes) =>
+    set((state) => ({
+      prVoteByParty: votes,
+      seatTally: deriveSeatTally(state.results, votes),
+    })),
 
   setSelectedProvince: (selectedProvince) => set({ selectedProvince }),
 
