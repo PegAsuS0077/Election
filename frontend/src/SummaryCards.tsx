@@ -29,18 +29,35 @@ export default function SummaryCards({
   lang?: Lang;
 }) {
   const seatTally    = useElectionStore((s) => s.seatTally);
+  const results      = useElectionStore((s) => s.results);
   const baselineTally = useElectionStore((s) => s.baselineTally);
 
   if (isLoading) return <SummaryCardsSkeleton />;
 
-  const totals = Object.entries(seatTally).map(([partyId, v]) => {
-    const current   = v.fptp;
-    const base      = baselineTally[partyId];
+  const countingLeads: Record<string, number> = {};
+  for (const r of results) {
+    if (r.status !== "COUNTING" || r.candidates.length === 0) continue;
+    const maxVotes = Math.max(...r.candidates.map((c) => c.votes));
+    if (maxVotes <= 0) continue;
+    const lead = r.candidates.find((c) => c.votes === maxVotes);
+    if (!lead) continue;
+    countingLeads[lead.partyId] = (countingLeads[lead.partyId] ?? 0) + 1;
+  }
+
+  const partyIds = Array.from(
+    new Set([...Object.keys(seatTally), ...Object.keys(countingLeads)])
+  );
+
+  const totals = partyIds.map((partyId) => {
+    const declared = seatTally[partyId]?.fptp ?? 0;
+    const counting = countingLeads[partyId] ?? 0;
+    const current  = declared + counting;
+    const base     = baselineTally[partyId];
     const baseTotal = base ? base.fptp : 0;
-    return { partyId, total: current, delta: current - baseTotal };
+    return { partyId, declared, counting, total: current, delta: declared - baseTotal };
   });
 
-  totals.sort((a, b) => b.total - a.total);
+  totals.sort((a, b) => (b.total - a.total) || (b.declared - a.declared));
   const namedTotals = totals.filter((t) => t.partyId !== "IND");
   const leader   = namedTotals[0];
   const runnerUp = namedTotals[1];
@@ -65,7 +82,7 @@ export default function SummaryCards({
           <Card
             title={t("leadingParty", lang)}
             big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
-            sub={`${leader.total} ${t("seats", lang)}`}
+            sub={`${leader.total} ${t("leading", lang)} · ${leader.declared} ${t("declared", lang)}`}
             dotHex={leaderInfo.hex}
             symbol={leaderInfo.symbol}
             symbolUrl={leaderInfo.symbolUrl}
@@ -77,7 +94,7 @@ export default function SummaryCards({
           <Card
             title={t("runnerUp", lang)}
             big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
-            sub={`${runnerUp.total} ${t("seats", lang)}`}
+            sub={`${runnerUp.total} ${t("leading", lang)} · ${runnerUp.declared} ${t("declared", lang)}`}
             dotHex={runnerUpInfo.hex}
             symbol={runnerUpInfo.symbol}
             symbolUrl={runnerUpInfo.symbolUrl}
@@ -102,7 +119,7 @@ export default function SummaryCards({
                   rank={idx + 3}
                   name={partyName}
                   seats={party.total}
-                  seatsLabel={t("seats", lang)}
+                  seatsLabel={t("leading", lang)}
                   dotHex={partyInfo.hex}
                   symbol={partyInfo.symbol}
                   symbolUrl={partyInfo.symbolUrl}
