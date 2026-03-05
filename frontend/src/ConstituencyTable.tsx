@@ -7,7 +7,7 @@ import Tooltip from "./Tooltip";
 import { useElectionStore } from "./store/electionStore";
 import { t as i18n, provinceName, statusLabel } from "./i18n";
 import type { Lang } from "./i18n";
-import { partyColor, getParty } from "./lib/partyRegistry";
+import { partyHex, getParty } from "./lib/partyRegistry";
 import PartySymbol from "./components/PartySymbol";
 
 type SortKey = "margin" | "province" | "alpha" | "status";
@@ -367,7 +367,7 @@ const Row = memo(function Row({ r, onClick, lang = "en" }: { r: ConstituencyResu
             <div className="py-3 pr-4">
               {leader && leadParty ? (
                 <div className="flex items-center gap-2">
-                  <span className={`h-3 w-3 rounded-full ${leadParty.color}`} />
+                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: leadParty.hex }} />
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{lang === "np" ? leader.nameNp : leader.name}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -382,7 +382,7 @@ const Row = memo(function Row({ r, onClick, lang = "en" }: { r: ConstituencyResu
             <div className="py-3 pr-4">
               {runnerUp && runParty ? (
                 <div className="flex items-center gap-2">
-                  <span className={`h-3 w-3 rounded-full ${runParty.color}`} />
+                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: runParty.hex }} />
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{lang === "np" ? runnerUp.nameNp : runnerUp.name}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -562,13 +562,13 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
                 label={leader ? `${lang === "np" ? leader.nameNp : leader.name} (${leadPct}%)` : "—"}
                 value={leader?.votes ?? 0}
                 total={topTwoTotal}
-                barClass={leader ? partyColor(leader.partyId) : "bg-slate-400"}
+                barHex={leader ? partyHex(leader.partyId) : "#94a3b8"}
               />
               <BarRow
                 label={runnerUp ? `${lang === "np" ? runnerUp.nameNp : runnerUp.name} (${runPct}%)` : "—"}
                 value={runnerUp?.votes ?? 0}
                 total={topTwoTotal}
-                barClass={runnerUp ? partyColor(runnerUp.partyId) : "bg-slate-400"}
+                barHex={runnerUp ? partyHex(runnerUp.partyId) : "#94a3b8"}
               />
             </div>
 
@@ -611,7 +611,7 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
 
             <div className="mt-3 space-y-2">
               {cands.sorted.map((c, idx) => {
-                const cPartyColor = partyColor(c.partyId);
+                const cPartyHex = partyHex(c.partyId);
                 const isTop2 = idx < 2;
                 return (
                   <Link
@@ -623,7 +623,7 @@ export const DetailsModal = memo(function DetailsModal({ r, onClose, lang = "en"
                       ${isTop2 ? "bg-slate-50 dark:bg-slate-800/60" : "bg-white dark:bg-slate-900"}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className={`h-3 w-3 rounded-full shrink-0 ${cPartyColor}`} />
+                      <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: cPartyHex }} />
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                           {lang === "np" ? c.nameNp : c.name}
@@ -669,14 +669,14 @@ function CandidateCard({
   percent: number;
   lang: Lang;
 }) {
-  const cPartyColor = candidate ? partyColor(candidate.partyId) : null;
+  const cPartyHex = candidate ? partyHex(candidate.partyId) : null;
   const animatedVotes = useCountUp(candidate?.votes ?? 0, 650);
 
   return (
     <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-slate-600 dark:text-slate-300">{title}</div>
-        {cPartyColor ? <span className={`h-3 w-3 rounded-full ${cPartyColor}`} /> : null}
+        {cPartyHex ? <span className="h-3 w-3 rounded-full" style={{ backgroundColor: cPartyHex }} /> : null}
       </div>
 
       <div className="mt-2 text-base font-bold text-slate-900 dark:text-slate-100">
@@ -702,12 +702,12 @@ function BarRow({
   label,
   value,
   total,
-  barClass,
+  barHex,
 }: {
   label: string;
   value: number;
   total: number;
-  barClass: string;
+  barHex: string;
 }) {
   const width = total > 0 ? (value / total) * 100 : 0;
 
@@ -720,8 +720,8 @@ function BarRow({
 
       <div className="mt-2 h-3 w-full rounded-full bg-slate-200 overflow-hidden dark:bg-slate-700">
         <div
-          className={`h-3 ${barClass} transition-[width] duration-700 ease-out`}
-          style={{ width: `${width}%` }}
+          className="h-3 transition-[width] duration-700 ease-out"
+          style={{ width: `${width}%`, backgroundColor: barHex }}
         />
       </div>
     </div>

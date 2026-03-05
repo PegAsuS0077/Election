@@ -11,7 +11,6 @@
  */
 
 import type { ConstituencyResult, PartyInfo } from "../types";
-import { PARTY_HEX } from "./constants";
 
 // ── Known English display names ───────────────────────────────────────────────
 // Keyed by partyId abbreviation string (from PARTY_MAP in backend/scraper.py).
@@ -180,24 +179,26 @@ export const NEPALI_NAME_TO_ID: Record<string, string> = {
 };
 
 // ── Colour / symbol assignments per partyId ───────────────────────────────────
-// These are display choices only. New parties get a deterministic grey shade.
+// Symbol-first palette with explicit overrides for major parties.
+// Remaining parties get deterministic unique colours derived from symbol slug
+// (or partyId when symbol is unavailable).
 
-const PARTY_COLOR: Record<string, string> = {
-  NC:        "bg-red-600",
-  "CPN-UML": "bg-blue-600",
-  NCP:       "bg-orange-600",
-  RSP:       "bg-emerald-600",
-  RPP:       "bg-yellow-600",
-  JSP:       "bg-cyan-600",
-  "CPN-US":  "bg-purple-600",
-  LSP:       "bg-teal-600",
-  NUP:       "bg-amber-600",
-  RJM:       "bg-rose-700",
-  NMKP:      "bg-green-700",
-  JMP:       "bg-indigo-600",
-  "CPN-ML":  "bg-red-800",
-  NPD:       "bg-stone-600",
-  IND:       "bg-violet-500",
+const SYMBOL_COLOR_OVERRIDES: Record<string, string> = {
+  NC:        "#16a34a", // tree
+  "CPN-UML": "#dc2626", // sun
+  NCP:       "#ea580c",
+  RSP:       "#2563eb", // blue ring + bell
+  RPP:       "#ca8a04",
+  JSP:       "#0891b2",
+  "CPN-US":  "#9333ea",
+  LSP:       "#0d9488",
+  NUP:       "#d97706",
+  RJM:       "#be123c",
+  NMKP:      "#15803d",
+  JMP:       "#4f46e5",
+  "CPN-ML":  "#991b1b",
+  NPD:       "#57534e",
+  IND:       "#8b5cf6",
 };
 
 const PARTY_SYMBOL: Record<string, string> = {
@@ -217,6 +218,57 @@ const PARTY_SYMBOL: Record<string, string> = {
   NPD:       "🏠",
   IND:       "🧑",
 };
+
+function hash32(input: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const sat = s / 100;
+  const light = l / 100;
+  const c = (1 - Math.abs(2 * light - 1)) * sat;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = light - c / 2;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (h < 60) {
+    r = c; g = x;
+  } else if (h < 120) {
+    r = x; g = c;
+  } else if (h < 180) {
+    g = c; b = x;
+  } else if (h < 240) {
+    g = x; b = c;
+  } else if (h < 300) {
+    r = x; b = c;
+  } else {
+    r = c; b = x;
+  }
+  const toHex = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function generatedHex(seed: string, attempt: number): string {
+  const h = hash32(seed);
+  const hue = (h + attempt * 137.508) % 360;
+  const sat = 62 + ((h >>> ((attempt % 8) + 1)) % 24);   // 62..85
+  const light = 38 + ((h >>> ((attempt % 7) + 3)) % 18); // 38..55
+  return hslToHex(hue, sat, light);
+}
+
+function uniqueHex(seed: string, used: Set<string>): string {
+  for (let i = 0; i < 256; i++) {
+    const hex = generatedHex(seed, i);
+    if (!used.has(hex)) return hex;
+  }
+  return "#94a3b8";
+}
 
 const SYMBOL_BASE = "https://nepalelectionupdates.com/candidates/signs/";
 
@@ -349,20 +401,26 @@ export function buildRegistry(constituencies: ConstituencyResult[]): void {
   }
 
   _registry = new Map();
-  for (const [partyId, { partyName, count }] of counts) {
+  const usedHexes = new Set<string>();
+  const entries = Array.from(counts.entries()).sort(([a], [b]) => a.localeCompare(b));
+  for (const [partyId, { partyName, count }] of entries) {
     // partyId is SYMBOLCODE string (e.g. "5") or "IND".
     // Resolve English name via: partyId abbrev → KNOWN_ENGLISH,
     // or via Nepali name → abbrev → KNOWN_ENGLISH as fallback.
     const abbrev = NEPALI_NAME_TO_ID[partyName] ?? partyId;
     const nameEn = KNOWN_ENGLISH[partyId] ?? KNOWN_ENGLISH[abbrev] ?? partyName;
-    const color = PARTY_COLOR[abbrev] ?? PARTY_COLOR[partyId] ?? "bg-slate-400";
     const slug = PARTY_SYMBOL_SLUG[abbrev] ?? PARTY_SYMBOL_SLUG[partyId];
+    const overrideHex = SYMBOL_COLOR_OVERRIDES[abbrev] ?? SYMBOL_COLOR_OVERRIDES[partyId];
+    const hex = overrideHex && !usedHexes.has(overrideHex)
+      ? overrideHex
+      : uniqueHex(slug ? `symbol:${slug}` : `party:${abbrev}`, usedHexes);
+    usedHexes.add(hex);
     _registry.set(partyId, {
       partyId,
       partyName,
       nameEn,
-      color,
-      hex: PARTY_HEX[color] ?? "#94a3b8",
+      color: "bg-slate-400",
+      hex,
       symbol: PARTY_SYMBOL[abbrev] ?? PARTY_SYMBOL[partyId] ?? "•",
       symbolUrl: slug ? SYMBOL_BASE + slug : "",
       candidateCount: count,

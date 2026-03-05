@@ -20,6 +20,7 @@ import type { ConstituencyResult, UpstreamRecord } from "../types";
 
 const CACHE_KEY = "archive_constituencies_v3";
 const JSON_FILE = "/JSONFiles/ElectionResultCentral2082.txt";
+const LOCAL_SEED_URL = "/constituencies.seed.json";
 
 // In dev: blank → uses Vite proxy at /upstream.
 // In prod: set VITE_UPSTREAM_URL=https://result.election.gov.np
@@ -27,6 +28,7 @@ const _upstreamBase = (import.meta.env.VITE_UPSTREAM_URL as string | undefined) 
 const UPSTREAM_URL = _upstreamBase
   ? `${_upstreamBase.replace(/\/$/, "")}${JSON_FILE}`
   : `/upstream${JSON_FILE}`;
+const CDN_BASE = ((import.meta.env.VITE_CDN_URL as string | undefined) ?? "").replace(/\/$/, "");
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
@@ -45,6 +47,40 @@ async function fetchFromUpstream(): Promise<ConstituencyResult[]> {
     throw new Error("Upstream returned empty or non-array data");
   }
   return parseUpstreamCandidates(parsed as UpstreamRecord[], neuLookup, voterRolls);
+}
+
+function isConstituencyArray(data: unknown): data is ConstituencyResult[] {
+  if (!Array.isArray(data) || data.length === 0) return false;
+  const first = data[0] as Record<string, unknown>;
+  return typeof first?.code === "string" && Array.isArray(first?.candidates);
+}
+
+async function fetchConstituenciesJson(url: string): Promise<ConstituencyResult[]> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Fallback fetch failed: ${res.status} (${url})`);
+  const data: unknown = await res.json();
+  if (!isConstituencyArray(data)) {
+    throw new Error(`Fallback payload invalid (${url})`);
+  }
+  return data;
+}
+
+async function fetchArchiveSource(): Promise<ConstituencyResult[]> {
+  try {
+    return await fetchFromUpstream();
+  } catch (err) {
+    console.warn("[archive] upstream unavailable, trying fallbacks", err);
+  }
+
+  if (CDN_BASE) {
+    try {
+      return await fetchConstituenciesJson(`${CDN_BASE}/constituencies.json`);
+    } catch (err) {
+      console.warn("[archive] CDN fallback failed", err);
+    }
+  }
+
+  return fetchConstituenciesJson(LOCAL_SEED_URL);
 }
 
 // ── Vote zeroing ──────────────────────────────────────────────────────────────
@@ -116,7 +152,7 @@ export async function loadArchiveData(
 
   _inFlight = (async () => {
     try {
-      const constituencies = await fetchFromUpstream();
+      const constituencies = await fetchArchiveSource();
       const zeroed = zeroVotes(constituencies);
       writeCache(zeroed);
       return zeroed;

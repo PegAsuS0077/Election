@@ -76,7 +76,7 @@ export default function SummaryCards({
           title={t("leadingParty", lang)}
           big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
           sub={`${leader.total} ${t("seats", lang)}`}
-          dotColor={leaderInfo.color}
+          dotHex={leaderInfo.hex}
           symbol={leaderInfo.symbol}
           symbolUrl={leaderInfo.symbolUrl}
           right={<ChangePill delta={leader.delta} />}
@@ -88,7 +88,7 @@ export default function SummaryCards({
           title={t("runnerUp", lang)}
           big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
           sub={`${runnerUp.total} ${t("seats", lang)}`}
-          dotColor={runnerUpInfo.color}
+          dotHex={runnerUpInfo.hex}
           symbol={runnerUpInfo.symbol}
           symbolUrl={runnerUpInfo.symbolUrl}
           right={<ChangePill delta={runnerUp.delta} />}
@@ -100,16 +100,16 @@ export default function SummaryCards({
 }
 
 function Card({
-  title, big, sub, dotColor, symbol, symbolUrl, right, clickable,
+  title, big, sub, dotHex, symbol, symbolUrl, right, clickable,
 }: {
   title: string; big: string; sub: string;
-  dotColor?: string; symbol?: string; symbolUrl?: string; right?: React.ReactNode; clickable?: boolean;
+  dotHex?: string; symbol?: string; symbolUrl?: string; right?: React.ReactNode; clickable?: boolean;
 }) {
   return (
     <div className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:bg-slate-900 dark:border-slate-800${clickable ? " transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 active:scale-[0.99]" : ""}`}>
       <div className="text-sm font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          {dotColor ? <span className={`h-3 w-3 rounded-full ${dotColor}`} /> : null}
+          {dotHex ? <span className="h-3 w-3 rounded-full" style={{ backgroundColor: dotHex }} /> : null}
           {title}
         </div>
         {right}

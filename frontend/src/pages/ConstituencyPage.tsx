@@ -9,7 +9,7 @@
 import { useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
-import { getParty, partyColor } from "../lib/partyRegistry";
+import { getParty, partyHex } from "../lib/partyRegistry";
 import PartySymbol from "../components/PartySymbol";
 import { provinceName } from "../i18n";
 import type { Lang } from "../i18n";
@@ -70,7 +70,7 @@ function StatBox({ value, label, highlight = false }: { value: string; label: st
 
 // ── Bar row ───────────────────────────────────────────────────────────────────
 
-function BarRow({ label, value, total, barClass }: { label: string; value: number; total: number; barClass: string }) {
+function BarRow({ label, value, total, barHex }: { label: string; value: number; total: number; barHex: string }) {
   const w = total > 0 ? Math.max(1, Math.round((value / total) * 100)) : 0;
   return (
     <div>
@@ -79,7 +79,7 @@ function BarRow({ label, value, total, barClass }: { label: string; value: numbe
         <span className="font-semibold tabular-nums shrink-0">{fmt(value)}</span>
       </div>
       <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-700 ${barClass}`} style={{ width: `${w}%` }} />
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${w}%`, backgroundColor: barHex }} />
       </div>
     </div>
   );
@@ -285,13 +285,13 @@ export default function ConstituencyPage() {
                 label={cands.leader ? `${lang === "np" ? cands.leader.nameNp : cands.leader.name} (${leadPct}%)` : "—"}
                 value={cands.leader?.votes ?? 0}
                 total={topTwoTotal}
-                barClass={cands.leader ? partyColor(cands.leader.partyId) : "bg-slate-400"}
+                barHex={cands.leader ? partyHex(cands.leader.partyId) : "#94a3b8"}
               />
               <BarRow
                 label={cands.runnerUp ? `${lang === "np" ? cands.runnerUp.nameNp : cands.runnerUp.name} (${runPct}%)` : "—"}
                 value={cands.runnerUp?.votes ?? 0}
                 total={topTwoTotal}
-                barClass={cands.runnerUp ? partyColor(cands.runnerUp.partyId) : "bg-slate-400"}
+                barHex={cands.runnerUp ? partyHex(cands.runnerUp.partyId) : "#94a3b8"}
               />
             </div>
             <div className="mt-3 text-xs text-slate-400">
@@ -337,7 +337,7 @@ export default function ConstituencyPage() {
                 {cands.sorted.map((c, i) => {
                   const pInfo = getParty(c.partyId);
                   const pName = lang === "np" ? c.partyName : pInfo.nameEn;
-                  const pBar  = partyColor(c.partyId);
+                  const pBarHex = partyHex(c.partyId);
                   const pct   = pctStr(c.votes, totalVotesCast);
                   const isTop = i === 0;
                   return (
@@ -369,7 +369,7 @@ export default function ConstituencyPage() {
                         </div>
                         {c.votes > 0 && totalVotesCast > 0 && (
                           <div className="mt-0.5 h-1 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden max-w-[64px] ml-auto">
-                            <div className={`h-full rounded-full ${pBar}`} style={{ width: pct !== "—" ? pct : "0%" }} />
+                            <div className="h-full rounded-full" style={{ width: pct !== "—" ? pct : "0%", backgroundColor: pBarHex }} />
                           </div>
                         )}
                       </td>
