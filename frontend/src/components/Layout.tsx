@@ -29,13 +29,19 @@ function MoonIcon() {
 }
 
 // ── Nav links ─────────────────────────────────────────────────────────────────
-interface NavLink { path: string; labelEn: string; labelNp: string; icon: string }
+interface NavLink {
+  path: string;
+  labelEn: string;
+  labelNp: string;
+  icon: string;
+  matchPrefixes?: string[];
+}
 const NAV_LINKS: NavLink[] = [
   { path: "/",           labelEn: "Home",        labelNp: "गृहपृष्ठ",        icon: "🏠" },
-  { path: "/explore",    labelEn: "Explore",     labelNp: "अन्वेषण",          icon: "◈" },
+  { path: "/explore",    labelEn: "Explore",     labelNp: "अन्वेषण",          icon: "◈", matchPrefixes: ["/constituency/"] },
   { path: "/map",        labelEn: "Map",         labelNp: "नक्सा",            icon: "🗺️" },
-  { path: "/parties",    labelEn: "Parties",     labelNp: "दलहरू",            icon: "◉" },
-  { path: "/candidates", labelEn: "Candidates",  labelNp: "उम्मेद्वारहरू",   icon: "👤" },
+  { path: "/parties",    labelEn: "Parties",     labelNp: "दलहरू",            icon: "◉", matchPrefixes: ["/party/"] },
+  { path: "/candidates", labelEn: "Candidates",  labelNp: "उम्मेद्वारहरू",   icon: "👤", matchPrefixes: ["/candidate/"] },
 ];
 
 // ── Layout props ──────────────────────────────────────────────────────────────
@@ -82,6 +88,15 @@ export default function Layout({
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
 
+  // Prevent background scroll while the drawer is open on mobile
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    if (drawerOpen) document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [drawerOpen]);
+
   // Keep dark class in sync
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -90,10 +105,16 @@ export default function Layout({
   const hasLiveData = results.some((r) => r.status !== "PENDING" && r.votesCast > 0);
   const displayTitle = lang === "np" ? titleNp : title;
   const displaySub   = lang === "np" ? subtitleNp : subtitle;
+  const isActiveLink = (link: NavLink) => {
+    const { pathname } = location;
+    if (pathname === link.path) return true;
+    if (link.path !== "/" && pathname.startsWith(link.path + "/")) return true;
+    return (link.matchPrefixes ?? []).some((prefix) => pathname.startsWith(prefix));
+  };
 
   return (
     <div
-      className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-[#080e1a]"
+      className="min-h-screen w-full overflow-x-hidden pb-20 sm:pb-0 bg-slate-50 dark:bg-[#080e1a]"
       style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}
     >
       {/* ── Top shimmer bar ─────────────────────────────────────────────── */}
@@ -107,7 +128,7 @@ export default function Layout({
             : "bg-white/70 dark:bg-[#080e1a]/70 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50"
           }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
           {/* Mobile hamburger — left side on mobile, hidden on desktop */}
           <button
             type="button"
@@ -125,7 +146,7 @@ export default function Layout({
           </button>
 
           {/* Brand */}
-          <Link to="/" className="flex items-center gap-2 min-w-0 shrink-0">
+          <Link to="/" className="flex-1 sm:flex-none flex items-center justify-center sm:justify-start gap-2 min-w-0 sm:shrink-0 px-1 sm:px-0">
             <img
               src="https://flagcdn.com/w40/np.png"
               srcSet="https://flagcdn.com/w80/np.png 2x"
@@ -135,7 +156,7 @@ export default function Layout({
               className="rounded-sm shrink-0"
             />
             <span
-              className="font-bold text-[13px] sm:text-[14px] tracking-tight text-slate-900 dark:text-slate-100 leading-tight"
+              className="font-bold text-[13px] sm:text-[14px] tracking-tight text-slate-900 dark:text-slate-100 leading-tight text-center sm:text-left"
               style={{ fontFamily: "'Sora', sans-serif" }}
             >
               Nepal Election Results 2082{" "}
@@ -146,10 +167,13 @@ export default function Layout({
             </span>
           </Link>
 
+          {/* Mobile spacer to keep center title balanced with left hamburger */}
+          <div className="sm:hidden shrink-0 h-8 w-8" aria-hidden="true" />
+
           {/* Desktop nav */}
           <nav className="hidden sm:flex items-center gap-0.5">
             {NAV_LINKS.map((link) => {
-              const isActive = location.pathname === link.path;
+              const isActive = isActiveLink(link);
               const label = lang === "np" ? link.labelNp : link.labelEn;
               return (
                 <Link
@@ -283,7 +307,7 @@ export default function Layout({
         {/* Nav links */}
         <nav className="flex-1 overflow-y-auto py-3 px-2">
           {NAV_LINKS.map((link) => {
-            const isActive = location.pathname === link.path;
+            const isActive = isActiveLink(link);
             const label = lang === "np" ? link.labelNp : link.labelEn;
             return (
               <Link
@@ -329,18 +353,48 @@ export default function Layout({
         </div>
       </div>
 
+      {/* ── Mobile bottom navigation (persistent on scroll) ──────────────── */}
+      <nav
+        className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 dark:border-slate-800/80
+                   bg-white/95 dark:bg-[#0c1525]/95 backdrop-blur-xl"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        aria-label="Bottom navigation"
+      >
+        <div className="h-16 grid grid-cols-5">
+          {NAV_LINKS.map((link) => {
+            const isActive = isActiveLink(link);
+            const label = lang === "np" ? link.labelNp : link.labelEn;
+            return (
+              <Link
+                key={`bottom-${link.path}`}
+                to={link.path}
+                className={`flex flex-col items-center justify-center gap-1 transition-colors
+                  ${isActive
+                    ? "text-[#2563eb] dark:text-[#3b82f6]"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+              >
+                <span className={`text-base leading-none ${isActive ? "" : "opacity-75"}`}>{link.icon}</span>
+                <span className="text-[10px] font-semibold tracking-wide truncate max-w-[70px]">{label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
       {/* ── Back to top button ─────────────────────────────────────────────── */}
       <button
         type="button"
         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         aria-label="Back to top"
-        className={`fixed bottom-6 right-5 z-50 h-10 w-10 flex items-center justify-center
+        className={`fixed bottom-24 sm:bottom-6 right-5 z-50 h-10 w-10 flex items-center justify-center
           rounded-full border border-slate-200 dark:border-slate-700/80
           bg-white dark:bg-slate-800 shadow-lg
           text-slate-500 dark:text-slate-400
           hover:border-[#2563eb]/50 hover:text-[#2563eb] dark:hover:text-[#3b82f6]
           transition-all duration-300 active:scale-95
           ${showTop ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-4 pointer-events-none"}`}
+        style={{ marginBottom: "env(safe-area-inset-bottom)" }}
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="18 15 12 9 6 15" />

@@ -52,7 +52,8 @@ export default function InstallPrompt() {
   return (
     <div
       role="banner"
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm"
+      className="fixed bottom-20 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm"
+      style={{ marginBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-700/60 bg-[#0f172a]/95 px-4 py-3 shadow-xl backdrop-blur-sm">
         <div className="flex items-center gap-2.5 min-w-0">

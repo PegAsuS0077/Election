@@ -6,10 +6,6 @@ import type { Snapshot } from "./api";
 import { SummaryCardsSkeleton } from "./Skeleton";
 import { getParty, partySlug } from "./lib/partyRegistry";
 
-function seatsToMajority(totalSeats: number) {
-  return Math.floor(totalSeats / 2) + 1;
-}
-
 function ChangePill({ delta }: { delta: number }) {
   const up = delta > 0;
   const down = delta < 0;
@@ -28,7 +24,6 @@ function ChangePill({ delta }: { delta: number }) {
 
 export default function SummaryCards({
   isLoading,
-  snapshot,
   lang = "en",
 }: {
   isLoading?: boolean;
@@ -39,9 +34,6 @@ export default function SummaryCards({
   const baselineTally = useElectionStore((s) => s.baselineTally);
 
   if (isLoading) return <SummaryCardsSkeleton />;
-
-  const totalSeats = snapshot?.totalSeats ?? 275;
-  const majority   = seatsToMajority(totalSeats);
 
   const totals = Object.entries(seatTally).map(([partyId, v]) => {
     const current   = v.fptp + v.pr;
@@ -57,8 +49,7 @@ export default function SummaryCards({
 
   if (!leader || !runnerUp) {
     return (
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card title={t("majority", lang)} big={`${majority}`} sub={t("majorityDesc", lang)} />
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={t("leadingParty", lang)} big="—" sub={t("preElection", lang)} />
         <Card title={t("runnerUp", lang)} big="—" sub={t("preElection", lang)} />
       </section>
@@ -69,8 +60,7 @@ export default function SummaryCards({
   const runnerUpInfo = getParty(runnerUp.partyId);
 
   return (
-    <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <Card title={t("majority", lang)} big={`${majority}`} sub={t("majorityDesc", lang)} />
+    <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Link to={`/party/${partySlug(leaderInfo.nameEn)}`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
         <Card
           title={t("leadingParty", lang)}
