@@ -672,22 +672,39 @@ async function runOnce(env: Env): Promise<void> {
   const t0 = Date.now();
   console.log("[scraper] scheduled run — fetching upstream JSON…");
 
-  // ── Phase 1B: fetch upstream — bail out WITHOUT touching R2 on any failure ──
-  let res: Response;
-  try {
-    res = await fetch(UPSTREAM_URL, { headers: { "Accept-Encoding": "gzip" }, cf: { cacheTtl: 0 } });
-  } catch (err) {
-    console.error("[scraper] upstream network error — R2 NOT updated:", err);
+  // ── Phase 1B: fetch upstream — retry up to 3x on transient errors (503/502/429) ──
+  // Bail out WITHOUT touching R2 if all attempts fail.
+  const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+  let res: Response | null = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      res = await fetch(UPSTREAM_URL, { headers: { "Accept-Encoding": "gzip" }, cf: { cacheTtl: 0 } });
+    } catch (err) {
+      if (attempt === 3) {
+        console.error("[scraper] upstream network error after 3 attempts — R2 NOT updated:", err);
+        return;
+      }
+      console.warn(`[scraper] upstream network error (attempt ${attempt}/3), retrying…`, err);
+      await new Promise((r) => setTimeout(r, attempt * 2000));
+      continue;
+    }
+    if (res.ok) break;
+    if (RETRYABLE.has(res.status) && attempt < 3) {
+      console.warn(`[scraper] upstream returned ${res.status} (attempt ${attempt}/3), retrying…`);
+      await new Promise((r) => setTimeout(r, attempt * 2000));
+      continue;
+    }
+    console.error(`[scraper] upstream returned ${res.status} ${res.statusText} — R2 NOT updated`);
     return;
   }
-  if (!res.ok) {
-    console.error(`[scraper] upstream returned ${res.status} ${res.statusText} — R2 NOT updated`);
+  if (!res!.ok) {
+    console.error(`[scraper] upstream returned ${res!.status} ${res!.statusText} after retries — R2 NOT updated`);
     return;
   }
 
   let text: string;
   try {
-    text = await res.text();
+    text = await res!.text();
   } catch (err) {
     console.error("[scraper] failed to read upstream response body — R2 NOT updated:", err);
     return;
