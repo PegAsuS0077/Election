@@ -593,6 +593,24 @@ function mergeHigherVotesFromRows(
   };
 }
 
+function applyPrSeatsFromSnapshot(
+  snapshot: Snapshot,
+  prSnapshot: PrPartySnapshot | null,
+): void {
+  if (!prSnapshot || prSnapshot.totalPrVotes <= 0 || prSnapshot.parties.length === 0) return;
+
+  for (const p of prSnapshot.parties) {
+    if (!snapshot.seatTally[p.partyId]) {
+      snapshot.seatTally[p.partyId] = { fptp: 0, pr: 0 };
+    }
+  }
+
+  for (const p of prSnapshot.parties) {
+    const prSeats = Math.round((p.prVotes / prSnapshot.totalPrVotes) * PR_SEATS);
+    snapshot.seatTally[p.partyId]!.pr = prSeats;
+  }
+}
+
 // ── Core transform ────────────────────────────────────────────────────────────
 
 function transform(
@@ -632,8 +650,6 @@ function transform(
   // Build aggregates while processing each constituency once.
   const partyCandidateCount = new Map<string, number>();
   const partyNameByPartyId = new Map<string, string>();
-  const voteShare: Record<string, number> = {};
-  let totalVotes = 0;
   let declaredSeats = 0;
   const tally: SeatTally = {};
 
@@ -699,8 +715,6 @@ function transform(
       candidates.push(cand);
 
       votesCast += cand.votes;
-      totalVotes += cand.votes;
-      voteShare[partyId] = (voteShare[partyId] ?? 0) + cand.votes;
       if (cand.votes > 0) hasVotes = true;
       if (cand.isWinner) {
         hasWinner = true;
@@ -751,15 +765,6 @@ function transform(
   // Ensure all parties with candidates have an entry
   for (const pid of partyCandidateCount.keys()) {
     if (!tally[pid]) tally[pid] = { fptp: 0, pr: 0 };
-  }
-
-  // PR: 110 seats proportional by total vote share
-  if (totalVotes > 0) {
-    for (const pid of Object.keys(tally)) {
-      (tally[pid] as SeatEntry).pr = Math.round(
-        ((voteShare[pid] ?? 0) / totalVotes) * PR_SEATS,
-      );
-    }
   }
 
   const snapshot: Snapshot = {
@@ -1200,8 +1205,11 @@ async function runOnce(env: Env): Promise<void> {
     loadVoterRolls(env.FRONTEND_URL),
   ]);
 
+  const prSnapshot = await fetchPrHorPartySnapshot(csrfToken, cookieHeader, bootstrapUrlUsed);
+
   const t1 = Date.now();
   const { constituencies, snapshot, parties } = transform(records, neuLookup, voterRolls);
+  applyPrSeatsFromSnapshot(snapshot, prSnapshot);
   const transformMs = Date.now() - t1;
 
   const totalVotes = constituencies.reduce((s, c) => s + c.votesCast, 0);
@@ -1229,14 +1237,12 @@ async function runOnce(env: Env): Promise<void> {
     `[scraper] uploaded 3 files to R2 in ${uploadMs} ms (total ${Date.now() - t0} ms)`,
   );
 
-  // Optional PR dataset (110 PR-seat vote stream). This must never block or
-  // alter the primary 3-file pipeline on failures.
+  if (!prSnapshot) {
+    console.warn("[scraper] optional PR snapshot unavailable — PR seats remain 0 until PR feed is available");
+    return;
+  }
+
   try {
-    const prSnapshot = await fetchPrHorPartySnapshot(csrfToken, cookieHeader, bootstrapUrlUsed);
-    if (!prSnapshot) {
-      console.warn("[scraper] optional PR snapshot unavailable — primary outputs kept unchanged");
-      return;
-    }
     await putJson(env.RESULTS_BUCKET, "pr_parties.json", prSnapshot);
     console.log(
       `[scraper] uploaded optional pr_parties.json (${prSnapshot.parties.length} parties, ${prSnapshot.totalPrVotes} votes)`,

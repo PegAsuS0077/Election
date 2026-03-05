@@ -38,23 +38,13 @@ function deriveSeatTally(results: ConstituencyResult[], prVotes: PrVoteByParty):
     }
   }
 
-  // PR: if pr_parties.json is available, use it; otherwise fallback to
-  // constituency vote-derived estimation.
+  // PR: only use official PR party votes feed (pr_parties.json).
+  // Never estimate PR from FPTP candidate vote totals.
   let totalVotes = 0;
   const voteShare: Record<string, number> = {};
-  const hasPrVotes = Object.keys(prVotes).length > 0;
-  if (hasPrVotes) {
-    for (const [pid, votes] of Object.entries(prVotes)) {
-      voteShare[pid] = (voteShare[pid] ?? 0) + votes;
-      totalVotes += votes;
-    }
-  } else {
-    for (const r of results) {
-      for (const c of r.candidates) {
-        voteShare[c.partyId] = (voteShare[c.partyId] ?? 0) + c.votes;
-        totalVotes += c.votes;
-      }
-    }
+  for (const [pid, votes] of Object.entries(prVotes)) {
+    voteShare[pid] = (voteShare[pid] ?? 0) + votes;
+    totalVotes += votes;
   }
   const PR_SEATS = 110;
   if (totalVotes > 0) {

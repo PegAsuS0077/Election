@@ -22,24 +22,11 @@ function fmt(n: number): string {
 const TOP_N = 8;
 
 export default function PrVotesBars({ lang = "en" }: { lang?: Lang }) {
-  const results = useElectionStore((s) => s.results);
   const prVoteByParty = useElectionStore((s) => s.prVoteByParty);
   const seatTally = useElectionStore((s) => s.seatTally);
 
   const prEntries = Object.entries(prVoteByParty).filter(([, votes]) => votes > 0);
-  const prTotal = prEntries.reduce((sum, [, votes]) => sum + votes, 0);
-  const hasPrFeed = prEntries.length > 0 && prTotal > 0;
-
-  const constituencyVotes: Record<string, number> = {};
-  for (const r of results) {
-    for (const c of r.candidates) {
-      if (c.votes <= 0) continue;
-      constituencyVotes[c.partyId] = (constituencyVotes[c.partyId] ?? 0) + c.votes;
-    }
-  }
-  const fallbackEntries = Object.entries(constituencyVotes).filter(([, votes]) => votes > 0);
-
-  const entries = hasPrFeed ? prEntries : fallbackEntries;
+  const entries = prEntries;
   const totalVotes = entries.reduce((sum, [, votes]) => sum + votes, 0);
 
   if (entries.length === 0 || totalVotes <= 0) {
@@ -50,8 +37,8 @@ export default function PrVotesBars({ lang = "en" }: { lang?: Lang }) {
         </h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           {lang === "np"
-            ? "PR मतको प्रत्यक्ष फिड उपलब्ध हुँदा यहाँ दल अनुसार मत र अपेक्षित सिट देखिनेछ।"
-            : "Party-wise votes and expected seats will appear here once vote data is available."}
+            ? "PR दलगत आधिकारिक मत फिड उपलब्ध भएपछि मात्र यहाँ परिणाम देखाइनेछ।"
+            : "Results appear here only when the official PR party-vote feed is available."}
         </p>
       </section>
     );
@@ -97,13 +84,9 @@ export default function PrVotesBars({ lang = "en" }: { lang?: Lang }) {
             {lang === "np" ? "समानुपातिक मत (PR)" : "Proportional Votes (PR)"}
           </h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            {hasPrFeed
-              ? (lang === "np"
-                ? `कुल PR मत: ${fmt(totalVotes)}`
-                : `Total PR votes: ${fmt(totalVotes)}`)
-              : (lang === "np"
-                ? `कुल गणनामा मत (fallback): ${fmt(totalVotes)}`
-                : `Total counted votes (fallback): ${fmt(totalVotes)}`)}
+            {lang === "np"
+              ? `कुल PR मत: ${fmt(totalVotes)}`
+              : `Total PR votes: ${fmt(totalVotes)}`}
           </p>
         </div>
         <div className="text-xs text-slate-500 dark:text-slate-400">
