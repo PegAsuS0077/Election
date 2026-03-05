@@ -56,6 +56,24 @@ export function SeatShareBarsSkeleton() {
   );
 }
 
+export function PrVotesBarsSkeleton() {
+  return (
+    <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+      <SkeletonBox className="h-5 w-44 mb-2" />
+      <SkeletonBox className="h-4 w-32 mb-6" />
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="mb-5">
+          <div className="flex justify-between mb-2">
+            <SkeletonBox className="h-4 w-40" />
+            <SkeletonBox className="h-4 w-20" />
+          </div>
+          <SkeletonBox className="h-3 w-full rounded-full" />
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export function TableRowsSkeleton() {
   return (
     <>

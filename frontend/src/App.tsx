@@ -6,10 +6,11 @@ import { getParty } from "./lib/partyRegistry";
 import { RESULTS_MODE } from "./types";
 
 import SummaryCards from "./SummaryCards";
+import PrVotesBars from "./PrVotesBars";
 import SeatShareBars from "./SeatShareBars";
 import HotSeats from "./HotSeats";
 import LatestUpdates from "./LatestUpdates";
-import { SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
+import { PrVotesBarsSkeleton, SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
 import Layout from "./components/Layout";
 import InstallPrompt from "./components/InstallPrompt";
 
@@ -150,6 +151,8 @@ export default function App() {
         </section>
 
         {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards lang={lang} />}
+
+        {isLoading ? <PrVotesBarsSkeleton /> : <PrVotesBars lang={lang} />}
 
         {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
 
