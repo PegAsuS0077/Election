@@ -314,6 +314,13 @@ const UPSTREAM_URL =
 const UPSTREAM_PR_HOR_URL =
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
   "?file=JSONFiles/Election2082/Common/PRHoRPartyTop5.txt";
+const UPSTREAM_HOR_TOP5_URLS = [
+  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
+  "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json",
+  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
+  "?file=JSONFiles/Election2082/Common/HoRPartyTop5.txt",
+];
+const HOR_TOP5_REFERER_URL = "https://result.election.gov.np/FPTPWLChartResult2082.aspx";
 
 const TOTAL_SEATS = 275;
 const PR_SEATS = 110;
@@ -540,6 +547,50 @@ function recordConstId(rec: UpstreamRecord): number | null {
 
 function recordDistrictNp(rec: UpstreamRecord): string {
   return (rec.DistrictName ?? rec.District ?? "").trim();
+}
+
+function mergeHigherVotesFromRows(
+  baseRecords: UpstreamRecord[],
+  fresherRows: Partial<UpstreamRecord>[],
+): { upgraded: number; missingCandidateRows: number; usableRows: number } {
+  const fresherVoteByCandidateId = new Map<number, number>();
+  for (const row of fresherRows) {
+    const candidateId = toInt(row.CandidateID);
+    const votes = toInt(row.TotalVoteReceived);
+    if (candidateId === null || votes === null || votes < 0) continue;
+    const prev = fresherVoteByCandidateId.get(candidateId);
+    if (prev === undefined || votes > prev) {
+      fresherVoteByCandidateId.set(candidateId, votes);
+    }
+  }
+
+  let upgraded = 0;
+  const seenBaseCandidateIds = new Set<number>();
+  for (const rec of baseRecords) {
+    const candidateId = toInt(rec.CandidateID);
+    if (candidateId === null) continue;
+    seenBaseCandidateIds.add(candidateId);
+
+    const fresherVotes = fresherVoteByCandidateId.get(candidateId);
+    if (fresherVotes === undefined) continue;
+
+    const currentVotes = toInt(rec.TotalVoteReceived) ?? 0;
+    if (fresherVotes > currentVotes) {
+      rec.TotalVoteReceived = fresherVotes;
+      upgraded++;
+    }
+  }
+
+  let missingCandidateRows = 0;
+  for (const candidateId of fresherVoteByCandidateId.keys()) {
+    if (!seenBaseCandidateIds.has(candidateId)) missingCandidateRows++;
+  }
+
+  return {
+    upgraded,
+    missingCandidateRows,
+    usableRows: fresherVoteByCandidateId.size,
+  };
 }
 
 // ── Core transform ────────────────────────────────────────────────────────────
@@ -949,6 +1000,67 @@ async function fetchPrHorPartySnapshot(
   };
 }
 
+async function fetchHorTop5Rows(
+  csrfToken: string,
+  cookieHeader: string,
+): Promise<Partial<UpstreamRecord>[] | null> {
+  for (const sourceUrl of UPSTREAM_HOR_TOP5_URLS) {
+    let res: Response;
+    try {
+      res = await fetchWithRetry(
+        "optional HOR Top5 json GET",
+        sourceUrl,
+        {
+          method: "GET",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "X-CSRF-Token": csrfToken,
+            "X-Requested-With": "XMLHttpRequest",
+            "Origin": "https://result.election.gov.np",
+            "Referer": HOR_TOP5_REFERER_URL,
+            "Cookie": cookieHeader,
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+          },
+          cf: { cacheTtl: 0 },
+        },
+        RETRYABLE_STATUS,
+      );
+    } catch (err) {
+      console.warn(`[scraper] optional HOR Top5 fetch failed (${sourceUrl}):`, err);
+      continue;
+    }
+    if (!res.ok) {
+      console.warn(`[scraper] optional HOR Top5 returned ${res.status} ${res.statusText} (${sourceUrl})`);
+      continue;
+    }
+
+    let text: string;
+    try {
+      text = await res.text();
+    } catch (err) {
+      console.warn(`[scraper] optional HOR Top5 response body read failed (${sourceUrl}):`, err);
+      continue;
+    }
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
+    let rows: Partial<UpstreamRecord>[];
+    try {
+      rows = JSON.parse(text) as Partial<UpstreamRecord>[];
+    } catch (err) {
+      console.warn(`[scraper] optional HOR Top5 JSON parse failed (${sourceUrl}):`, err);
+      continue;
+    }
+    if (!Array.isArray(rows) || rows.length === 0) {
+      console.warn(`[scraper] optional HOR Top5 payload empty (${sourceUrl})`);
+      continue;
+    }
+    return rows;
+  }
+  return null;
+}
+
 // ── Scheduled handler ─────────────────────────────────────────────────────────
 
 async function runOnce(env: Env): Promise<void> {
@@ -1063,6 +1175,20 @@ async function runOnce(env: Env): Promise<void> {
   if (!recordsValid) {
     console.error("[scraper] upstream schema check failed (CandidateID/TotalVoteReceived missing) — R2 NOT updated");
     return;
+  }
+
+  const horTop5Rows = await fetchHorTop5Rows(csrfToken, cookieHeader);
+  if (horTop5Rows) {
+    const mergeStats = mergeHigherVotesFromRows(records, horTop5Rows);
+    console.log(
+      "[scraper] optional HOR Top5 merged: " +
+      `${mergeStats.upgraded} candidate vote updates from ${mergeStats.usableRows} usable rows` +
+      (mergeStats.missingCandidateRows > 0
+        ? ` (${mergeStats.missingCandidateRows} candidate rows not present in primary feed)`
+        : ""),
+    );
+  } else {
+    console.warn("[scraper] optional HOR Top5 unavailable — using primary candidate feed only");
   }
 
   const fetchMs = Date.now() - t0;

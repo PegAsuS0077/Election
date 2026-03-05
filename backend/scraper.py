@@ -47,6 +47,13 @@ UPSTREAM_URL = (
     "https://result.election.gov.np/Handlers/SecureJson.ashx"
     "?file=JSONFiles/ElectionResultCentral2082.txt"
 )
+UPSTREAM_HOR_TOP5_URLS = (
+    "https://result.election.gov.np/Handlers/SecureJson.ashx"
+    "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json",
+    "https://result.election.gov.np/Handlers/SecureJson.ashx"
+    "?file=JSONFiles/Election2082/Common/HoRPartyTop5.txt",
+)
+HOR_TOP5_REFERER_URL = "https://result.election.gov.np/FPTPWLChartResult2082.aspx"
 _BASE_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -200,6 +207,70 @@ def _district_en(np_name: str, state_id: int) -> str:
 
 def _gender(rec: dict[str, Any]) -> str:
     return "F" if rec.get("Gender") == "महिला" else "M"
+
+
+def _to_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if not value.is_integer():
+            return None
+        return int(value)
+    if isinstance(value, str):
+        t = value.strip()
+        if not t:
+            return None
+        try:
+            return int(float(t))
+        except ValueError:
+            return None
+    return None
+
+
+def _merge_higher_votes(
+    base_records: list[dict[str, Any]],
+    fresher_rows: list[dict[str, Any]],
+) -> dict[str, int]:
+    fresher_vote_by_candidate: dict[int, int] = {}
+    for row in fresher_rows:
+        if not isinstance(row, dict):
+            continue
+        candidate_id = _to_int(row.get("CandidateID"))
+        votes = _to_int(row.get("TotalVoteReceived"))
+        if candidate_id is None or votes is None or votes < 0:
+            continue
+        prev = fresher_vote_by_candidate.get(candidate_id)
+        if prev is None or votes > prev:
+            fresher_vote_by_candidate[candidate_id] = votes
+
+    upgraded = 0
+    seen_base_candidate_ids: set[int] = set()
+    for row in base_records:
+        candidate_id = _to_int(row.get("CandidateID"))
+        if candidate_id is None:
+            continue
+        seen_base_candidate_ids.add(candidate_id)
+        fresher_votes = fresher_vote_by_candidate.get(candidate_id)
+        if fresher_votes is None:
+            continue
+
+        current_votes = _to_int(row.get("TotalVoteReceived"))
+        if current_votes is None:
+            current_votes = 0
+        if fresher_votes > current_votes:
+            row["TotalVoteReceived"] = fresher_votes
+            upgraded += 1
+
+    missing_candidates = sum(
+        1 for candidate_id in fresher_vote_by_candidate if candidate_id not in seen_base_candidate_ids
+    )
+    return {
+        "upgraded": upgraded,
+        "missing_candidates": missing_candidates,
+        "usable_rows": len(fresher_vote_by_candidate),
+    }
 
 
 def parse_candidates_json(raw_candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -366,7 +437,39 @@ async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
         raw = resp.content
         if raw.startswith(b"\xef\xbb\xbf"):   # strip UTF-8 BOM
             raw = raw[3:]
-        return json.loads(raw.decode("utf-8"))
+        candidates = json.loads(raw.decode("utf-8"))
+
+        # Optional fast stream: top-leader feed usually updates before the full
+        # central candidate feed. Merge only if it has higher vote values.
+        for top5_url in UPSTREAM_HOR_TOP5_URLS:
+            try:
+                top5_resp = await client.get(
+                    top5_url,
+                    headers={
+                        "X-CSRF-Token": csrf,
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Referer": HOR_TOP5_REFERER_URL,
+                    },
+                )
+                if not top5_resp.is_success:
+                    continue
+                top5_raw = top5_resp.content
+                if top5_raw.startswith(b"\xef\xbb\xbf"):
+                    top5_raw = top5_raw[3:]
+                top5_rows = json.loads(top5_raw.decode("utf-8"))
+                if not isinstance(top5_rows, list) or not top5_rows:
+                    continue
+                stats = _merge_higher_votes(candidates, top5_rows)
+                print(
+                    "[scraper] optional HOR Top5 merged: "
+                    f"{stats['upgraded']} candidate vote updates from "
+                    f"{stats['usable_rows']} usable rows"
+                )
+                break
+            except Exception:
+                continue
+
+        return candidates
 
 
 async def scrape_results(url: str = UPSTREAM_URL) -> tuple[list[dict], dict]:
