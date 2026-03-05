@@ -16,10 +16,12 @@ jobs:
 
       - name: Install dependencies
         working-directory: worker
-        run: npm install
+        run: |
+          rm -rf node_modules
+          npm ci
 
       - name: Deploy worker
         working-directory: worker
-        run: npx wrangler deploy
+        run: node ./node_modules/wrangler/bin/wrangler.js deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
