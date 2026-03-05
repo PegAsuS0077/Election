@@ -4,10 +4,9 @@
  * Triggered by a Cron Trigger (every 2 minutes by default).
  * Fetches the upstream JSON from result.election.gov.np server-side
  * (no CORS), normalises it into the same shapes the frontend expects,
- * and writes three files to the R2 bucket:
+ * and writes two files to the R2 bucket:
  *   - constituencies.json   — ConstituencyResult[]
  *   - snapshot.json         — Snapshot (seat tally + metadata)
- *   - parties.json          — PartyInfo[] (derived from data)
  *
  * R2 binding: RESULTS_BUCKET (configured in wrangler.toml)
  */
@@ -281,8 +280,7 @@ function nepaliNameToEnglish(name: string): string {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SESSION_PAGE_URL =
-  "https://result.election.gov.np/ElectionResultCentral2082.aspx";
+const SESSION_PAGE_URL = "https://result.election.gov.np/";
 
 const UPSTREAM_URL =
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
@@ -290,6 +288,9 @@ const UPSTREAM_URL =
 
 const TOTAL_SEATS = 275;
 const PR_SEATS = 110;
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const MAX_FETCH_ATTEMPTS = 3; // 1 initial + 2 retries
+const RETRY_BACKOFF_MS = 350;
 
 // ── Province mapping ──────────────────────────────────────────────────────────
 
@@ -577,13 +578,6 @@ function transform(
     constituencies.push(entry);
   }
 
-  // Sort: province → district → name (mirrors frontend parseUpstreamData.ts)
-  constituencies.sort((a, b) => {
-    if (a.province !== b.province) return a.province.localeCompare(b.province);
-    if (a.district !== b.district) return a.district.localeCompare(b.district);
-    return a.name.localeCompare(b.name);
-  });
-
   // ── Seat tally ──────────────────────────────────────────────────────────────
   const tally: SeatTally = {};
 
@@ -670,86 +664,179 @@ async function putJson(bucket: R2Bucket, key: string, body: unknown): Promise<vo
   });
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(
+  label: string,
+  url: string,
+  init: RequestInit,
+  retryOnStatus: Set<number> = new Set(),
+): Promise<Response> {
+  for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.ok) return res;
+      if (retryOnStatus.has(res.status) && attempt < MAX_FETCH_ATTEMPTS) {
+        const waitMs = RETRY_BACKOFF_MS * attempt;
+        console.warn(
+          `[scraper] ${label} returned ${res.status} (attempt ${attempt}/${MAX_FETCH_ATTEMPTS}), retrying in ${waitMs}ms`,
+        );
+        await sleep(waitMs);
+        continue;
+      }
+      return res;
+    } catch (err) {
+      if (attempt === MAX_FETCH_ATTEMPTS) throw err;
+      const waitMs = RETRY_BACKOFF_MS * attempt;
+      console.warn(
+        `[scraper] ${label} network error (attempt ${attempt}/${MAX_FETCH_ATTEMPTS}), retrying in ${waitMs}ms`,
+        err,
+      );
+      await sleep(waitMs);
+    }
+  }
+  throw new Error(`[scraper] ${label} exhausted retries`);
+}
+
+function splitSetCookieHeader(value: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  for (let i = 0; i < value.length; i++) {
+    if (value[i] !== ",") continue;
+    const rest = value.slice(i + 1);
+    // Split only when the comma is the boundary between cookie entries.
+    if (/^\s*[!#$%&'*+\-.^_`|~0-9A-Za-z]+=/.test(rest)) {
+      parts.push(value.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  const tail = value.slice(start).trim();
+  if (tail) parts.push(tail);
+  return parts;
+}
+
+function getSetCookieValues(headers: Headers): string[] {
+  const maybeHeaders = headers as Headers & { getSetCookie?: () => string[] };
+  if (typeof maybeHeaders.getSetCookie === "function") {
+    const fromApi = maybeHeaders.getSetCookie().map((v) => v.trim()).filter(Boolean);
+    if (fromApi.length > 0) return fromApi;
+  }
+
+  const values: string[] = [];
+  for (const [name, value] of headers.entries()) {
+    if (name.toLowerCase() === "set-cookie") values.push(value);
+  }
+
+  if (values.length === 0) {
+    const combined = headers.get("set-cookie");
+    if (combined) values.push(combined);
+  }
+
+  return values.flatMap((v) => splitSetCookieHeader(v)).map((v) => v.trim()).filter(Boolean);
+}
+
+function parseCookieFromSetCookie(setCookie: string): { name: string; value: string } | null {
+  const firstSegment = setCookie.split(";")[0]?.trim();
+  if (!firstSegment) return null;
+  const eqIndex = firstSegment.indexOf("=");
+  if (eqIndex <= 0) return null;
+  return {
+    name: firstSegment.slice(0, eqIndex).trim(),
+    value: firstSegment.slice(eqIndex + 1).trim(),
+  };
+}
+
+function extractSessionCookies(headers: Headers): { sessionId: string; csrfToken: string } | null {
+  let sessionId = "";
+  let csrfToken = "";
+
+  for (const setCookie of getSetCookieValues(headers)) {
+    const parsed = parseCookieFromSetCookie(setCookie);
+    if (!parsed) continue;
+    if (parsed.name === "ASP.NET_SessionId") sessionId = parsed.value;
+    if (parsed.name === "CsrfToken") csrfToken = parsed.value;
+  }
+
+  if (!sessionId || !csrfToken) return null;
+  return { sessionId, csrfToken };
+}
+
 // ── Scheduled handler ─────────────────────────────────────────────────────────
 
 async function runOnce(env: Env): Promise<void> {
   const t0 = Date.now();
   console.log("[scraper] scheduled run — fetching upstream JSON…");
 
-  // ── Step 1: establish ASP.NET session (required since 2026-03-05) ────────────
-  // The upstream now gates data behind SecureJson.ashx which requires a valid
-  // browser session. We GET the results page first to receive the session cookies,
-  // then use them to fetch the actual JSON data.
+  // ── Step 1: establish ASP.NET session and CSRF token ───────────────────────
+  let sessionId = "";
   let csrfToken = "";
-  let sessionCookie = "";
   try {
-    const pageRes = await fetch(SESSION_PAGE_URL, {
+    const pageRes = await fetchWithRetry("session bootstrap", SESSION_PAGE_URL, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml",
       },
       cf: { cacheTtl: 0 },
     });
-    // Extract cookies from Set-Cookie headers
-    const setCookie = pageRes.headers.get("set-cookie") ?? "";
-    const csrfMatch = setCookie.match(/CsrfToken=([^;,\s]+)/);
-    const sessionMatch = setCookie.match(/ASP\.NET_SessionId=([^;,\s]+)/);
-    if (csrfMatch) csrfToken = csrfMatch[1];
-    if (sessionMatch) sessionCookie = sessionMatch[1];
-    console.log(`[scraper] session established — csrf=${!!csrfToken} session=${!!sessionCookie}`);
+    if (!pageRes.ok) {
+      console.error(
+        `[scraper] session bootstrap failed with ${pageRes.status} ${pageRes.statusText} — R2 NOT updated`,
+      );
+      return;
+    }
+
+    const cookies = extractSessionCookies(pageRes.headers);
+    if (!cookies) {
+      console.error("[scraper] missing ASP.NET_SessionId/CsrfToken cookies — R2 NOT updated");
+      return;
+    }
+
+    sessionId = cookies.sessionId;
+    csrfToken = cookies.csrfToken;
+    console.log("[scraper] session established — csrf=true session=true");
   } catch (err) {
     console.error("[scraper] failed to establish session — R2 NOT updated:", err);
     return;
   }
 
-  // ── Step 2: fetch data — retry up to 3x on transient errors (503/502/429) ──
-  const RETRYABLE = new Set([429, 500, 502, 503, 504]);
-  const cookieHeader = [
-    csrfToken ? `CsrfToken=${csrfToken}` : "",
-    sessionCookie ? `ASP.NET_SessionId=${sessionCookie}` : "",
-  ].filter(Boolean).join("; ");
+  // ── Step 2: POST secure JSON handler with session cookies + CSRF ──────────
+  const cookieHeader = `ASP.NET_SessionId=${sessionId}; CsrfToken=${csrfToken}`;
 
-  let res: Response | null = null;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      res = await fetch(UPSTREAM_URL, {
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      "secure json fetch",
+      UPSTREAM_URL,
+      {
+        method: "POST",
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
-          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Accept": "application/json, text/plain, */*",
           "X-CSRF-Token": csrfToken,
           "X-Requested-With": "XMLHttpRequest",
+          "Origin": "https://result.election.gov.np",
           "Referer": SESSION_PAGE_URL,
           "Cookie": cookieHeader,
-          "Accept-Encoding": "gzip",
         },
         cf: { cacheTtl: 0 },
-      });
-    } catch (err) {
-      if (attempt === 3) {
-        console.error("[scraper] upstream network error after 3 attempts — R2 NOT updated:", err);
-        return;
-      }
-      console.warn(`[scraper] upstream network error (attempt ${attempt}/3), retrying…`, err);
-      await new Promise((r) => setTimeout(r, attempt * 2000));
-      continue;
-    }
-    if (res.ok) break;
-    if (RETRYABLE.has(res.status) && attempt < 3) {
-      console.warn(`[scraper] upstream returned ${res.status} (attempt ${attempt}/3), retrying…`);
-      await new Promise((r) => setTimeout(r, attempt * 2000));
-      continue;
-    }
-    console.error(`[scraper] upstream returned ${res.status} ${res.statusText} — R2 NOT updated`);
+      },
+      RETRYABLE_STATUS,
+    );
+  } catch (err) {
+    console.error("[scraper] secure json network error after retries — R2 NOT updated:", err);
     return;
   }
-  if (!res!.ok) {
-    console.error(`[scraper] upstream returned ${res!.status} ${res!.statusText} after retries — R2 NOT updated`);
+
+  if (!res.ok) {
+    console.error(`[scraper] secure json returned ${res.status} ${res.statusText} — R2 NOT updated`);
     return;
   }
 
   let text: string;
   try {
-    text = await res!.text();
+    text = await res.text();
   } catch (err) {
     console.error("[scraper] failed to read upstream response body — R2 NOT updated:", err);
     return;
@@ -781,7 +868,7 @@ async function runOnce(env: Env): Promise<void> {
   ]);
 
   const t1 = Date.now();
-  const { constituencies, snapshot, parties } = transform(records, neuLookup, voterRolls);
+  const { constituencies, snapshot } = transform(records, neuLookup, voterRolls);
   const transformMs = Date.now() - t1;
 
   const totalVotes = constituencies.reduce((s, c) => s + c.votesCast, 0);
@@ -796,17 +883,16 @@ async function runOnce(env: Env): Promise<void> {
     console.warn(`[scraper] WARNING: expected 165 constituencies, got ${constituencies.length}`);
   }
 
-  // Upload all three files in parallel — only reached after successful parse
+  // Upload only the frontend-consumed artifacts.
   const t2 = Date.now();
   await Promise.all([
     putJson(env.RESULTS_BUCKET, "constituencies.json", constituencies),
     putJson(env.RESULTS_BUCKET, "snapshot.json", snapshot),
-    putJson(env.RESULTS_BUCKET, "parties.json", parties),
   ]);
   const uploadMs = Date.now() - t2;
 
   console.log(
-    `[scraper] uploaded 3 files to R2 in ${uploadMs} ms (total ${Date.now() - t0} ms)`,
+    `[scraper] uploaded 2 files to R2 in ${uploadMs} ms (total ${Date.now() - t0} ms)`,
   );
 }
 
