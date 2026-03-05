@@ -281,7 +281,7 @@ function nepaliNameToEnglish(name: string): string {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SESSION_PAGE_URL = "https://result.election.gov.np/";
+const SESSION_PAGE_URL = "https://result.election.gov.np/ElectionResultCentral2082.aspx";
 
 const UPSTREAM_URL =
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
@@ -291,7 +291,7 @@ const TOTAL_SEATS = 275;
 const PR_SEATS = 110;
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const MAX_FETCH_ATTEMPTS = 3; // 1 initial + 2 retries
-const RETRY_BACKOFF_MS = 350;
+const RETRY_BACKOFF_MS = 500;
 
 // ── Province mapping ──────────────────────────────────────────────────────────
 
@@ -500,9 +500,13 @@ function transform(
     }
   }
 
-  // Build party candidate-count map while processing
+  // Build aggregates while processing each constituency once.
   const partyCandidateCount = new Map<string, number>();
   const partyNameByPartyId = new Map<string, string>();
+  const voteShare: Record<string, number> = {};
+  let totalVotes = 0;
+  let declaredSeats = 0;
+  const tally: SeatTally = {};
 
   const constituencies: ConstituencyResult[] = [];
 
@@ -515,15 +519,15 @@ function transform(
     const district = districtEn(districtNp, first.STATE_ID);
     const constNum = first.SCConstID;
 
-    const hasWinner = recs.some(isWinner);
-    const hasVotes = recs.some((r) => r.TotalVoteReceived > 0);
-    const status: ConstituencyStatus = hasWinner
-      ? "DECLARED"
-      : hasVotes
-        ? "COUNTING"
-        : "PENDING";
+    let hasWinner = false;
+    let hasVotes = false;
+    let votesCast = 0;
+    let winnerPartyId: string | null = null;
+    let leaderPartyId: string | null = null;
+    let leaderVotes = -1;
 
-    const candidates: Candidate[] = recs.map((rec) => {
+    const candidates: Candidate[] = [];
+    for (const rec of recs) {
       const partyId = derivePartyId(rec);
       const partyName = rec.PoliticalPartyName ?? "";
 
@@ -556,10 +560,27 @@ function transform(
       if (omitIfZeroOrDash(rec.EXPERIENCE))                cand.experience   = rec.EXPERIENCE;
       if (neu?.h ?? omitIfZeroOrDash(rec.ADDRESS))        cand.address      = neu?.h ?? rec.ADDRESS;
 
-      return cand;
-    });
+      candidates.push(cand);
 
-    const votesCast = candidates.reduce((s, c) => s + c.votes, 0);
+      votesCast += cand.votes;
+      totalVotes += cand.votes;
+      voteShare[partyId] = (voteShare[partyId] ?? 0) + cand.votes;
+      if (cand.votes > 0) hasVotes = true;
+      if (cand.isWinner) {
+        hasWinner = true;
+        if (!winnerPartyId) winnerPartyId = partyId;
+      }
+      if (cand.votes > leaderVotes) {
+        leaderVotes = cand.votes;
+        leaderPartyId = partyId;
+      }
+    }
+
+    const status: ConstituencyStatus = hasWinner
+      ? "DECLARED"
+      : hasVotes
+        ? "COUNTING"
+        : "PENDING";
     const constName = `${district}-${constNum}`;
     const totalVoters = voterRolls.get(constName);
 
@@ -577,23 +598,17 @@ function transform(
     };
     if (totalVoters !== undefined) entry.totalVoters = totalVoters;
     constituencies.push(entry);
-  }
 
-  // ── Seat tally ──────────────────────────────────────────────────────────────
-  const tally: SeatTally = {};
-
-  // FPTP: winner of each declared constituency
-  for (const c of constituencies) {
-    if (c.status !== "DECLARED") continue;
-    const winners = c.candidates.filter((cd) => cd.isWinner);
-    const winner =
-      winners.length > 0
-        ? winners[0]
-        : c.candidates.reduce((a, b) => (a.votes > b.votes ? a : b));
-    if (tally[winner.partyId]) {
-      (tally[winner.partyId] as SeatEntry).fptp += 1;
-    } else {
-      tally[winner.partyId] = { fptp: 1, pr: 0 };
+    if (status === "DECLARED") {
+      declaredSeats++;
+      const fptpWinner = winnerPartyId ?? leaderPartyId;
+      if (fptpWinner) {
+        if (tally[fptpWinner]) {
+          (tally[fptpWinner] as SeatEntry).fptp += 1;
+        } else {
+          tally[fptpWinner] = { fptp: 1, pr: 0 };
+        }
+      }
     }
   }
 
@@ -603,14 +618,6 @@ function transform(
   }
 
   // PR: 110 seats proportional by total vote share
-  let totalVotes = 0;
-  const voteShare: Record<string, number> = {};
-  for (const c of constituencies) {
-    for (const cd of c.candidates) {
-      voteShare[cd.partyId] = (voteShare[cd.partyId] ?? 0) + cd.votes;
-      totalVotes += cd.votes;
-    }
-  }
   if (totalVotes > 0) {
     for (const pid of Object.keys(tally)) {
       (tally[pid] as SeatEntry).pr = Math.round(
@@ -618,8 +625,6 @@ function transform(
       );
     }
   }
-
-  const declaredSeats = constituencies.filter((c) => c.status === "DECLARED").length;
 
   const snapshot: Snapshot = {
     totalSeats: TOTAL_SEATS,
@@ -680,7 +685,7 @@ async function fetchWithRetry(
       const res = await fetch(url, init);
       if (res.ok) return res;
       if (retryOnStatus.has(res.status) && attempt < MAX_FETCH_ATTEMPTS) {
-        const waitMs = RETRY_BACKOFF_MS * attempt;
+        const waitMs = RETRY_BACKOFF_MS * (2 ** (attempt - 1));
         console.warn(
           `[scraper] ${label} returned ${res.status} (attempt ${attempt}/${MAX_FETCH_ATTEMPTS}), retrying in ${waitMs}ms`,
         );
@@ -690,7 +695,7 @@ async function fetchWithRetry(
       return res;
     } catch (err) {
       if (attempt === MAX_FETCH_ATTEMPTS) throw err;
-      const waitMs = RETRY_BACKOFF_MS * attempt;
+      const waitMs = RETRY_BACKOFF_MS * (2 ** (attempt - 1));
       console.warn(
         `[scraper] ${label} network error (attempt ${attempt}/${MAX_FETCH_ATTEMPTS}), retrying in ${waitMs}ms`,
         err,
@@ -777,10 +782,13 @@ async function runOnce(env: Env): Promise<void> {
     const pageRes = await fetchWithRetry("session bootstrap", SESSION_PAGE_URL, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
       },
       cf: { cacheTtl: 0 },
-    });
+    }, RETRYABLE_STATUS);
     if (!pageRes.ok) {
       console.error(
         `[scraper] session bootstrap failed with ${pageRes.status} ${pageRes.statusText} — R2 NOT updated`,
@@ -802,24 +810,26 @@ async function runOnce(env: Env): Promise<void> {
     return;
   }
 
-  // ── Step 2: POST secure JSON handler with session cookies + CSRF ──────────
+  // ── Step 2: secure JSON handler with session cookies + CSRF ───────────────
   const cookieHeader = `ASP.NET_SessionId=${sessionId}; CsrfToken=${csrfToken}`;
 
   let res: Response;
   try {
     res = await fetchWithRetry(
-      "secure json fetch",
+      "secure json GET",
       UPSTREAM_URL,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
-          "Accept": "application/json, text/plain, */*",
+          "Accept": "*/*",
           "X-CSRF-Token": csrfToken,
           "X-Requested-With": "XMLHttpRequest",
           "Origin": "https://result.election.gov.np",
           "Referer": SESSION_PAGE_URL,
           "Cookie": cookieHeader,
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
         },
         cf: { cacheTtl: 0 },
       },
@@ -856,6 +866,16 @@ async function runOnce(env: Env): Promise<void> {
 
   if (!Array.isArray(records) || records.length < 100) {
     console.error(`[scraper] upstream data looks wrong (${records?.length ?? 0} records) — R2 NOT updated`);
+    return;
+  }
+
+  const recordsValid = records.every(
+    (r) =>
+      typeof (r as Partial<UpstreamRecord>).CandidateID === "number" &&
+      typeof (r as Partial<UpstreamRecord>).TotalVoteReceived === "number",
+  );
+  if (!recordsValid) {
+    console.error("[scraper] upstream schema check failed (CandidateID/TotalVoteReceived missing) — R2 NOT updated");
     return;
   }
 
