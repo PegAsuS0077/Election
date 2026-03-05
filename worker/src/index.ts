@@ -4,9 +4,10 @@
  * Triggered by a Cron Trigger (every 2 minutes by default).
  * Fetches the upstream JSON from result.election.gov.np server-side
  * (no CORS), normalises it into the same shapes the frontend expects,
- * and writes two files to the R2 bucket:
+ * and writes three files to the R2 bucket:
  *   - constituencies.json   — ConstituencyResult[]
  *   - snapshot.json         — Snapshot (seat tally + metadata)
+ *   - parties.json          — PartyInfo[] (derived from data)
  *
  * R2 binding: RESULTS_BUCKET (configured in wrangler.toml)
  */
@@ -868,7 +869,7 @@ async function runOnce(env: Env): Promise<void> {
   ]);
 
   const t1 = Date.now();
-  const { constituencies, snapshot } = transform(records, neuLookup, voterRolls);
+  const { constituencies, snapshot, parties } = transform(records, neuLookup, voterRolls);
   const transformMs = Date.now() - t1;
 
   const totalVotes = constituencies.reduce((s, c) => s + c.votesCast, 0);
@@ -883,16 +884,17 @@ async function runOnce(env: Env): Promise<void> {
     console.warn(`[scraper] WARNING: expected 165 constituencies, got ${constituencies.length}`);
   }
 
-  // Upload only the frontend-consumed artifacts.
+  // Upload all frontend-consumed artifacts.
   const t2 = Date.now();
   await Promise.all([
     putJson(env.RESULTS_BUCKET, "constituencies.json", constituencies),
     putJson(env.RESULTS_BUCKET, "snapshot.json", snapshot),
+    putJson(env.RESULTS_BUCKET, "parties.json", parties),
   ]);
   const uploadMs = Date.now() - t2;
 
   console.log(
-    `[scraper] uploaded 2 files to R2 in ${uploadMs} ms (total ${Date.now() - t0} ms)`,
+    `[scraper] uploaded 3 files to R2 in ${uploadMs} ms (total ${Date.now() - t0} ms)`,
   );
 }
 
