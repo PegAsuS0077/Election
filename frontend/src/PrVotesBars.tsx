@@ -22,13 +22,27 @@ function fmt(n: number): string {
 const TOP_N = 8;
 
 export default function PrVotesBars({ lang = "en" }: { lang?: Lang }) {
+  const results = useElectionStore((s) => s.results);
   const prVoteByParty = useElectionStore((s) => s.prVoteByParty);
   const seatTally = useElectionStore((s) => s.seatTally);
 
-  const entries = Object.entries(prVoteByParty).filter(([, votes]) => votes > 0);
-  const totalPrVotes = entries.reduce((sum, [, votes]) => sum + votes, 0);
+  const prEntries = Object.entries(prVoteByParty).filter(([, votes]) => votes > 0);
+  const prTotal = prEntries.reduce((sum, [, votes]) => sum + votes, 0);
+  const hasPrFeed = prEntries.length > 0 && prTotal > 0;
 
-  if (entries.length === 0 || totalPrVotes <= 0) {
+  const constituencyVotes: Record<string, number> = {};
+  for (const r of results) {
+    for (const c of r.candidates) {
+      if (c.votes <= 0) continue;
+      constituencyVotes[c.partyId] = (constituencyVotes[c.partyId] ?? 0) + c.votes;
+    }
+  }
+  const fallbackEntries = Object.entries(constituencyVotes).filter(([, votes]) => votes > 0);
+
+  const entries = hasPrFeed ? prEntries : fallbackEntries;
+  const totalVotes = entries.reduce((sum, [, votes]) => sum + votes, 0);
+
+  if (entries.length === 0 || totalVotes <= 0) {
     return (
       <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -37,7 +51,7 @@ export default function PrVotesBars({ lang = "en" }: { lang?: Lang }) {
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           {lang === "np"
             ? "PR मतको प्रत्यक्ष फिड उपलब्ध हुँदा यहाँ दल अनुसार मत र अपेक्षित सिट देखिनेछ।"
-            : "Party-wise PR votes and expected seats will appear here when the PR feed is available."}
+            : "Party-wise votes and expected seats will appear here once vote data is available."}
         </p>
       </section>
     );
@@ -53,7 +67,7 @@ export default function PrVotesBars({ lang = "en" }: { lang?: Lang }) {
         symbolUrl: info.symbolUrl,
         hex: info.hex,
         votes,
-        voteShare: (votes / totalPrVotes) * 100,
+        voteShare: (votes / totalVotes) * 100,
         expectedSeats: seatTally[partyId]?.pr ?? 0,
       };
     })
@@ -83,9 +97,13 @@ export default function PrVotesBars({ lang = "en" }: { lang?: Lang }) {
             {lang === "np" ? "समानुपातिक मत (PR)" : "Proportional Votes (PR)"}
           </h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            {lang === "np"
-              ? `कुल PR मत: ${fmt(totalPrVotes)}`
-              : `Total PR votes: ${fmt(totalPrVotes)}`}
+            {hasPrFeed
+              ? (lang === "np"
+                ? `कुल PR मत: ${fmt(totalVotes)}`
+                : `Total PR votes: ${fmt(totalVotes)}`)
+              : (lang === "np"
+                ? `कुल गणनामा मत (fallback): ${fmt(totalVotes)}`
+                : `Total counted votes (fallback): ${fmt(totalVotes)}`)}
           </p>
         </div>
         <div className="text-xs text-slate-500 dark:text-slate-400">

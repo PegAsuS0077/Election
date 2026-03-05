@@ -144,8 +144,6 @@ export default function App() {
 
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <LatestUpdates results={results} lang={lang} />
-
         <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <HotSeats results={results} lang={lang} />
         </section>
@@ -153,6 +151,8 @@ export default function App() {
         {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards lang={lang} />}
 
         {isLoading ? <PrVotesBarsSkeleton /> : <PrVotesBars lang={lang} />}
+
+        <LatestUpdates results={results} lang={lang} />
 
         {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
 
