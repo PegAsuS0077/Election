@@ -289,6 +289,10 @@ function nepaliNameToEnglish(name: string): string {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SESSION_PAGE_URL = "https://result.election.gov.np/ElectionResultCentral2082.aspx";
+const SESSION_BOOTSTRAP_URLS = [
+  "https://result.election.gov.np/ElectionResultCentral2082.aspx",
+  "https://result.election.gov.np/",
+];
 
 const UPSTREAM_URL =
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
@@ -296,7 +300,7 @@ const UPSTREAM_URL =
 
 const TOTAL_SEATS = 275;
 const PR_SEATS = 110;
-const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504, 520, 521, 522, 523, 524]);
 const MAX_FETCH_ATTEMPTS = 3; // 1 initial + 2 retries
 const RETRY_BACKOFF_MS = 500;
 
@@ -842,35 +846,41 @@ async function runOnce(env: Env): Promise<void> {
   // ── Step 1: establish ASP.NET session and CSRF token ───────────────────────
   let sessionId = "";
   let csrfToken = "";
-  try {
-    const pageRes = await fetchWithRetry("session bootstrap", SESSION_PAGE_URL, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache",
-      },
-      cf: { cacheTtl: 0 },
-    }, RETRYABLE_STATUS);
-    if (!pageRes.ok) {
-      console.error(
-        `[scraper] session bootstrap failed with ${pageRes.status} ${pageRes.statusText} — R2 NOT updated`,
-      );
-      return;
-    }
+  let bootstrapUrlUsed = SESSION_PAGE_URL;
+  for (const bootstrapUrl of SESSION_BOOTSTRAP_URLS) {
+    try {
+      const pageRes = await fetchWithRetry("session bootstrap", bootstrapUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+        },
+        cf: { cacheTtl: 0 },
+      }, RETRYABLE_STATUS);
+      if (!pageRes.ok) {
+        console.warn(`[scraper] session bootstrap via ${bootstrapUrl} returned ${pageRes.status} ${pageRes.statusText}`);
+        continue;
+      }
 
-    const cookies = extractSessionCookies(pageRes.headers);
-    if (!cookies) {
-      console.error("[scraper] missing ASP.NET_SessionId/CsrfToken cookies — R2 NOT updated");
-      return;
-    }
+      const cookies = extractSessionCookies(pageRes.headers);
+      if (!cookies) {
+        console.warn(`[scraper] session bootstrap via ${bootstrapUrl} missing required cookies`);
+        continue;
+      }
 
-    sessionId = cookies.sessionId;
-    csrfToken = cookies.csrfToken;
-    console.log("[scraper] session established — csrf=true session=true");
-  } catch (err) {
-    console.error("[scraper] failed to establish session — R2 NOT updated:", err);
+      sessionId = cookies.sessionId;
+      csrfToken = cookies.csrfToken;
+      bootstrapUrlUsed = bootstrapUrl;
+      console.log(`[scraper] session established via ${bootstrapUrl} — csrf=true session=true`);
+      break;
+    } catch (err) {
+      console.warn(`[scraper] session bootstrap via ${bootstrapUrl} failed`, err);
+    }
+  }
+  if (!sessionId || !csrfToken) {
+    console.error("[scraper] session bootstrap failed after all URLs — R2 NOT updated");
     return;
   }
 
@@ -890,7 +900,7 @@ async function runOnce(env: Env): Promise<void> {
           "X-CSRF-Token": csrfToken,
           "X-Requested-With": "XMLHttpRequest",
           "Origin": "https://result.election.gov.np",
-          "Referer": SESSION_PAGE_URL,
+          "Referer": bootstrapUrlUsed,
           "Cookie": cookieHeader,
           "Cache-Control": "no-cache",
           "Pragma": "no-cache",
