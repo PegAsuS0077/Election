@@ -15,16 +15,23 @@
 // ── Upstream types ────────────────────────────────────────────────────────────
 
 interface UpstreamRecord {
-  CandidateID: number;
+  CandidateID: number | string;
   CandidateName: string;
   PoliticalPartyName: string;
-  SYMBOLCODE: number;
+  SYMBOLCODE: number | string;
+  SymbolId?: number | string;
+  SymbolID?: number | string;
+  PartyId?: number | string;
+  PoliticalPartyID?: number | string;
   SymbolName?: string;
-  STATE_ID: number;
+  STATE_ID?: number | string;
+  State?: number | string;
   DistrictName: string;
-  SCConstID: number;
-  TotalVoteReceived: number;
-  R: number;
+  District?: string;
+  SCConstID: number | string;
+  ScConstId?: number | string;
+  TotalVoteReceived: number | string;
+  R: number | string;
   E_STATUS: string | null;
   Gender?: string;
   AGE_YR?: number;
@@ -456,13 +463,25 @@ const GENERIC_COLORS = [
 // ── Helper functions ───────────────────────────────────────────────────────────
 
 function derivePartyId(rec: UpstreamRecord): string {
-  if ((rec.PoliticalPartyName ?? "") === "स्वतन्त्र") return "IND";
-  return String(rec.SYMBOLCODE);
+  const partyName = (rec.PoliticalPartyName ?? "").trim();
+  if (partyName === "स्वतन्त्र") return "IND";
+
+  const symbolCode = toInt(
+    rec.SYMBOLCODE ??
+    rec.SymbolID ??
+    rec.SymbolId ??
+    rec.PartyId ??
+    rec.PoliticalPartyID,
+  );
+  if (symbolCode !== null) return String(symbolCode);
+
+  if (partyName) return partyName;
+  return "IND";
 }
 
 function isWinner(rec: UpstreamRecord): boolean {
   if (rec.E_STATUS === "W") return true;
-  if (rec.R === 1 && rec.TotalVoteReceived > 0) return true;
+  if (toInt(rec.R) === 1 && toInt(rec.TotalVoteReceived) !== null && toInt(rec.TotalVoteReceived)! > 0) return true;
   return false;
 }
 
@@ -473,6 +492,33 @@ function mapGender(g: string | undefined): "M" | "F" {
 function omitIfZeroOrDash(s: string | undefined): string | undefined {
   if (!s || s === "-" || s === "0") return undefined;
   return s;
+}
+
+function toInt(value: unknown): number | null {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    return Math.trunc(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const n = Number(trimmed);
+    if (!Number.isFinite(n)) return null;
+    return Math.trunc(n);
+  }
+  return null;
+}
+
+function recordStateId(rec: UpstreamRecord): number | null {
+  return toInt(rec.STATE_ID ?? rec.State);
+}
+
+function recordConstId(rec: UpstreamRecord): number | null {
+  return toInt(rec.SCConstID ?? rec.ScConstId);
+}
+
+function recordDistrictNp(rec: UpstreamRecord): string {
+  return (rec.DistrictName ?? rec.District ?? "").trim();
 }
 
 // ── Core transform ────────────────────────────────────────────────────────────
@@ -490,14 +536,25 @@ function transform(
 
   // Group by composite constituency key
   const grouped = new Map<string, UpstreamRecord[]>();
+  let droppedForGrouping = 0;
   for (const rec of records) {
-    const key = `${rec.STATE_ID}-${rec.DistrictName}-${rec.SCConstID}`;
+    const stateId = recordStateId(rec);
+    const districtNp = recordDistrictNp(rec);
+    const constId = recordConstId(rec);
+    if (stateId === null || constId === null || !districtNp) {
+      droppedForGrouping++;
+      continue;
+    }
+    const key = `${stateId}-${districtNp}-${constId}`;
     const existing = grouped.get(key);
     if (existing) {
       existing.push(rec);
     } else {
       grouped.set(key, [rec]);
     }
+  }
+  if (droppedForGrouping > 0) {
+    console.warn(`[scraper] dropped ${droppedForGrouping} records with missing state/district/constituency fields`);
   }
 
   // Build aggregates while processing each constituency once.
@@ -512,12 +569,15 @@ function transform(
 
   for (const [key, recs] of grouped) {
     const first = recs[0];
-    const province = STATE_TO_PROVINCE[first.STATE_ID];
+    const stateId = recordStateId(first);
+    if (stateId === null) continue;
+    const province = STATE_TO_PROVINCE[stateId];
     if (!province) continue;
 
-    const districtNp = first.DistrictName;
-    const district = districtEn(districtNp, first.STATE_ID);
-    const constNum = first.SCConstID;
+    const districtNp = recordDistrictNp(first);
+    const constNum = recordConstId(first);
+    if (!districtNp || constNum === null) continue;
+    const district = districtEn(districtNp, stateId);
 
     let hasWinner = false;
     let hasVotes = false;
@@ -537,17 +597,21 @@ function transform(
         partyNameByPartyId.set(partyId, partyName);
       }
 
+      const candidateId = toInt(rec.CandidateID);
+      if (candidateId === null) continue;
+
       const nameNp = rec.CandidateName ?? "";
-      const neu = neuLookup.get(rec.CandidateID);
+      const neu = neuLookup.get(candidateId);
       const nameEn = neu?.n ?? nepaliNameToEnglish(nameNp);
 
+      const votes = toInt(rec.TotalVoteReceived) ?? 0;
       const cand: Candidate = {
-        candidateId: rec.CandidateID,
+        candidateId,
         nameNp,
         name: nameEn,
         partyName,
         partyId,
-        votes: rec.TotalVoteReceived,
+        votes,
         gender: mapGender(rec.Gender),
         isWinner: isWinner(rec),
       };
@@ -871,8 +935,8 @@ async function runOnce(env: Env): Promise<void> {
 
   const recordsValid = records.every(
     (r) =>
-      typeof (r as Partial<UpstreamRecord>).CandidateID === "number" &&
-      typeof (r as Partial<UpstreamRecord>).TotalVoteReceived === "number",
+      toInt((r as Partial<UpstreamRecord>).CandidateID) !== null &&
+      toInt((r as Partial<UpstreamRecord>).TotalVoteReceived) !== null,
   );
   if (!recordsValid) {
     console.error("[scraper] upstream schema check failed (CandidateID/TotalVoteReceived missing) — R2 NOT updated");
