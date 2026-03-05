@@ -19,22 +19,40 @@ type HotSeat = {
   result: ConstituencyResult;
   top1: ConstituencyResult["candidates"][0];
   top2: ConstituencyResult["candidates"][0];
+  marginVotes: number;
   marginPct: number;
+  isTight: boolean;
 };
 
 function computeHotSeats(results: ConstituencyResult[]): HotSeat[] {
-  const hot: HotSeat[] = [];
+  const races: HotSeat[] = [];
   for (const r of results) {
     if (r.status === "PENDING") continue;
-    const withVotes = r.candidates.filter((c) => c.votes > 0);
-    if (withVotes.length < 2) continue;
-    const sorted = [...withVotes].sort((a, b) => b.votes - a.votes);
+    if (r.candidates.length < 2) continue;
+    const sorted = [...r.candidates].sort((a, b) => b.votes - a.votes);
     const top1 = sorted[0];
     const top2 = sorted[1];
-    const marginPct = top1.votes > 0 ? ((top1.votes - top2.votes) / top1.votes) * 100 : 100;
-    if (marginPct < 10) hot.push({ result: r, top1, top2, marginPct });
+    if (!top1 || !top2 || top1.votes <= 0) continue;
+
+    const marginVotes = top1.votes - top2.votes;
+    const topTwoTotal = top1.votes + top2.votes;
+    const marginPct = topTwoTotal > 0 ? (marginVotes / topTwoTotal) * 100 : 100;
+    const isTight = marginPct <= 10;
+
+    races.push({ result: r, top1, top2, marginVotes, marginPct, isTight });
   }
-  return hot.sort((a, b) => a.marginPct - b.marginPct).slice(0, 6);
+
+  races.sort((a, b) => {
+    const statusRank = (x: HotSeat) => (x.result.status === "COUNTING" ? 0 : 1);
+    return (
+      statusRank(a) - statusRank(b) ||
+      a.marginPct - b.marginPct ||
+      a.marginVotes - b.marginVotes
+    );
+  });
+
+  const tight = races.filter((x) => x.isTight);
+  return (tight.length >= 6 ? tight : races).slice(0, 6);
 }
 
 function numberFmt(n: number): string { return n.toLocaleString("en-IN"); }
@@ -72,7 +90,7 @@ export default function HotSeats({
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {hotSeats.map(({ result, top1, top2, marginPct }) => {
+            {hotSeats.map(({ result, top1, top2, marginVotes, marginPct, isTight }) => {
               const p1hex = getParty(top1.partyId).hex;
               const p2hex = getParty(top2.partyId).hex;
               const totalVotes = top1.votes + top2.votes;
@@ -100,7 +118,9 @@ export default function HotSeats({
                       </div>
                     </div>
                     <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                      {t("closelyContested", lang)}
+                      {isTight
+                        ? t("closelyContested", lang)
+                        : (lang === "np" ? "शीर्ष २ प्रतिस्पर्धा" : "Top-2 race")}
                     </span>
                   </div>
 
@@ -130,7 +150,7 @@ export default function HotSeats({
                   <div className="border-t border-slate-100 dark:border-slate-700 pt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                     <span>{lang === "np" ? "अन्तर" : "Margin"}</span>
                     <span className="font-semibold text-red-600 dark:text-red-400">
-                      {numberFmt(top1.votes - top2.votes)} ({marginPct.toFixed(1)}%)
+                      {numberFmt(marginVotes)} ({marginPct.toFixed(1)}% {lang === "np" ? "शीर्ष २ मध्ये" : "of top-2"})
                     </span>
                   </div>
 

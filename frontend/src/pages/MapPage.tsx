@@ -106,18 +106,19 @@ export default function MapPage() {
   const competitive = useMemo(() => computeCompetitive(results), [results]);
   const selectedResult = selectedSeat ? results.find((r) => r.name === selectedSeat) ?? null : null;
 
-  // Hot seat codes — constituencies with margin < 10% (matches HotSeats component logic)
+  // Hot seat codes — constituencies with top-two margin <= 10% (matches HotSeats logic)
   const hotSeatCodes = useMemo<Set<string>>(() => {
     const s = new Set<string>();
     for (const r of results) {
       if (r.status === "PENDING") continue;
-      const withVotes = r.candidates.filter((c) => c.votes > 0);
-      if (withVotes.length < 2) continue;
-      const sorted = [...withVotes].sort((a, b) => b.votes - a.votes);
-      const marginPct = sorted[0].votes > 0
-        ? ((sorted[0].votes - sorted[1].votes) / sorted[0].votes) * 100
-        : 100;
-      if (marginPct < 10) s.add(r.name);
+      if (r.candidates.length < 2) continue;
+      const sorted = [...r.candidates].sort((a, b) => b.votes - a.votes);
+      const top1 = sorted[0];
+      const top2 = sorted[1];
+      if (!top1 || !top2 || top1.votes <= 0) continue;
+      const topTwoTotal = top1.votes + top2.votes;
+      const marginPct = topTwoTotal > 0 ? ((top1.votes - top2.votes) / topTwoTotal) * 100 : 100;
+      if (marginPct <= 10) s.add(r.name);
     }
     return s;
   }, [results]);
