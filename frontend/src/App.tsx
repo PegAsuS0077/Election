@@ -5,6 +5,7 @@ import { provinceName, t } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
 import { PROVINCE_COLORS } from "./lib/constants";
 import { shouldTriggerSponsoredRedirect, SPONSORED_LINK_URL, openSponsoredLinkInNewTab } from "./lib/sponsoredGate";
+import { requestEzoicAds } from "./lib/ezoic";
 import { RESULTS_MODE } from "./types";
 
 import SummaryCards from "./SummaryCards";
@@ -19,6 +20,7 @@ import PartySymbol from "./components/PartySymbol";
 
 const FEATURED_CONSTITUENCY_CODES = ["Jhapa-5", "Sarlahi-4"] as const;
 const SPONSORED_VARIANT_KEY = "sponsored_link_variant_v1";
+const HOME_EZOIC_PLACEMENTS = [101] as const;
 
 function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
@@ -56,6 +58,10 @@ export default function App() {
       non_interaction: true,
     });
   }, [sponsoredVariant]);
+
+  useEffect(() => {
+    requestEzoicAds(HOME_EZOIC_PLACEMENTS);
+  }, []);
 
   const handleSponsoredClick = () => {
     const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
@@ -349,6 +355,8 @@ export default function App() {
         {isLoading ? <PrVotesBarsSkeleton /> : <PrVotesBars lang={lang} />}
 
         <LatestUpdates results={results} lang={lang} />
+
+        <div id="ezoic-pub-ad-placeholder-101"></div>
 
         <section className="rounded-2xl border border-amber-200/80 bg-amber-50/70 p-4 sm:p-5 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
