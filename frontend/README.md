@@ -34,6 +34,15 @@ VITE_RESULTS_MODE=live
 VITE_CDN_URL=https://pub-<hash>.r2.dev
 ```
 
+### AdSense review mode (recommended during approval)
+
+```env
+# frontend/.env.local
+VITE_ADSENSE_REVIEW_MODE=true
+```
+
+When enabled, the app keeps Google AdSense/Analytics but disables non-Google third-party monetization scripts and sponsored redirect behavior.
+
 ## Structure
 
 ```
@@ -98,6 +107,7 @@ src/
 |----------|-------|-------------|
 | `VITE_RESULTS_MODE` | `live` | Enables live CDN polling; omit for archive mode |
 | `VITE_CDN_URL` | `https://pub-<hash>.r2.dev` | R2 public CDN (no trailing slash) |
+| `VITE_ADSENSE_REVIEW_MODE` | `true` | Disables non-Google monetization and sponsored redirect UI for safer AdSense review |
 
 ## Key Data Architecture
 

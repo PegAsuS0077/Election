@@ -1,33 +1,42 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <script>
-      (function () {
-        var KEY = "mn_vignette_10689099_last_load";
-        var COOLDOWN_MS = 6 * 60 * 1000;
-        var now = Date.now();
-        var last = 0;
+    <script type="module">
+      const reviewMode = String(import.meta.env.VITE_ADSENSE_REVIEW_MODE ?? "").toLowerCase() === "true";
+      window.__ADSENSE_REVIEW_MODE__ = reviewMode;
+      if (reviewMode) {
+        // Keep only Google scripts during AdSense review.
+      } else {
+        const monetag = document.createElement("script");
+        monetag.src = "https://5gvci.com/act/files/tag.min.js?z=10689121";
+        monetag.async = true;
+        monetag.setAttribute("data-cfasync", "false");
+        document.head.appendChild(monetag);
+
+        const KEY = "mn_vignette_10689099_last_load";
+        const COOLDOWN_MS = 6 * 60 * 1000;
+        const now = Date.now();
+        let last = 0;
 
         try {
           last = Number(window.localStorage.getItem(KEY) || 0);
         } catch (_) {}
 
-        if (now - last < COOLDOWN_MS) return;
+        if (now - last >= COOLDOWN_MS) {
+          try {
+            window.localStorage.setItem(KEY, String(now));
+          } catch (_) {}
 
-        try {
-          window.localStorage.setItem(KEY, String(now));
-        } catch (_) {}
-
-        var parent = [document.documentElement, document.body].filter(Boolean).pop();
-        if (!parent) return;
-
-        var s = document.createElement("script");
-        s.dataset.zone = "10689099";
-        s.src = "https://gizokraijaw.net/vignette.min.js";
-        parent.appendChild(s);
-      })();
+          const parent = [document.documentElement, document.body].filter(Boolean).pop();
+          if (parent) {
+            const s = document.createElement("script");
+            s.dataset.zone = "10689099";
+            s.src = "https://gizokraijaw.net/vignette.min.js";
+            parent.appendChild(s);
+          }
+        }
+      }
     </script>
-    <script src="https://5gvci.com/act/files/tag.min.js?z=10689121" data-cfasync="false" async></script>
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3808542280160607"
      crossorigin="anonymous"></script>
