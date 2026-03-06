@@ -79,11 +79,7 @@ def derive_party_id(rec: dict[str, Any]) -> str:
 
 
 def is_winner(rec: dict[str, Any]) -> bool:
-    if rec.get("E_STATUS") == "W":
-        return True
-    if rec.get("R") == 1 and rec.get("TotalVoteReceived", 0) > 0:
-        return True
-    return False
+    return rec.get("E_STATUS") == "W"
 
 
 def map_gender(g: str | None) -> str:
