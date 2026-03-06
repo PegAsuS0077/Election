@@ -80,7 +80,6 @@ export default function HotSeats({
           value: 1,
         });
         openSponsoredLinkInNewTab(SPONSORED_LINK_URL);
-        return;
       }
     }
 

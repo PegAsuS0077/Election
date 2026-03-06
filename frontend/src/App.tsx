@@ -84,13 +84,11 @@ export default function App() {
       value: 1,
     });
   };
-  const handleFeaturedSeatClick = (e: React.MouseEvent<HTMLAnchorElement>, hasResult: boolean) => {
+  const handleFeaturedSeatClick = (hasResult: boolean) => {
     if (ADSENSE_REVIEW_MODE) return;
     if (!hasResult || typeof window === "undefined") return;
     const shouldRedirect = shouldTriggerSponsoredRedirect();
     if (!shouldRedirect) return;
-
-    e.preventDefault();
 
     const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
     gtag?.("event", "featured_gate_redirect", {
@@ -290,7 +288,7 @@ export default function App() {
               <Link
                 key={code}
                 to={result ? `/constituency/${encodeURIComponent(result.code)}` : "/explore"}
-                onClick={(e) => handleFeaturedSeatClick(e, Boolean(result))}
+                onClick={() => handleFeaturedSeatClick(Boolean(result))}
                 className="block w-full text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-[#3b82f6]/40"
               >
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
