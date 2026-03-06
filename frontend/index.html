@@ -1,7 +1,26 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <script>(function(s){s.dataset.zone='10689099',s.src='https://gizokraijaw.net/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <script>
+      (function () {
+        function injectVignette() {
+          if (window.__mnVignetteLoaded) return;
+          window.__mnVignetteLoaded = true;
+
+          var s = document.createElement("script");
+          s.dataset.zone = "10689099";
+          s.src = "https://gizokraijaw.net/vignette.min.js";
+          s.async = true;
+          (document.body || document.documentElement).appendChild(s);
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", injectVignette, { once: true });
+        } else {
+          injectVignette();
+        }
+      })();
+    </script>
     <script src="https://5gvci.com/act/files/tag.min.js?z=10689121" data-cfasync="false" async></script>
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3808542280160607"
