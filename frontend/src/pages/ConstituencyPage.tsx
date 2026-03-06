@@ -92,11 +92,15 @@ function CandidateHeroCard({
   title,
   candidate,
   pctVal,
+  isCounting,
+  showLeadingTag,
   lang,
 }: {
   title: string;
   candidate: Candidate | null;
   pctVal: number;
+  isCounting: boolean;
+  showLeadingTag: boolean;
   lang: Lang;
 }) {
   if (!candidate) {
@@ -120,6 +124,9 @@ function CandidateHeroCard({
           {lang === "np" ? candidate.nameNp : candidate.name}
         </div>
         {candidate.isWinner && <span className="text-emerald-500 text-sm">🏆</span>}
+        {!candidate.isWinner && showLeadingTag && isCounting && candidate.votes > 0 && (
+          <span className="text-blue-500 text-xs font-bold">↗ {lang === "np" ? "अग्रणी" : "Leading"}</span>
+        )}
       </div>
       <div className="text-xs text-slate-500 mb-3">
         {lang === "np" ? candidate.partyName : pInfo.nameEn}
@@ -263,12 +270,16 @@ export default function ConstituencyPage() {
             title={lang === "np" ? "अग्रणी उम्मेदवार" : "Leading"}
             candidate={cands.leader}
             pctVal={leadPct}
+            isCounting={r.status === "COUNTING"}
+            showLeadingTag
             lang={lang}
           />
           <CandidateHeroCard
             title={lang === "np" ? "दोस्रो स्थान" : "Runner-up"}
             candidate={cands.runnerUp}
             pctVal={runPct}
+            isCounting={r.status === "COUNTING"}
+            showLeadingTag={false}
             lang={lang}
           />
         </div>
@@ -355,6 +366,9 @@ export default function ConstituencyPage() {
                         >
                           {lang === "np" ? c.nameNp : c.name}
                           {c.isWinner && <span className="text-emerald-500 shrink-0">🏆</span>}
+                          {!c.isWinner && r.status === "COUNTING" && isTop && c.votes > 0 && (
+                            <span className="text-blue-500 shrink-0">↗</span>
+                          )}
                           <span className="text-slate-300 dark:text-slate-600 text-[10px] shrink-0">›</span>
                         </Link>
                       </td>

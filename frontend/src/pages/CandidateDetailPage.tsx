@@ -102,10 +102,12 @@ function CandidatePhoto({
 
 function StatusBadge({
   isWinner,
+  isLeading,
   status,
   lang,
 }: {
   isWinner: boolean;
+  isLeading: boolean;
   status: string;
   lang: Lang;
 }) {
@@ -113,6 +115,13 @@ function StatusBadge({
     return (
       <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
         🏆 {lang === "np" ? "विजेता" : "Winner"}
+      </span>
+    );
+  }
+  if (isLeading && status === "COUNTING") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+        ↗ {lang === "np" ? "अग्रणी" : "Leading"}
       </span>
     );
   }
@@ -386,6 +395,12 @@ export default function CandidateDetailPage() {
   const partyNameNp  = cand.partyName;
   const partyNameEn  = partyInfo.nameEn;
   const isWinner     = cand.isWinner && constituency.status === "DECLARED";
+  const topVotes     = sortedCands[0]?.votes ?? 0;
+  const isLeading    =
+    !isWinner &&
+    constituency.status === "COUNTING" &&
+    topVotes > 0 &&
+    cand.votes === topVotes;
   const constNum     = constituency.code.split("-").pop() ?? "";
   const voteShare    = constituency.votesCast > 0
     ? `${((cand.votes / constituency.votesCast) * 100).toFixed(1)}%`
@@ -436,6 +451,11 @@ export default function CandidateDetailPage() {
             🏆 {lang === "np" ? "प्रतिनिधि सभा सदस्य — विजेता घोषित" : "Declared Winner — Member of House of Representatives"}
           </div>
         )}
+        {!isWinner && isLeading && (
+          <div className="bg-blue-500 text-white text-[11px] font-bold px-4 py-1.5 text-center tracking-wide">
+            ↗ {lang === "np" ? "हाल अग्रणी उम्मेदवार" : "Currently Leading Candidate"}
+          </div>
+        )}
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
@@ -477,7 +497,7 @@ export default function CandidateDetailPage() {
 
               {/* Status + gender */}
               <div className="flex items-center gap-2 flex-wrap">
-                <StatusBadge isWinner={cand.isWinner} status={constituency.status} lang={lang} />
+                <StatusBadge isWinner={isWinner} isLeading={isLeading} status={constituency.status} lang={lang} />
                 <span className="text-xs text-white/40">
                   {cand.gender === "M"
                     ? lang === "np" ? "♂ पुरुष" : "♂ Male"
@@ -549,13 +569,15 @@ export default function CandidateDetailPage() {
                   value={
                     isWinner
                       ? lang === "np" ? "विजेता 🏆" : "Winner 🏆"
+                      : isLeading
+                        ? lang === "np" ? "हाल अग्रणी ↗" : "Currently Leading ↗"
                       : constituency.status === "COUNTING"
                         ? lang === "np" ? "मतगणना जारी" : "Counting"
                         : constituency.status === "DECLARED"
                           ? lang === "np" ? "घोषित" : "Declared"
                           : lang === "np" ? "बांकी" : "Pending"
                   }
-                  accent={isWinner}
+                  accent={isWinner || isLeading}
                 />
                 <InfoRow
                   label={lang === "np" ? "निर्वाचन क्षेत्र" : "Constituency"}
@@ -784,6 +806,9 @@ export default function CandidateDetailPage() {
                             <span className="font-medium leading-snug text-[#2563eb] dark:text-[#3b82f6]">
                               {lang === "np" ? c.nameNp : c.name}
                               {c.isWinner && <span className="ml-1 text-emerald-500">🏆</span>}
+                              {!c.isWinner && constituency.status === "COUNTING" && topVotes > 0 && c.votes === topVotes && (
+                                <span className="ml-1 text-blue-500">↗</span>
+                              )}
                             </span>
                           ) : (
                             <Link
@@ -792,6 +817,9 @@ export default function CandidateDetailPage() {
                             >
                               {lang === "np" ? c.nameNp : c.name}
                               {c.isWinner && <span className="ml-1 text-emerald-500">🏆</span>}
+                              {!c.isWinner && constituency.status === "COUNTING" && topVotes > 0 && c.votes === topVotes && (
+                                <span className="ml-1 text-blue-500">↗</span>
+                              )}
                             </Link>
                           )}
                         </td>

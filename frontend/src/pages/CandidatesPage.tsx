@@ -33,6 +33,7 @@ type FlatCandidate = {
   districtNp: string;
   constStatus: "DECLARED" | "COUNTING" | "PENDING";
   isWinner: boolean;
+  isLeading: boolean;
   // biographical (optional)
   age?: number;
   fatherName?: string;
@@ -75,11 +76,28 @@ function CandidatePhoto({ id, name, size = "lg" }: { id: number; name: string; s
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
-function StatusBadge({ status, isWinner, lang }: { status: string; isWinner: boolean; lang: Lang }) {
+function StatusBadge({
+  status,
+  isWinner,
+  isLeading,
+  lang,
+}: {
+  status: string;
+  isWinner: boolean;
+  isLeading: boolean;
+  lang: Lang;
+}) {
   if (isWinner && status === "DECLARED") {
     return (
       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
         {lang === "np" ? "विजेता 🏆" : "Winner 🏆"}
+      </span>
+    );
+  }
+  if (isLeading && status === "COUNTING") {
+    return (
+      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+        {lang === "np" ? "अग्रणी" : "Leading"}
       </span>
     );
   }
@@ -120,6 +138,12 @@ function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onC
         <div className="bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 flex items-center gap-1.5">
           <span>🏆</span>
           <span>{lang === "np" ? "विजेता घोषित" : "Declared Winner"}</span>
+        </div>
+      )}
+      {!c.isWinner && c.isLeading && (
+        <div className="bg-blue-500 text-white text-[10px] font-bold px-3 py-1 flex items-center gap-1.5">
+          <span>↗</span>
+          <span>{lang === "np" ? "हाल अग्रणी" : "Currently Leading"}</span>
         </div>
       )}
 
@@ -192,7 +216,7 @@ function CandidateCard({ c, lang, onClick }: { c: FlatCandidate; lang: Lang; onC
               ? (lang === "np" ? "♂ पुरुष" : "♂ Male")
               : (lang === "np" ? "♀ महिला" : "♀ Female")}
           </span>
-          <StatusBadge status={c.constStatus} isWinner={c.isWinner} lang={lang} />
+          <StatusBadge status={c.constStatus} isWinner={c.isWinner} isLeading={c.isLeading} lang={lang} />
         </div>
       </div>
     </button>
@@ -297,6 +321,11 @@ export default function CandidatesPage() {
         const isWinner =
           r.status === "DECLARED" &&
           (c.isWinner || (c.partyId === topParty && c.votes === topVotes && topVotes > 0));
+        const isLeading =
+          !isWinner &&
+          r.status === "COUNTING" &&
+          topVotes > 0 &&
+          c.votes === topVotes;
         flat.push({
           candidateId:  c.candidateId,
           name:         c.name,
@@ -313,6 +342,7 @@ export default function CandidatesPage() {
           districtNp:   r.districtNp,
           constStatus:  r.status,
           isWinner,
+          isLeading,
           age:          c.age,
           fatherName:   c.fatherName,
           spouseName:   c.spouseName,
@@ -557,6 +587,7 @@ export default function CandidatesPage() {
           </span>
           {(() => {
             const winners = filtered.filter((c) => c.isWinner).length;
+            const leaders = filtered.filter((c) => c.isLeading).length;
             const withVotes = filtered.filter((c) => c.votes > 0).length;
             return (
               <>
@@ -564,6 +595,12 @@ export default function CandidatesPage() {
                   <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                     <span>🏆</span>
                     <span>{winners} {lang === "np" ? "विजेता" : "winner" + (winners !== 1 ? "s" : "")}</span>
+                  </span>
+                )}
+                {leaders > 0 && (
+                  <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
+                    <span>↗</span>
+                    <span>{leaders} {lang === "np" ? "अग्रणी" : "leading"}</span>
                   </span>
                 )}
                 {withVotes > 0 && (
