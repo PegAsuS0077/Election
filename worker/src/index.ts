@@ -118,6 +118,11 @@ interface PrPartySnapshot {
   sourceFile: string;
 }
 
+type HorLeaderRow = Partial<UpstreamRecord> & {
+  CandidateId?: number | string;
+  TotalVote?: number | string;
+};
+
 // ── Env bindings ──────────────────────────────────────────────────────────────
 
 interface Env {
@@ -554,7 +559,7 @@ function recordDistrictNp(rec: UpstreamRecord): string {
 
 function mergeHigherVotesFromRows(
   baseRecords: UpstreamRecord[],
-  fresherRows: Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>,
+  fresherRows: HorLeaderRow[],
 ): { upgraded: number; missingCandidateRows: number; usableRows: number } {
   const fresherVoteByCandidateId = new Map<number, number>();
   for (const row of fresherRows) {
@@ -614,34 +619,86 @@ function applyPrSeatsFromSnapshot(
   }
 }
 
-async function loadPreviousCandidateVotes(bucket: R2Bucket): Promise<Map<number, number>> {
-  const byCandidateId = new Map<number, number>();
+async function loadPreviousConstituencies(bucket: R2Bucket): Promise<ConstituencyResult[] | null> {
   try {
     const obj = await bucket.get("constituencies.json");
-    if (!obj) return byCandidateId;
+    if (!obj) return null;
 
     const text = await obj.text();
     const parsed = JSON.parse(text) as unknown;
-    if (!Array.isArray(parsed)) return byCandidateId;
-
-    for (const constituency of parsed) {
-      if (!constituency || typeof constituency !== "object") continue;
-      const candidates = (constituency as { candidates?: unknown }).candidates;
-      if (!Array.isArray(candidates)) continue;
-      for (const cand of candidates) {
-        if (!cand || typeof cand !== "object") continue;
-        const candidateId = toInt((cand as { candidateId?: unknown }).candidateId);
-        const votes = toInt((cand as { votes?: unknown }).votes);
-        if (candidateId === null || votes === null || votes < 0) continue;
-
-        const prev = byCandidateId.get(candidateId);
-        if (prev === undefined || votes > prev) byCandidateId.set(candidateId, votes);
-      }
-    }
+    if (!Array.isArray(parsed)) return null;
+    return parsed as ConstituencyResult[];
   } catch (err) {
-    console.warn("[scraper] unable to load previous constituencies.json for rollback guard:", err);
+    console.warn("[scraper] unable to load previous constituencies.json:", err);
+    return null;
+  }
+}
+
+async function loadPreviousCandidateVotes(bucket: R2Bucket): Promise<Map<number, number>> {
+  const byCandidateId = new Map<number, number>();
+  const previousConstituencies = await loadPreviousConstituencies(bucket);
+  if (!previousConstituencies) return byCandidateId;
+
+  for (const constituency of previousConstituencies) {
+    for (const cand of constituency.candidates) {
+      const candidateId = toInt(cand.candidateId);
+      const votes = toInt(cand.votes);
+      if (candidateId === null || votes === null || votes < 0) continue;
+
+      const prev = byCandidateId.get(candidateId);
+      if (prev === undefined || votes > prev) byCandidateId.set(candidateId, votes);
+    }
   }
   return byCandidateId;
+}
+
+function mergeLeaderVotesIntoConstituencies(
+  constituencies: ConstituencyResult[],
+  fresherRows: HorLeaderRow[],
+): { upgradedVotes: number; updatedConstituencies: number; usableRows: number } {
+  const fresherVoteByCandidateId = new Map<number, number>();
+  for (const row of fresherRows) {
+    const candidateId = toInt(row.CandidateID ?? row.CandidateId);
+    const votes = toInt(row.TotalVoteReceived ?? row.TotalVote);
+    if (candidateId === null || votes === null || votes < 0) continue;
+    const prev = fresherVoteByCandidateId.get(candidateId);
+    if (prev === undefined || votes > prev) {
+      fresherVoteByCandidateId.set(candidateId, votes);
+    }
+  }
+
+  const now = new Date().toISOString();
+  let upgradedVotes = 0;
+  let updatedConstituencies = 0;
+
+  for (const constituency of constituencies) {
+    let changed = false;
+    for (const cand of constituency.candidates) {
+      const candidateId = toInt(cand.candidateId);
+      if (candidateId === null) continue;
+      const fresherVotes = fresherVoteByCandidateId.get(candidateId);
+      if (fresherVotes === undefined) continue;
+      if (fresherVotes > cand.votes) {
+        cand.votes = fresherVotes;
+        upgradedVotes++;
+        changed = true;
+      }
+    }
+
+    if (!changed) continue;
+    updatedConstituencies++;
+    constituency.votesCast = constituency.candidates.reduce((sum, cand) => sum + cand.votes, 0);
+    const hasWinner = constituency.candidates.some((cand) => cand.isWinner);
+    const hasVotes = constituency.candidates.some((cand) => cand.votes > 0);
+    constituency.status = hasWinner ? "DECLARED" : (hasVotes ? "COUNTING" : "PENDING");
+    constituency.lastUpdated = now;
+  }
+
+  return {
+    upgradedVotes,
+    updatedConstituencies,
+    usableRows: fresherVoteByCandidateId.size,
+  };
 }
 
 function applyMonotonicVoteFloor(
@@ -1096,7 +1153,7 @@ async function fetchPrHorPartySnapshot(
 async function fetchHorTop5Rows(
   csrfToken: string,
   cookieHeader: string,
-): Promise<Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }> | null> {
+): Promise<HorLeaderRow[] | null> {
   let res: Response;
   try {
     res = await fetchWithRetry(
@@ -1138,9 +1195,9 @@ async function fetchHorTop5Rows(
   }
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
 
-  let rows: Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>;
+  let rows: HorLeaderRow[];
   try {
-    rows = JSON.parse(text) as Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>;
+    rows = JSON.parse(text) as HorLeaderRow[];
   } catch (err) {
     console.warn(`[scraper] optional HOR leader JSON parse failed (${UPSTREAM_HOR_MERGE_URL}):`, err);
     return null;
@@ -1203,6 +1260,41 @@ async function runOnce(env: Env): Promise<void> {
 
   // ── Step 2: secure JSON handler with session cookies + CSRF ───────────────
   const cookieHeader = `ASP.NET_SessionId=${sessionId}; CsrfToken=${csrfToken}`;
+  const tryHorLeaderFallbackOnlyUpdate = async (reason: string): Promise<boolean> => {
+    try {
+      console.warn(`[scraper] primary candidate feed unavailable (${reason}); trying HOR leader fallback`);
+
+      const previousConstituencies = await loadPreviousConstituencies(env.RESULTS_BUCKET);
+      if (!previousConstituencies || previousConstituencies.length === 0) {
+        console.warn("[scraper] HOR fallback skipped: no previous constituencies.json available");
+        return false;
+      }
+
+      const horTop5Rows = await fetchHorTop5Rows(csrfToken, cookieHeader);
+      if (!horTop5Rows || horTop5Rows.length === 0) {
+        console.warn("[scraper] HOR fallback skipped: leader feed unavailable");
+        return false;
+      }
+
+      const stats = mergeLeaderVotesIntoConstituencies(previousConstituencies, horTop5Rows);
+      if (stats.upgradedVotes <= 0) {
+        console.warn("[scraper] HOR fallback found no fresher votes to apply");
+        return false;
+      }
+
+      await rotateLastGood(env.RESULTS_BUCKET, "constituencies.json", LAST_GOOD_CONSTITUENCIES_KEY);
+      await putJson(env.RESULTS_BUCKET, "constituencies.json", previousConstituencies);
+      console.warn(
+        "[scraper] HOR fallback updated constituencies.json: " +
+        `${stats.upgradedVotes} candidate vote updates across ${stats.updatedConstituencies} constituencies ` +
+        `from ${stats.usableRows} usable leader rows`,
+      );
+      return true;
+    } catch (err) {
+      console.warn("[scraper] HOR fallback failed:", err);
+      return false;
+    }
+  };
 
   let res: Response;
   try {
@@ -1228,11 +1320,13 @@ async function runOnce(env: Env): Promise<void> {
     );
   } catch (err) {
     console.warn("[scraper] secure json network error after retries — R2 NOT updated:", err);
+    await tryHorLeaderFallbackOnlyUpdate("secure json network error");
     return;
   }
 
   if (!res.ok) {
     console.warn(`[scraper] secure json returned ${res.status} ${res.statusText} — R2 NOT updated`);
+    await tryHorLeaderFallbackOnlyUpdate(`secure json HTTP ${res.status}`);
     return;
   }
 
@@ -1241,6 +1335,7 @@ async function runOnce(env: Env): Promise<void> {
     text = await res.text();
   } catch (err) {
     console.warn("[scraper] failed to read upstream response body — R2 NOT updated:", err);
+    await tryHorLeaderFallbackOnlyUpdate("upstream response read failure");
     return;
   }
 
@@ -1252,11 +1347,13 @@ async function runOnce(env: Env): Promise<void> {
     records = JSON.parse(text) as UpstreamRecord[];
   } catch (err) {
     console.warn("[scraper] upstream JSON parse failed — R2 NOT updated:", err);
+    await tryHorLeaderFallbackOnlyUpdate("upstream JSON parse failure");
     return;
   }
 
   if (!Array.isArray(records) || records.length < 100) {
     console.warn(`[scraper] upstream data looks wrong (${records?.length ?? 0} records) — R2 NOT updated`);
+    await tryHorLeaderFallbackOnlyUpdate(`upstream payload shape invalid (${records?.length ?? 0})`);
     return;
   }
 
@@ -1267,6 +1364,7 @@ async function runOnce(env: Env): Promise<void> {
   );
   if (!recordsValid) {
     console.warn("[scraper] upstream schema check failed (CandidateID/TotalVoteReceived missing) — R2 NOT updated");
+    await tryHorLeaderFallbackOnlyUpdate("upstream schema check failed");
     return;
   }
 
@@ -1274,14 +1372,14 @@ async function runOnce(env: Env): Promise<void> {
   if (horTop5Rows) {
     const mergeStats = mergeHigherVotesFromRows(records, horTop5Rows);
     console.log(
-      "[scraper] optional HOR Top5 merged: " +
+      "[scraper] optional HOR leader feed merged: " +
       `${mergeStats.upgraded} candidate vote updates from ${mergeStats.usableRows} usable rows` +
       (mergeStats.missingCandidateRows > 0
         ? ` (${mergeStats.missingCandidateRows} candidate rows not present in primary feed)`
         : ""),
     );
   } else {
-    console.warn("[scraper] optional HOR Top5 unavailable — using primary candidate feed only");
+    console.warn("[scraper] optional HOR leader feed unavailable — using primary candidate feed only");
   }
 
   const previousVotes = await loadPreviousCandidateVotes(env.RESULTS_BUCKET);
