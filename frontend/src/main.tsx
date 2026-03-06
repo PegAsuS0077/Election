@@ -20,6 +20,7 @@ import PrivacyPage from "./pages/PrivacyPage.tsx";
 import ContactPage from "./pages/ContactPage.tsx";
 import CandidateDetailPage from "./pages/CandidateDetailPage.tsx";
 import PartyPage from "./pages/PartyPage.tsx";
+import PartyConstituenciesPage from "./pages/PartyConstituenciesPage.tsx";
 import ConstituencyPage from "./pages/ConstituencyPage.tsx";
 import FavoritesPage from "./pages/FavoritesPage.tsx";
 
@@ -37,6 +38,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/map" element={<MapPage />} />
         <Route path="/parties" element={<PartiesPage />} />
         <Route path="/party/:partySlug" element={<PartyPage />} />
+        <Route path="/party/:partySlug/constituencies" element={<PartyConstituenciesPage />} />
         <Route path="/constituency/:code" element={<ConstituencyPage />} />
         <Route path="/candidates" element={<CandidatesPage />} />
         <Route path="/candidate/:candidateSlug" element={<CandidateDetailPage />} />

@@ -80,7 +80,7 @@ export default function SummaryCards({
   return (
     <section className="space-y-3">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Link to={`/party/${partySlug(leaderInfo.nameEn)}`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+        <Link to={`/party/${partySlug(leaderInfo.nameEn)}/constituencies`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
           <Card
             title={t("leadingParty", lang)}
             big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
@@ -92,7 +92,7 @@ export default function SummaryCards({
             clickable
           />
         </Link>
-        <Link to={`/party/${partySlug(runnerUpInfo.nameEn)}`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+        <Link to={`/party/${partySlug(runnerUpInfo.nameEn)}/constituencies`} className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]">
           <Card
             title={t("runnerUp", lang)}
             big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
@@ -114,14 +114,16 @@ export default function SummaryCards({
             return (
               <Link
                 key={party.partyId}
-                to={`/party/${partySlug(partyInfo.nameEn)}`}
+                to={`/party/${partySlug(partyInfo.nameEn)}/constituencies`}
                 className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]"
               >
                 <CompactCard
                   rank={idx + 3}
                   name={partyName}
-                  seats={party.leading}
-                  seatsLabel={t("leading", lang)}
+                  leadingSeats={party.leading}
+                  leadingLabel={t("leading", lang)}
+                  declaredSeats={party.declared}
+                  declaredLabel={t("declared", lang)}
                   dotHex={partyInfo.hex}
                   symbol={partyInfo.symbol}
                   symbolUrl={partyInfo.symbolUrl}
@@ -165,12 +167,14 @@ function Card({
 }
 
 function CompactCard({
-  rank, name, seats, seatsLabel, dotHex, symbol, symbolUrl, clickable,
+  rank, name, leadingSeats, leadingLabel, declaredSeats, declaredLabel, dotHex, symbol, symbolUrl, clickable,
 }: {
   rank: number;
   name: string;
-  seats: number;
-  seatsLabel: string;
+  leadingSeats: number;
+  leadingLabel: string;
+  declaredSeats: number;
+  declaredLabel: string;
   dotHex?: string;
   symbol?: string;
   symbolUrl?: string;
@@ -191,7 +195,14 @@ function CompactCard({
           : symbol
           ? <span className="text-base leading-none">{symbol}</span>
           : null}
-        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{seats} {seatsLabel}</span>
+        <div className="flex items-center gap-1.5 text-[11px]">
+          <span className="rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+            {leadingSeats} {leadingLabel}
+          </span>
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+            {declaredSeats} {declaredLabel}
+          </span>
+        </div>
       </div>
     </div>
   );
