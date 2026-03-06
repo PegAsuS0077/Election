@@ -10,7 +10,7 @@ import { useElectionStore } from "../store/electionStore";
 import { getParty, partySlug } from "../lib/partyRegistry";
 import PartySymbol from "../components/PartySymbol";
 import FavoriteButton from "../components/FavoriteButton";
-import { provinceName } from "../i18n";
+import { provinceName, t } from "../i18n";
 import Layout from "../components/Layout";
 
 function fmt(n: number) { return n.toLocaleString("en-IN"); }
@@ -29,8 +29,10 @@ export default function FavoritesPage() {
   const results         = useElectionStore((s) => s.results);
   const seatTally       = useElectionStore((s) => s.seatTally);
   const favorites       = useElectionStore((s) => s.favorites);
+  const featuredFavorites = useElectionStore((s) => s.featuredFavorites);
   const favCandidates   = useElectionStore((s) => s.favCandidates);
   const favParties      = useElectionStore((s) => s.favParties);
+  const toggleFeaturedFavorite = useElectionStore((s) => s.toggleFeaturedFavorite);
   const toggleFavParty  = useElectionStore((s) => s.toggleFavParty);
   const toggleFavCand   = useElectionStore((s) => s.toggleFavCandidate);
   const lang            = useElectionStore((s) => s.lang);
@@ -108,6 +110,7 @@ export default function FavoritesPage() {
               : <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {favConstituencies.map((r) => {
                     const leader = [...r.candidates].sort((a, b) => b.votes - a.votes)[0];
+                    const isFeatured = featuredFavorites.has(r.code);
                     const statusCls =
                       r.status === "DECLARED" ? "text-emerald-600 dark:text-emerald-400" :
                       r.status === "COUNTING"  ? "text-amber-500 dark:text-amber-400" :
@@ -131,7 +134,23 @@ export default function FavoritesPage() {
                             )}
                           </div>
                         </div>
-                        <FavoriteButton code={r.code} name={r.name} lang={lang} />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => toggleFeaturedFavorite(r.code)}
+                            aria-label={isFeatured ? t("removeFromFeatured", lang) : t("addToFeatured", lang)}
+                            title={isFeatured ? t("removeFromFeatured", lang) : t("addToFeatured", lang)}
+                            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                              isFeatured
+                                ? "border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/60"
+                                : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            {isFeatured
+                              ? (lang === "np" ? "विशेष" : "Featured")
+                              : (lang === "np" ? "विशेषमा" : "Feature")}
+                          </button>
+                          <FavoriteButton code={r.code} name={r.name} lang={lang} />
+                        </div>
                       </div>
                     );
                   })}

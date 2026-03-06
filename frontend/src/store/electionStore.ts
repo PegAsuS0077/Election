@@ -91,9 +91,11 @@ interface ElectionStore {
   resetBaseline: () => void;
   toggleLang: () => void;
   favorites: Set<string>;          // constituency codes
+  featuredFavorites: Set<string>;  // subset of favorites shown in home featured section
   favCandidates: Set<number>;      // candidateIds
   favParties: Set<string>;         // partyIds
   toggleFavorite: (code: string) => void;
+  toggleFeaturedFavorite: (code: string) => void;
   toggleFavCandidate: (id: number) => void;
   toggleFavParty: (partyId: string) => void;
 }
@@ -125,6 +127,7 @@ function loadOrCreateBaseline(currentTally: SeatTally): SeatTally {
 }
 
 const FAVORITES_KEY      = "nv_favorites";
+const FEATURED_FAVORITES_KEY = "nv_featured_favorites";
 const FAV_CANDIDATES_KEY = "nv_fav_candidates";
 const FAV_PARTIES_KEY    = "nv_fav_parties";
 
@@ -132,6 +135,20 @@ function loadFavorites(): Set<string> {
   try {
     const raw = localStorage.getItem(FAVORITES_KEY);
     if (raw) return new Set(JSON.parse(raw) as string[]);
+  } catch { /* corrupted — start empty */ }
+  return new Set();
+}
+
+function loadFeaturedFavorites(favorites: Set<string>): Set<string> {
+  try {
+    const raw = localStorage.getItem(FEATURED_FAVORITES_KEY);
+    if (!raw) return new Set();
+    const parsed = new Set(JSON.parse(raw) as string[]);
+    const cleaned = new Set(Array.from(parsed).filter((code) => favorites.has(code)));
+    if (cleaned.size !== parsed.size) {
+      localStorage.setItem(FEATURED_FAVORITES_KEY, JSON.stringify([...cleaned]));
+    }
+    return cleaned;
   } catch { /* corrupted — start empty */ }
   return new Set();
 }
@@ -157,6 +174,8 @@ const initialResults: ConstituencyResult[] = [];
 const initialPrVotes: PrVoteByParty = {};
 const initialTally: SeatTally = {};
 const initialBaseline = loadOrCreateBaseline(initialTally);
+const initialFavorites = loadFavorites();
+const initialFeaturedFavorites = loadFeaturedFavorites(initialFavorites);
 
 export const useElectionStore = create<ElectionStore>((set) => ({
   results:          initialResults,
@@ -170,7 +189,8 @@ export const useElectionStore = create<ElectionStore>((set) => ({
   viewMode:         "table",
   sortBy:           "status",
   lang:             "en",
-  favorites:        loadFavorites(),
+  favorites:        initialFavorites,
+  featuredFavorites: initialFeaturedFavorites,
   favCandidates:    loadFavCandidates(),
   favParties:       loadFavParties(),
 
@@ -256,10 +276,26 @@ export const useElectionStore = create<ElectionStore>((set) => ({
   toggleFavorite: (code) =>
     set((state) => {
       const next = new Set(state.favorites);
+      const nextFeatured = new Set(state.featuredFavorites);
+      if (next.has(code)) {
+        next.delete(code);
+        nextFeatured.delete(code);
+      } else {
+        next.add(code);
+      }
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
+      localStorage.setItem(FEATURED_FAVORITES_KEY, JSON.stringify([...nextFeatured]));
+      return { favorites: next, featuredFavorites: nextFeatured };
+    }),
+
+  toggleFeaturedFavorite: (code) =>
+    set((state) => {
+      if (!state.favorites.has(code)) return {};
+      const next = new Set(state.featuredFavorites);
       if (next.has(code)) next.delete(code);
       else next.add(code);
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
-      return { favorites: next };
+      localStorage.setItem(FEATURED_FAVORITES_KEY, JSON.stringify([...next]));
+      return { featuredFavorites: next };
     }),
 
   toggleFavCandidate: (id) =>

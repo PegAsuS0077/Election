@@ -17,7 +17,7 @@ import Layout from "./components/Layout";
 import InstallPrompt from "./components/InstallPrompt";
 import PartySymbol from "./components/PartySymbol";
 
-const FEATURED_CONSTITUENCIES = ["Jhapa-5", "Sarlahi-4"] as const;
+const FEATURED_CONSTITUENCY_CODES = ["Jhapa-5", "Sarlahi-4"] as const;
 const SPONSORED_VARIANT_KEY = "sponsored_link_variant_v1";
 
 function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
@@ -92,6 +92,7 @@ export default function App() {
   const results       = useElectionStore((s) => s.results);
   const seatTally     = useElectionStore((s) => s.seatTally);
   const declaredSeats = useElectionStore((s) => s.declaredSeats);
+  const featuredFavorites = useElectionStore((s) => s.featuredFavorites);
   const partyCount = new Set(
     results.flatMap((r) => r.candidates.map((c) => c.partyId)).filter((id) => id !== "IND"),
   ).size;
@@ -123,15 +124,23 @@ export default function App() {
     : 0;
   const lastUpdatedStr = latestUpdatedMs > 0 ? formatTime(new Date(latestUpdatedMs).toISOString()) : "—";
   const declaredPct    = Math.round((declaredSeats / 165) * 100);
-  const featuredSeats = FEATURED_CONSTITUENCIES.map((name) => {
-    const result = results.find((r) => r.name.toLowerCase() === name.toLowerCase());
+  const featuredCodes = Array.from(
+    new Set([...FEATURED_CONSTITUENCY_CODES, ...Array.from(featuredFavorites)]),
+  );
+  const featuredSeats = featuredCodes.map((code) => {
+    const result = results.find(
+      (r) => r.code === code || r.name.toLowerCase() === code.toLowerCase(),
+    );
     const sorted = result ? [...result.candidates].sort((a, b) => b.votes - a.votes) : [];
     const top1 = sorted[0];
     const top2 = sorted[1];
     const topTwoTotal = top1 && top2 ? top1.votes + top2.votes : 0;
     const top1Pct = top1 && top2 && topTwoTotal > 0 ? (top1.votes / topTwoTotal) * 100 : 50;
-    return { name, result, top1, top2, top1Pct };
+    return { code, result, top1, top2, top1Pct };
   });
+  const featuredDesc = featuredFavorites.size > 0
+    ? t("featuredSectionDescCustom", lang).replace("{n}", String(featuredFavorites.size))
+    : t("featuredSectionDesc", lang);
 
   const statsContent = (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -224,13 +233,13 @@ export default function App() {
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               ⭐ {t("featuredSection", lang)}
             </h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("featuredSectionDesc", lang)}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{featuredDesc}</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {featuredSeats.map(({ name, result, top1, top2, top1Pct }) => (
+            {featuredSeats.map(({ code, result, top1, top2, top1Pct }) => (
               <Link
-                key={name}
+                key={code}
                 to={result ? `/constituency/${encodeURIComponent(result.code)}` : "/explore"}
                 onClick={(e) => handleFeaturedSeatClick(e, Boolean(result))}
                 className="block w-full text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-[#3b82f6]/40"
@@ -238,7 +247,7 @@ export default function App() {
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100 truncate">
-                      {lang === "np" ? result?.nameNp ?? name : result?.name ?? name}
+                      {lang === "np" ? result?.nameNp ?? code : result?.name ?? code}
                     </div>
                     <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                       {result ? (
