@@ -222,7 +222,6 @@ For Cloudflare Pages cutover with rollback, see:
 | `R2_BUCKET` | R2 bucket name (e.g. `nepal-election-results`) |
 | `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
 | `SCRAPE_INTERVAL_SECONDS` | Scrape interval (default: `30`) |
-| `SCRAPER_VERIFY_SSL` | Verify upstream TLS certs (default: `true`; set `false` only as emergency workaround) |
 
 ---
 
