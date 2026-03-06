@@ -93,6 +93,7 @@ export default function App() {
   const seatTally     = useElectionStore((s) => s.seatTally);
   const declaredSeats = useElectionStore((s) => s.declaredSeats);
   const featuredFavorites = useElectionStore((s) => s.featuredFavorites);
+  const toggleFeaturedFavorite = useElectionStore((s) => s.toggleFeaturedFavorite);
   const partyCount = new Set(
     results.flatMap((r) => r.candidates.map((c) => c.partyId)).filter((id) => id !== "IND"),
   ).size;
@@ -136,7 +137,8 @@ export default function App() {
     const top2 = sorted[1];
     const topTwoTotal = top1 && top2 ? top1.votes + top2.votes : 0;
     const top1Pct = top1 && top2 && topTwoTotal > 0 ? (top1.votes / topTwoTotal) * 100 : 50;
-    return { code, result, top1, top2, top1Pct };
+    const isUserFeatured = featuredFavorites.has(code);
+    return { code, result, top1, top2, top1Pct, isUserFeatured };
   });
   const featuredDesc = featuredFavorites.size > 0
     ? t("featuredSectionDescCustom", lang).replace("{n}", String(featuredFavorites.size))
@@ -237,7 +239,7 @@ export default function App() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {featuredSeats.map(({ code, result, top1, top2, top1Pct }) => (
+            {featuredSeats.map(({ code, result, top1, top2, top1Pct, isUserFeatured }) => (
               <Link
                 key={code}
                 to={result ? `/constituency/${encodeURIComponent(result.code)}` : "/explore"}
@@ -272,9 +274,26 @@ export default function App() {
                       )}
                     </div>
                   </div>
-                  <span className="self-start rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                    {lang === "np" ? "विशेष" : "Featured"}
-                  </span>
+                  <div className="self-start flex items-center gap-1.5">
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                      {lang === "np" ? "विशेष" : "Featured"}
+                    </span>
+                    {isUserFeatured && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleFeaturedFavorite(code);
+                        }}
+                        aria-label={t("removeFromFeatured", lang)}
+                        title={t("removeFromFeatured", lang)}
+                        className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500 transition-colors hover:border-red-300 hover:text-red-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-red-500/50 dark:hover:text-red-300"
+                      >
+                        {lang === "np" ? "हटाउनुहोस्" : "Remove"}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {result && top1 && top2 ? (
