@@ -16,7 +16,7 @@ result.election.gov.np  ──fetch──▶  Cloudflare Worker (cron every 2 mi
                               public R2 dev URL (pub-xxxx.r2.dev)
                                           │
                                           ▼
-                              Vercel (nepalvotes.live)
+                              Frontend host (nepalvotes.live)
                               polls CDN every 30 s (LIVE mode)
 ```
 
@@ -212,17 +212,17 @@ No stale/corrupt data will be written to R2.
 
 ---
 
-## Vercel environment variables
+## Frontend environment variables
 
-Add these in **Vercel dashboard → Project → Settings → Environment Variables**:
+Set these on your frontend host (Vercel or Cloudflare Pages):
 
 | Variable | Value | Environment |
 |----------|-------|-------------|
 | `VITE_RESULTS_MODE` | `live` | Production only |
 | `VITE_CDN_URL` | `https://pub-xxxx.r2.dev` | Production only |
 
-> Leave `VITE_RESULTS_MODE` blank (or unset) in Preview/Development to keep
-> archive mode active for branch deployments.
+For Cloudflare Pages cutover and rollback steps, see:
+- [Cloudflare Pages Cutover + Rollback](CLOUDFLARE_PAGES_CUTOVER.md)
 
 After adding the variables, trigger a **Redeploy** in Vercel.
 

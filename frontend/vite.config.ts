@@ -19,6 +19,10 @@ export default defineConfig({
           /^\/api\//,
           /^\/upstream\//,
           /\/offline\.html$/,
+          /\/ads\.txt$/,
+          /\/robots\.txt$/,
+          /\/sitemap\.xml$/,
+          /\/manifest\.webmanifest$/,
         ],
         runtimeCaching: [
           {

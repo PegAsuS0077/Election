@@ -89,7 +89,11 @@ On error, logs and retries on the next cycle. Worker never crashes.
 
 ---
 
-## 3. Vercel — Frontend
+## 3. Frontend Hosting
+
+You can host the frontend on either Vercel or Cloudflare Pages.
+
+### Option A: Vercel
 
 ### Environment variables (set in Vercel dashboard)
 
@@ -114,6 +118,33 @@ Leave `VITE_UPSTREAM_URL` blank — only needed for archive mode in production.
 1. On mount: fetches `${VITE_CDN_URL}/constituencies.json`
 2. Every 30 s: re-fetches `constituencies.json`
 3. All reads hit R2's CDN — no Render server involved for reads
+
+### Option B: Cloudflare Pages
+
+Build settings:
+
+| Setting | Value |
+|---|---|
+| **Framework preset** | Vite |
+| **Root directory** | `frontend` |
+| **Build command** | `npm run build` |
+| **Output directory** | `dist` |
+
+Environment variables (Production):
+
+| Variable | Value |
+|---|---|
+| `VITE_RESULTS_MODE` | `live` |
+| `VITE_CDN_URL` | `https://pub-<hash>.r2.dev` (no trailing slash) |
+
+SPA routing is handled by `frontend/public/_redirects`:
+
+```txt
+/* /index.html 200
+```
+
+For safe migration and rollback, follow:
+- [Cloudflare Pages Cutover + Rollback](CLOUDFLARE_PAGES_CUTOVER.md)
 
 ---
 

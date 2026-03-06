@@ -45,14 +45,14 @@ Cloudflare R2 (object storage + public CDN URL)
   └── parties.json           — party aggregates
         │
         ▼
-Vercel (frontend, polls CDN every 30 s)
+Frontend host (Vercel or Cloudflare Pages, polls CDN every 30 s)
   · No backend dependency for reads
   · Horizontally scalable — any traffic spike served from CDN
 ```
 
 ```
 New_Project/
-├── frontend/                       # React + TypeScript + Vite (Vercel)
+├── frontend/                       # React + TypeScript + Vite (Vercel or Cloudflare Pages)
 │   └── src/
 │       ├── App.tsx                 # Root component, routing
 │       ├── types.ts                # Canonical TypeScript types
@@ -142,6 +142,7 @@ See [docs/deploy.md](docs/deploy.md) for the full guide covering:
 - Cloudflare R2 bucket setup
 - Render Background Worker deployment
 - Vercel frontend deployment
+- Cloudflare Pages frontend deployment + rollback plan
 - Environment variables
 
 ### Cloudflare Worker (recommended producer)
@@ -201,12 +202,15 @@ See [docs/GITHUB_ACTIONS_R2.md](docs/GITHUB_ACTIONS_R2.md) — easier setup, may
 
 ## Environment Variables
 
-### Frontend (Vercel)
+### Frontend (Vercel or Cloudflare Pages)
 
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `VITE_RESULTS_MODE` | `live` | Enables live CDN polling (omit for archive mode) |
 | `VITE_CDN_URL` | `https://pub-<hash>.r2.dev` | R2 public CDN URL (no trailing slash) |
+
+For Cloudflare Pages cutover with rollback, see:
+- [docs/CLOUDFLARE_PAGES_CUTOVER.md](docs/CLOUDFLARE_PAGES_CUTOVER.md)
 
 ### Backend / Worker (Render or GitHub Actions)
 

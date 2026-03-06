@@ -1,6 +1,6 @@
 # Frontend — Nepal Election Live Vote Counter
 
-React + TypeScript + Vite dashboard for the Nepal 2026 election results system. Deployed on Vercel; reads pre-parsed JSON from Cloudflare R2.
+React + TypeScript + Vite dashboard for the Nepal 2026 election results system. Deployable on Vercel or Cloudflare Pages; reads pre-parsed JSON from Cloudflare R2.
 
 ## Commands
 
