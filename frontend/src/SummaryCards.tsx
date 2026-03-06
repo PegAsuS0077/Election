@@ -84,7 +84,10 @@ export default function SummaryCards({
           <Card
             title={t("leadingParty", lang)}
             big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
-            sub={`${leader.leading} ${t("leading", lang)} · ${leader.declared} ${t("declared", lang)}`}
+            leadingSeats={leader.leading}
+            leadingLabel={t("leading", lang)}
+            declaredSeats={leader.declared}
+            declaredLabel={t("declared", lang)}
             dotHex={leaderInfo.hex}
             symbol={leaderInfo.symbol}
             symbolUrl={leaderInfo.symbolUrl}
@@ -96,7 +99,10 @@ export default function SummaryCards({
           <Card
             title={t("runnerUp", lang)}
             big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
-            sub={`${runnerUp.leading} ${t("leading", lang)} · ${runnerUp.declared} ${t("declared", lang)}`}
+            leadingSeats={runnerUp.leading}
+            leadingLabel={t("leading", lang)}
+            declaredSeats={runnerUp.declared}
+            declaredLabel={t("declared", lang)}
             dotHex={runnerUpInfo.hex}
             symbol={runnerUpInfo.symbol}
             symbolUrl={runnerUpInfo.symbolUrl}
@@ -139,9 +145,10 @@ export default function SummaryCards({
 }
 
 function Card({
-  title, big, sub, dotHex, symbol, symbolUrl, right, clickable,
+  title, big, sub, leadingSeats, leadingLabel, declaredSeats, declaredLabel, dotHex, symbol, symbolUrl, right, clickable,
 }: {
-  title: string; big: string; sub: string;
+  title: string; big: string; sub?: string;
+  leadingSeats?: number; leadingLabel?: string; declaredSeats?: number; declaredLabel?: string;
   dotHex?: string; symbol?: string; symbolUrl?: string; right?: React.ReactNode; clickable?: boolean;
 }) {
   return (
@@ -161,7 +168,18 @@ function Card({
           : null}
         <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{big}</span>
       </div>
-      <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{sub}</div>
+      {typeof leadingSeats === "number" && typeof declaredSeats === "number" ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+          <span className="rounded-full bg-blue-50 px-2 py-0.5 font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+            {leadingSeats} {leadingLabel}
+          </span>
+          <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+            {declaredSeats} {declaredLabel}
+          </span>
+        </div>
+      ) : (
+        <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{sub}</div>
+      )}
     </div>
   );
 }

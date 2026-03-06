@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ConstituencyResult, ConstituencyStatus } from "./types";
 import type { Lang } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
@@ -36,7 +36,7 @@ type UpdateItem = {
   marginVotes: number;
 };
 
-const MAX_ITEMS = 14;
+const MAX_ITEMS = 3;
 
 function constituencySnapshot(r: ConstituencyResult): Snapshot {
   const sorted = [...r.candidates].sort((a, b) => b.votes - a.votes);
@@ -80,7 +80,6 @@ function declaredItem(r: ConstituencyResult, curr: Snapshot): UpdateItem {
 
 export default function LatestUpdates({ results, lang }: { results: ConstituencyResult[]; lang: Lang }) {
   const [items, setItems] = useState<UpdateItem[]>([]);
-  const [expanded, setExpanded] = useState(false);
   const prevRef = useRef<Map<string, Snapshot>>(new Map());
 
   useEffect(() => {
@@ -182,11 +181,7 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
     prevRef.current = nextMap;
   }, [results]);
 
-  const PREVIEW_COUNT = 2;
-  const visibleItems = useMemo(
-    () => (expanded ? items.slice(0, 8) : items.slice(0, PREVIEW_COUNT)),
-    [expanded, items],
-  );
+  const visibleItems = items.slice(0, MAX_ITEMS);
 
   return (
     <section className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
@@ -295,7 +290,9 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
                   </p>
                   {u.marginVotes > 0 && (
                     <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
-                      {lang === "np" ? "हालको अन्तर: " : "Current margin: "}
+                      {u.kind === "declared"
+                        ? (lang === "np" ? "अन्तिम अन्तर: " : "Final margin: ")
+                        : (lang === "np" ? "हालको अन्तर: " : "Current margin: ")}
                       <span className="font-semibold text-slate-700 dark:text-slate-300">{u.marginVotes.toLocaleString("en-IN")}</span>
                     </p>
                   )}
@@ -303,19 +300,6 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
               );
             })}
           </div>
-          {items.length > PREVIEW_COUNT && (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                className="w-full h-9 rounded-xl border border-[#2563eb]/40 text-[#2563eb] dark:text-blue-400 text-xs font-semibold hover:bg-[#2563eb]/10 transition"
-              >
-                {expanded
-                  ? (lang === "np" ? "कम देखाउनुहोस्" : "Show less")
-                  : (lang === "np" ? `थप हेर्नुहोस् (+${Math.min(6, items.length - PREVIEW_COUNT)})` : `View more (+${Math.min(6, items.length - PREVIEW_COUNT)})`)}
-              </button>
-            </div>
-          )}
         </>
       )}
     </section>

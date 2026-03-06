@@ -110,6 +110,9 @@ function ConstituencyRow({
   const seatTag = seatType === "declared"
     ? (lang === "np" ? "घोषित सिट" : "Declared Seat")
     : (lang === "np" ? "अग्रणी सिट" : "Leading Seat");
+  const seatTagClass = seatType === "declared"
+    ? "rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+    : "rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
 
   return (
     <Link
@@ -125,7 +128,7 @@ function ConstituencyRow({
             {lang === "np" ? row.districtNp : row.district} · {provinceName(row.province, lang)}
           </div>
         </div>
-        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+        <span className={seatTagClass}>
           {seatTag}
         </span>
       </div>
@@ -160,6 +163,7 @@ export default function PartyConstituenciesPage() {
 
   const [declaredPage, setDeclaredPage] = useState(1);
   const [leadingPage, setLeadingPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<"declared" | "leading">("declared");
 
   const slug = slugParam ?? "";
   const found = useMemo(() => getPartyBySlug(slug), [slug, results]);
@@ -171,6 +175,7 @@ export default function PartyConstituenciesPage() {
   useEffect(() => {
     setDeclaredPage(1);
     setLeadingPage(1);
+    setActiveTab("declared");
   }, [slug]);
 
   useEffect(() => {
@@ -276,6 +281,23 @@ export default function PartyConstituenciesPage() {
 
   const declaredSlice = declaredRows.slice((safeDeclaredPage - 1) * PAGE_SIZE, safeDeclaredPage * PAGE_SIZE);
   const leadingSlice = leadingRows.slice((safeLeadingPage - 1) * PAGE_SIZE, safeLeadingPage * PAGE_SIZE);
+  const isDeclaredTab = activeTab === "declared";
+  const activeRows = isDeclaredTab ? declaredRows : leadingRows;
+  const activeSlice = isDeclaredTab ? declaredSlice : leadingSlice;
+  const activePage = isDeclaredTab ? safeDeclaredPage : safeLeadingPage;
+  const activeSeatType: "declared" | "leading" = isDeclaredTab ? "declared" : "leading";
+  const activeTitle = isDeclaredTab
+    ? (lang === "np" ? "घोषित निर्वाचन क्षेत्र" : "Declared Constituencies")
+    : (lang === "np" ? "अग्रणी निर्वाचन क्षेत्र" : "Leading Constituencies");
+  const activeEmptyText = isDeclaredTab
+    ? (lang === "np" ? "अहिलेसम्म घोषित सिट छैन।" : "No declared constituencies yet.")
+    : (lang === "np" ? "अहिलेसम्म अग्रणी सिट छैन।" : "No leading constituencies right now.");
+  const activeWrapClass = isDeclaredTab
+    ? "overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm dark:border-emerald-900/50 dark:bg-[#0c1525]"
+    : "overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm dark:border-blue-900/50 dark:bg-[#0c1525]";
+  const activeHeaderClass = isDeclaredTab
+    ? "border-b border-emerald-100 bg-emerald-50/60 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/20"
+    : "border-b border-blue-100 bg-blue-50/60 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-950/20";
 
   const heroBadge = (
     <div className="inline-flex items-center gap-2">
@@ -302,7 +324,7 @@ export default function PartyConstituenciesPage() {
     >
       <div className="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center dark:border-slate-800/80 dark:bg-[#0c1525]">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 text-center dark:border-emerald-900/50 dark:bg-emerald-950/20">
             <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
               {lang === "np" ? "घोषित सिट" : "Declared Seats"}
             </div>
@@ -313,7 +335,7 @@ export default function PartyConstituenciesPage() {
               {declaredRows.length}
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center dark:border-slate-800/80 dark:bg-[#0c1525]">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 text-center dark:border-blue-900/50 dark:bg-blue-950/20">
             <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
               {lang === "np" ? "अग्रणी सिट" : "Leading Constituencies"}
             </div>
@@ -337,61 +359,60 @@ export default function PartyConstituenciesPage() {
           </div>
         </div>
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/80 dark:bg-[#0c1525]">
-          <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800/80">
-            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              {lang === "np" ? "घोषित निर्वाचन क्षेत्र" : "Declared Constituencies"}
-              <span className="ml-2 text-xs font-normal text-slate-400">({declaredRows.length})</span>
-            </h2>
+        <div className="rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-800/80 dark:bg-[#0c1525]">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab("declared")}
+              className={
+                "rounded-xl px-3 py-2 text-xs font-semibold transition " +
+                (isDeclaredTab
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40")
+              }
+            >
+              {lang === "np" ? "घोषित सिट" : "Declared Seats"} ({declaredRows.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("leading")}
+              className={
+                "rounded-xl px-3 py-2 text-xs font-semibold transition " +
+                (!isDeclaredTab
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/40")
+              }
+            >
+              {lang === "np" ? "अग्रणी सिट" : "Leading Constituencies"} ({leadingRows.length})
+            </button>
           </div>
-          {declaredRows.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-slate-400">
-              {lang === "np" ? "अहिलेसम्म घोषित सिट छैन।" : "No declared constituencies yet."}
-            </div>
-          ) : (
-            <>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {declaredSlice.map((row) => (
-                  <ConstituencyRow key={row.code} row={row} lang={lang} seatType="declared" />
-                ))}
-              </div>
-              <Pagination
-                page={safeDeclaredPage}
-                total={declaredRows.length}
-                pageSize={PAGE_SIZE}
-                onChange={(next) => {
-                  setDeclaredPage(next);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              />
-            </>
-          )}
-        </section>
+        </div>
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800/80 dark:bg-[#0c1525]">
-          <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800/80">
+        <section className={activeWrapClass}>
+          <div className={activeHeaderClass}>
             <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              {lang === "np" ? "अग्रणी निर्वाचन क्षेत्र" : "Leading Constituencies"}
-              <span className="ml-2 text-xs font-normal text-slate-400">({leadingRows.length})</span>
+              {activeTitle}
+              <span className="ml-2 text-xs font-normal text-slate-400">({activeRows.length})</span>
             </h2>
           </div>
-          {leadingRows.length === 0 ? (
+          {activeRows.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-slate-400">
-              {lang === "np" ? "अहिलेसम्म अग्रणी सिट छैन।" : "No leading constituencies right now."}
+              {activeEmptyText}
             </div>
           ) : (
             <>
               <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {leadingSlice.map((row) => (
-                  <ConstituencyRow key={row.code} row={row} lang={lang} seatType="leading" />
+                {activeSlice.map((row) => (
+                  <ConstituencyRow key={row.code} row={row} lang={lang} seatType={activeSeatType} />
                 ))}
               </div>
               <Pagination
-                page={safeLeadingPage}
-                total={leadingRows.length}
+                page={activePage}
+                total={activeRows.length}
                 pageSize={PAGE_SIZE}
                 onChange={(next) => {
-                  setLeadingPage(next);
+                  if (isDeclaredTab) setDeclaredPage(next);
+                  else setLeadingPage(next);
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
               />
