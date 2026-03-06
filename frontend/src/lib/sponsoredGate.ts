@@ -1,7 +1,7 @@
 export const SPONSORED_LINK_URL = "https://omg10.com/4/10688870";
 const SPONSORED_GATE_STATE_KEY = "sponsored_gate_state_v2";
 
-export const SPONSORED_REDIRECT_CLICK_THRESHOLD = 5;
+export const SPONSORED_REDIRECT_CLICK_THRESHOLD = 10;
 export const SPONSORED_REDIRECT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 type SponsoredGateState = {
