@@ -9,7 +9,7 @@
  *
  * LIVE MODE (VITE_RESULTS_MODE=live, requires VITE_CDN_URL):
  *   - Fetches constituencies.json from the R2 CDN immediately.
- *   - Polls every 30 s for updates.
+ *   - Polls every 2 minutes for updates.
  *   - No WebSocket — the CDN is a static file store with no push capability.
  *   - After each poll, fires browser notifications for favorited constituencies
  *     that newly transitioned to DECLARED status.
@@ -23,7 +23,7 @@ import { notifyDeclared } from "./useConstituencyNotifications";
 import { fetchConstituencies, fetchPrParties } from "../api";
 
 const CDN_BASE = (import.meta.env.VITE_CDN_URL as string | undefined) ?? "";
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 120_000;
 
 function toPrVoteMap(snapshot: Awaited<ReturnType<typeof fetchPrParties>>): Record<string, number> {
   if (!snapshot?.parties) return {};
@@ -66,7 +66,7 @@ export function useElectionSimulation() {
           if (!cancelled) setIsLoading(false);
         });
 
-      // Poll every 30 s — merge only dynamic fields (votes, status, isWinner)
+      // Poll every 2 minutes — merge only dynamic fields (votes, status, isWinner)
       const interval = setInterval(async () => {
         if (cancelled) return;
         try {
