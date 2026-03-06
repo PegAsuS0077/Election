@@ -57,6 +57,10 @@ UPSTREAM_HOR_MERGE_URL = (
     "https://result.election.gov.np/Handlers/SecureJson.ashx"
     "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json"
 )
+UPSTREAM_HOR_WINNER_URL = (
+    "https://result.election.gov.np/Handlers/SecureJson.ashx"
+    "?file=JSONFiles/Election2082/Common/HOR-T5Winner.json"
+)
 HOR_TOP5_REFERER_URL = "https://result.election.gov.np/FPTPWLChartResult2082.aspx"
 _BASE_HEADERS = {
     "User-Agent": (
@@ -187,21 +191,11 @@ _WINNER_STATUS = {"W"}
 
 def is_winner(record: dict[str, Any]) -> bool:
     """
-    Determine winner status from available fields.
-    Pre-election: E_STATUS is null for all records → fallback to rank+votes.
-    On election day: E_STATUS == "W" for the declared winner of each seat.
+    Determine winner status from official upstream fields only.
+    We intentionally do not infer winners from rank/votes.
     """
     status = record.get("E_STATUS")
-    if status is not None:
-        return status in _WINNER_STATUS
-    # Fallback for partial counts before official declaration
-    rank = _to_int(record.get("R"))
-    if rank is None:
-        rank = _to_int(record.get("Rank"))
-    votes = _vote_total(record) or 0
-    if rank == 1 and votes > 0:
-        return True
-    return False
+    return status in _WINNER_STATUS
 
 
 def _derive_party_id(rec: dict[str, Any]) -> str:
@@ -328,6 +322,48 @@ def _merge_higher_votes(
         "upgraded": upgraded,
         "missing_candidates": missing_candidates,
         "usable_rows": len(fresher_vote_by_candidate),
+    }
+
+
+def _merge_official_winners(
+    base_records: list[dict[str, Any]],
+    winner_rows: list[dict[str, Any]],
+) -> dict[str, int]:
+    winner_candidate_ids: set[int] = set()
+    for row in winner_rows:
+        if not isinstance(row, dict):
+            continue
+        candidate_id = _candidate_id(row)
+        if candidate_id is None:
+            continue
+        winner_candidate_ids.add(candidate_id)
+
+    if not winner_candidate_ids:
+        return {"winner_rows": 0, "matched_candidates": 0, "missing_candidates": 0, "newly_marked": 0}
+
+    matched_candidates = 0
+    newly_marked = 0
+    seen_base_candidate_ids: set[int] = set()
+    for row in base_records:
+        candidate_id = _candidate_id(row)
+        if candidate_id is None:
+            continue
+        seen_base_candidate_ids.add(candidate_id)
+        if candidate_id not in winner_candidate_ids:
+            continue
+        matched_candidates += 1
+        if row.get("E_STATUS") != "W":
+            row["E_STATUS"] = "W"
+            newly_marked += 1
+
+    missing_candidates = sum(
+        1 for candidate_id in winner_candidate_ids if candidate_id not in seen_base_candidate_ids
+    )
+    return {
+        "winner_rows": len(winner_candidate_ids),
+        "matched_candidates": matched_candidates,
+        "missing_candidates": missing_candidates,
+        "newly_marked": newly_marked,
     }
 
 
@@ -598,6 +634,10 @@ async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
         merged_updates = 0
         merged_rows = 0
         merged_missing = 0
+        winner_rows = 0
+        winner_matched = 0
+        winner_missing = 0
+        winner_newly_marked = 0
         if used_secure and csrf:
             try:
                 top5_resp = await _get_with_retry(
@@ -619,12 +659,49 @@ async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
             except Exception:
                 pass
 
+            try:
+                winner_resp = await _get_with_retry(
+                    client,
+                    UPSTREAM_HOR_WINNER_URL,
+                    headers={
+                        "X-CSRF-Token": csrf,
+                        "X-Requested-With": "XMLHttpRequest",
+                        "Referer": HOR_TOP5_REFERER_URL,
+                    },
+                    label="optional HOR winner feed",
+                )
+                winner_feed_rows = _decode_json_bytes(
+                    winner_resp.content,
+                    "optional HOR winner feed",
+                )
+                if isinstance(winner_feed_rows, list) and winner_feed_rows:
+                    winner_vote_stats = _merge_higher_votes(candidates, winner_feed_rows)
+                    merged_updates += winner_vote_stats["upgraded"]
+                    merged_rows += winner_vote_stats["usable_rows"]
+                    merged_missing += winner_vote_stats["missing_candidates"]
+
+                    winner_stats = _merge_official_winners(candidates, winner_feed_rows)
+                    winner_rows = winner_stats["winner_rows"]
+                    winner_matched = winner_stats["matched_candidates"]
+                    winner_missing = winner_stats["missing_candidates"]
+                    winner_newly_marked = winner_stats["newly_marked"]
+            except Exception:
+                pass
+
         if merged_rows > 0:
             extra = f", {merged_missing} rows missing in primary feed" if merged_missing > 0 else ""
             print(
                 "[scraper] optional HOR leader feed merged: "
                 f"{merged_updates} candidate vote updates from "
                 f"{merged_rows} usable rows{extra}"
+            )
+
+        if winner_rows > 0:
+            extra = f", {winner_missing} rows missing in primary feed" if winner_missing > 0 else ""
+            print(
+                "[scraper] optional HOR winner feed merged: "
+                f"{winner_newly_marked} newly marked winners "
+                f"({winner_matched}/{winner_rows} matched){extra}"
             )
 
         return candidates
