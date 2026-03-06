@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useElectionStore } from "../store/electionStore";
 import type { ConstituencyResult } from "../types";
 
@@ -11,6 +11,31 @@ export default function AdminPanel() {
   const results = useElectionStore((s) => s.results);
   const setResults = useElectionStore((s) => s.setResults);
   const [selectedCode, setSelectedCode] = useState("");
+
+  useEffect(() => {
+    const existing = document.querySelector('meta[name="robots"]');
+    const previous = existing?.getAttribute("content") ?? null;
+    const robots = existing ?? document.createElement("meta");
+
+    robots.setAttribute("name", "robots");
+    robots.setAttribute("content", "noindex, nofollow, noarchive");
+
+    if (!existing) {
+      document.head.appendChild(robots);
+    }
+
+    return () => {
+      if (!existing) {
+        robots.remove();
+        return;
+      }
+      if (previous) {
+        robots.setAttribute("content", previous);
+      } else {
+        robots.removeAttribute("content");
+      }
+    };
+  }, []);
 
   function handleLogin() {
     if (pw === ADMIN_PASSWORD) {

@@ -15,6 +15,7 @@ import { candidatePhotoUrl } from "../lib/parseUpstreamData";
 import Layout from "../components/Layout";
 import { PROVINCES } from "../types";
 import type { Province } from "../types";
+import { upsertJsonLd } from "../lib/seo";
 
 // ── Pagination ─────────────────────────────────────────────────────────────────
 const CAND_PAGE_SIZE = 20;
@@ -173,18 +174,60 @@ export default function PartyPage() {
   // Per-page meta
   useEffect(() => {
     const nameEn = pInfo.nameEn;
+    const canonicalHref = `https://nepalvotes.live/party/${slug}`;
     document.title = `${nameEn} – Nepal Election 2082 Results | NepalVotes`;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content",
       `${nameEn} election results in Nepal's House of Representatives Election 2082. Seat tally, vote count, and all candidates.`
     );
     const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/party/${slug}`);
+    if (canonical) canonical.setAttribute("href", canonicalHref);
+
+    const cleanupJsonLd = upsertJsonLd("party", {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": nameEn,
+          "url": canonicalHref,
+          "description": `${nameEn} seat tally and candidate performance in Nepal Election 2082.`,
+          "memberOf": {
+            "@type": "Event",
+            "name": "Nepal House of Representatives General Election 2082",
+          },
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://nepalvotes.live/",
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Parties",
+              "item": "https://nepalvotes.live/parties",
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": nameEn,
+              "item": canonicalHref,
+            },
+          ],
+        },
+      ],
+    });
+
     return () => {
       document.title = "Nepal Election Results 2082 Live | Real-Time Vote Count – NepalVotes";
       if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/");
+      cleanupJsonLd();
     };
-  }, [id, pInfo.nameEn]);
+  }, [id, pInfo.nameEn, slug]);
 
   const heroBadge = (
     <Link

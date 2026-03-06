@@ -24,6 +24,7 @@ import type { Lang } from "../i18n";
 import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
 import type { Province } from "../types";
+import { upsertJsonLd } from "../lib/seo";
 
 // ── Local value dictionaries ──────────────────────────────────────────────────
 
@@ -323,16 +324,65 @@ export default function CandidateDetailPage() {
   useEffect(() => {
     if (!found) return;
     const { cand, constituency } = found;
+    const candidateUrl = `https://nepalvotes.live/candidate/${cand.candidateId}-${nameToSlug(cand.name)}`;
+    const party = getParty(cand.partyId);
     document.title = `${cand.name} – ${constituency.name} | Nepal Election 2082`;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content",
       `${cand.name} (${cand.partyName}) — ${constituency.name}, ${constituency.district}. Nepal House of Representatives Election 2082 vote count and results.`
     );
     const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/candidate/${cand.candidateId}-${nameToSlug(cand.name)}`);
+    if (canonical) canonical.setAttribute("href", candidateUrl);
+
+    const cleanupJsonLd = upsertJsonLd("candidate", {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Person",
+          "name": cand.name,
+          "alternateName": cand.nameNp !== cand.name ? cand.nameNp : undefined,
+          "url": candidateUrl,
+          "gender": cand.gender === "F" ? "Female" : "Male",
+          "description": `${cand.name} is a candidate from ${party.nameEn} in ${constituency.name} for Nepal Election 2082.`,
+          "affiliation": {
+            "@type": "Organization",
+            "name": party.nameEn,
+          },
+          "memberOf": {
+            "@type": "Event",
+            "name": "Nepal House of Representatives General Election 2082",
+          },
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://nepalvotes.live/",
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Candidates",
+              "item": "https://nepalvotes.live/candidates",
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": cand.name,
+              "item": candidateUrl,
+            },
+          ],
+        },
+      ],
+    });
+
     return () => {
       document.title = "Nepal Election Results 2082 Live | Real-Time Vote Count – NepalVotes";
       if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/");
+      cleanupJsonLd();
     };
   }, [found]);
 

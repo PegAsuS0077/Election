@@ -17,6 +17,7 @@ import type { Candidate } from "../types";
 import Layout from "../components/Layout";
 import FavoriteButton from "../components/FavoriteButton";
 import FeaturedToggleButton from "../components/FeaturedToggleButton";
+import { upsertJsonLd } from "../lib/seo";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -162,16 +163,78 @@ export default function ConstituencyPage() {
   // Per-page meta
   useEffect(() => {
     if (!r) return;
+    const constituencySlug = encodeURIComponent(r.name.replace(/\s+/g, "-"));
+    const canonicalHref = `https://nepalvotes.live/constituency/${constituencySlug}`;
     document.title = `${r.name} – Nepal Election 2082 Results | NepalVotes`;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content",
       `${r.name} constituency results — Nepal House of Representatives Election 2082. ${r.candidates.length} candidates, ${r.district}, ${r.province}.`
     );
     const canonical = document.querySelector('link[rel="canonical"]');
-    if (canonical) canonical.setAttribute("href", `https://nepalvotes.live/constituency/${encodeURIComponent(r.name.replace(/\s+/g, "-"))}`);
+    if (canonical) canonical.setAttribute("href", canonicalHref);
+
+    const sorted = [...r.candidates].sort((a, b) => b.votes - a.votes);
+    const leader = sorted[0];
+    const cleanupJsonLd = upsertJsonLd("constituency", {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebPage",
+          "name": `${r.name} Election Results 2082`,
+          "url": canonicalHref,
+          "description": `${r.name} constituency vote count and candidate standings for Nepal Election 2082.`,
+          "inLanguage": ["en", "ne"],
+          "isPartOf": {
+            "@type": "WebSite",
+            "name": "NepalVotes",
+            "url": "https://nepalvotes.live/",
+          },
+          "about": {
+            "@type": "Event",
+            "name": "Nepal House of Representatives General Election 2082",
+            "location": {
+              "@type": "Country",
+              "name": "Nepal",
+            },
+          },
+          "mainEntity": leader
+            ? {
+                "@type": "Person",
+                "name": leader.name,
+                "description": `Current top vote getter in ${r.name}.`,
+              }
+            : undefined,
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://nepalvotes.live/",
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Explore Constituencies",
+              "item": "https://nepalvotes.live/explore",
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": r.name,
+              "item": canonicalHref,
+            },
+          ],
+        },
+      ],
+    });
+
     return () => {
       document.title = "Nepal Election Results 2082 Live | Real-Time Vote Count – NepalVotes";
       if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/");
+      cleanupJsonLd();
     };
   }, [r]);
 
