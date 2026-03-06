@@ -24,6 +24,8 @@ export type {
 import type { ConstituencyResult, Snapshot, PartyInfo } from "./types";
 
 const CDN_BASE = (import.meta.env.VITE_CDN_URL as string | undefined) ?? "";
+const CONSTITUENCIES_FALLBACK_FILE = "constituencies.last_good.json";
+const LAST_GOOD_CONSTITUENCIES_KEY = "nv_last_good_constituencies_v1";
 
 export type PrPartiesSnapshot = {
   lastUpdated: string;
@@ -37,6 +39,39 @@ export type PrPartiesSnapshot = {
   sourceFile: string;
 };
 
+function isConstituencyArray(data: unknown): data is ConstituencyResult[] {
+  if (!Array.isArray(data) || data.length === 0) return false;
+  const first = data[0] as Record<string, unknown>;
+  return typeof first?.code === "string" && Array.isArray(first?.candidates);
+}
+
+function readLastGoodConstituencies(): ConstituencyResult[] | null {
+  try {
+    const raw = localStorage.getItem(LAST_GOOD_CONSTITUENCIES_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return isConstituencyArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastGoodConstituencies(data: ConstituencyResult[]): void {
+  try {
+    localStorage.setItem(LAST_GOOD_CONSTITUENCIES_KEY, JSON.stringify(data));
+  } catch {
+    // storage unavailable or quota exceeded — non-fatal
+  }
+}
+
+async function fetchConstituenciesFromUrl(url: string): Promise<ConstituencyResult[]> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`GET ${url} → ${res.status}`);
+  const payload: unknown = await res.json();
+  if (!isConstituencyArray(payload)) throw new Error(`Invalid constituencies payload: ${url}`);
+  return payload;
+}
+
 /** Returns null if CDN URL is not configured. */
 export async function fetchSnapshot(): Promise<Snapshot | null> {
   if (!CDN_BASE) return null;
@@ -48,9 +83,29 @@ export async function fetchSnapshot(): Promise<Snapshot | null> {
 /** Returns null if CDN URL is not configured. */
 export async function fetchConstituencies(): Promise<ConstituencyResult[] | null> {
   if (!CDN_BASE) return null;
-  const res = await fetch(`${CDN_BASE}/constituencies.json`);
-  if (!res.ok) throw new Error(`GET constituencies.json → ${res.status}`);
-  return res.json() as Promise<ConstituencyResult[]>;
+  try {
+    const primary = await fetchConstituenciesFromUrl(`${CDN_BASE}/constituencies.json`);
+    writeLastGoodConstituencies(primary);
+    return primary;
+  } catch (primaryErr) {
+    console.warn("[api] primary constituencies fetch failed, trying backups", primaryErr);
+  }
+
+  try {
+    const r2Fallback = await fetchConstituenciesFromUrl(`${CDN_BASE}/${CONSTITUENCIES_FALLBACK_FILE}`);
+    writeLastGoodConstituencies(r2Fallback);
+    return r2Fallback;
+  } catch (fallbackErr) {
+    console.warn("[api] R2 fallback constituencies fetch failed", fallbackErr);
+  }
+
+  const cached = readLastGoodConstituencies();
+  if (cached) {
+    console.warn("[api] using browser-cached last known good constituencies");
+    return cached;
+  }
+
+  throw new Error("Unable to fetch constituencies from primary, R2 fallback, or browser cache");
 }
 
 /** Returns null if CDN URL is not configured. */

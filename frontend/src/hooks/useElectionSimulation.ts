@@ -19,18 +19,11 @@ import { useEffect, useRef } from "react";
 import { useElectionStore } from "../store/electionStore";
 import { loadArchiveData } from "../lib/archiveData";
 import { RESULTS_MODE } from "../types";
-import type { ConstituencyResult } from "../types";
 import { notifyDeclared } from "./useConstituencyNotifications";
-import { fetchPrParties } from "../api";
+import { fetchConstituencies, fetchPrParties } from "../api";
 
 const CDN_BASE = (import.meta.env.VITE_CDN_URL as string | undefined) ?? "";
 const POLL_INTERVAL_MS = 30_000;
-
-async function fetchConstituenciesFromCDN(): Promise<ConstituencyResult[]> {
-  const res = await fetch(`${CDN_BASE}/constituencies.json`);
-  if (!res.ok) throw new Error(`CDN fetch failed: ${res.status}`);
-  return res.json() as Promise<ConstituencyResult[]>;
-}
 
 function toPrVoteMap(snapshot: Awaited<ReturnType<typeof fetchPrParties>>): Record<string, number> {
   if (!snapshot?.parties) return {};
@@ -56,9 +49,9 @@ export function useElectionSimulation() {
     // ── LIVE MODE ─────────────────────────────────────────────────────────────
     if (RESULTS_MODE === "live" && CDN_BASE) {
       // Initial fetch — full replace to seed static candidate data + party registry
-      Promise.all([fetchConstituenciesFromCDN(), fetchPrParties()])
+      Promise.all([fetchConstituencies(), fetchPrParties()])
         .then(([data, prSnapshot]) => {
-          if (cancelled) return;
+          if (cancelled || !data) return;
           setResults(data);
           setPrVotes(toPrVoteMap(prSnapshot));
           setIsLoading(false);
@@ -77,8 +70,8 @@ export function useElectionSimulation() {
       const interval = setInterval(async () => {
         if (cancelled) return;
         try {
-          const [data, prSnapshot] = await Promise.all([fetchConstituenciesFromCDN(), fetchPrParties()]);
-          if (cancelled) return;
+          const [data, prSnapshot] = await Promise.all([fetchConstituencies(), fetchPrParties()]);
+          if (cancelled || !data) return;
 
           // Snapshot status BEFORE merge to detect transitions
           const prevByCode = new Map(

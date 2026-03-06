@@ -324,6 +324,9 @@ const PR_SEATS = 110;
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504, 520, 521, 522, 523, 524]);
 const MAX_FETCH_ATTEMPTS = 3; // 1 initial + 2 retries
 const RETRY_BACKOFF_MS = 500;
+const LAST_GOOD_CONSTITUENCIES_KEY = "constituencies.last_good.json";
+const LAST_GOOD_SNAPSHOT_KEY = "snapshot.last_good.json";
+const LAST_GOOD_PARTIES_KEY = "parties.last_good.json";
 
 // ── Province mapping ──────────────────────────────────────────────────────────
 
@@ -859,6 +862,28 @@ async function putJson(bucket: R2Bucket, key: string, body: unknown): Promise<vo
   });
 }
 
+async function rotateLastGood(
+  bucket: R2Bucket,
+  sourceKey: string,
+  fallbackKey: string,
+): Promise<boolean> {
+  try {
+    const current = await bucket.get(sourceKey);
+    if (!current) return false;
+    const body = await current.arrayBuffer();
+    await bucket.put(fallbackKey, body, {
+      httpMetadata: {
+        contentType: "application/json; charset=utf-8",
+        cacheControl: "public, max-age=25",
+      },
+    });
+    return true;
+  } catch (err) {
+    console.warn(`[scraper] failed rotating ${sourceKey} -> ${fallbackKey}:`, err);
+    return false;
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -1281,6 +1306,12 @@ async function runOnce(env: Env): Promise<void> {
     console.warn(`[scraper] WARNING: expected 165 constituencies, got ${constituencies.length}`);
   }
 
+  const [hadPrevConstituencies, hadPrevSnapshot, hadPrevParties] = await Promise.all([
+    rotateLastGood(env.RESULTS_BUCKET, "constituencies.json", LAST_GOOD_CONSTITUENCIES_KEY),
+    rotateLastGood(env.RESULTS_BUCKET, "snapshot.json", LAST_GOOD_SNAPSHOT_KEY),
+    rotateLastGood(env.RESULTS_BUCKET, "parties.json", LAST_GOOD_PARTIES_KEY),
+  ]);
+
   // Upload all frontend-consumed artifacts.
   const t2 = Date.now();
   await Promise.all([
@@ -1293,6 +1324,22 @@ async function runOnce(env: Env): Promise<void> {
   console.log(
     `[scraper] uploaded 3 files to R2 in ${uploadMs} ms (total ${Date.now() - t0} ms)`,
   );
+
+  // Seed fallback keys on first successful run when no previous artifacts existed.
+  const seedFallbackWrites: Promise<void>[] = [];
+  if (!hadPrevConstituencies) {
+    seedFallbackWrites.push(putJson(env.RESULTS_BUCKET, LAST_GOOD_CONSTITUENCIES_KEY, constituencies));
+  }
+  if (!hadPrevSnapshot) {
+    seedFallbackWrites.push(putJson(env.RESULTS_BUCKET, LAST_GOOD_SNAPSHOT_KEY, snapshot));
+  }
+  if (!hadPrevParties) {
+    seedFallbackWrites.push(putJson(env.RESULTS_BUCKET, LAST_GOOD_PARTIES_KEY, parties));
+  }
+  if (seedFallbackWrites.length > 0) {
+    await Promise.all(seedFallbackWrites);
+    console.log(`[scraper] seeded ${seedFallbackWrites.length} last-good backup file(s)`);
+  }
 
   if (!prSnapshot) {
     console.warn("[scraper] optional PR snapshot unavailable — PR seats remain 0 until PR feed is available");
