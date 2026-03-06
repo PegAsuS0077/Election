@@ -290,12 +290,18 @@ export const useElectionStore = create<ElectionStore>((set) => ({
 
   toggleFeaturedFavorite: (code) =>
     set((state) => {
-      if (!state.favorites.has(code)) return {};
-      const next = new Set(state.featuredFavorites);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      localStorage.setItem(FEATURED_FAVORITES_KEY, JSON.stringify([...next]));
-      return { featuredFavorites: next };
+      const nextFavorites = new Set(state.favorites);
+      const nextFeatured = new Set(state.featuredFavorites);
+
+      // Safeguard: featuring a constituency should also keep it in favorites.
+      if (!nextFavorites.has(code)) nextFavorites.add(code);
+
+      if (nextFeatured.has(code)) nextFeatured.delete(code);
+      else nextFeatured.add(code);
+
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...nextFavorites]));
+      localStorage.setItem(FEATURED_FAVORITES_KEY, JSON.stringify([...nextFeatured]));
+      return { favorites: nextFavorites, featuredFavorites: nextFeatured };
     }),
 
   toggleFavCandidate: (id) =>

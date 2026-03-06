@@ -10,6 +10,7 @@ import Layout from "../components/Layout";
 import { PROVINCE_COLORS } from "../components/Layout";
 import PartySymbol from "../components/PartySymbol";
 import FavoriteButton from "../components/FavoriteButton";
+import FeaturedToggleButton from "../components/FeaturedToggleButton";
 
 const STATUS_TABS = ["all", "DECLARED", "COUNTING", "PENDING"] as const;
 type StatusTab = typeof STATUS_TABS[number];
@@ -68,6 +69,7 @@ function ConstituencyCard({
           {r.status === "COUNTING" && (
             <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse mt-1" />
           )}
+          <FeaturedToggleButton code={r.code} lang={lang} />
           <FavoriteButton code={r.code} name={r.name} lang={lang} />
         </div>
       </div>

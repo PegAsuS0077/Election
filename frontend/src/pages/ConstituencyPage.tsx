@@ -16,6 +16,7 @@ import type { Lang } from "../i18n";
 import type { Candidate } from "../types";
 import Layout from "../components/Layout";
 import FavoriteButton from "../components/FavoriteButton";
+import FeaturedToggleButton from "../components/FeaturedToggleButton";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -195,6 +196,7 @@ export default function ConstituencyPage() {
       </Link>
       <span className="text-white/20">·</span>
       <StatusChip status={r.status} />
+      <FeaturedToggleButton code={r.code} lang={lang} />
       <FavoriteButton code={r.code} name={r.name} lang={lang} />
     </div>
   );
