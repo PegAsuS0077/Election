@@ -20,14 +20,6 @@ function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
-function useNowTick(intervalMs = 30_000) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return nowMs;
-}
 function useCountdownTimer(targetDate: string) {
   const [remaining, setRemaining] = useState(() => Math.max(0, new Date(targetDate).getTime() - Date.now()));
   useEffect(() => {
@@ -41,7 +33,6 @@ function useCountdownTimer(targetDate: string) {
 
 export default function App() {
   const { isLoading, setIsLoading, lang } = useElectionStore();
-  const nowMs = useNowTick();
 
   // Give archive data load a short window before assuming empty
   useEffect(() => {
@@ -82,9 +73,6 @@ export default function App() {
     ? Math.max(...results.map((r) => Date.parse(r.lastUpdated)).filter((n) => Number.isFinite(n)))
     : 0;
   const lastUpdatedStr = latestUpdatedMs > 0 ? formatTime(new Date(latestUpdatedMs).toISOString()) : "—";
-  const STALE_AFTER_MS = 10 * 60 * 1000;
-  const isDataStale = RESULTS_MODE === "live" && latestUpdatedMs > 0 && (nowMs - latestUpdatedMs) > STALE_AFTER_MS;
-  const staleMinutes = latestUpdatedMs > 0 ? Math.floor((nowMs - latestUpdatedMs) / 60000) : 0;
   const declaredPct    = Math.round((declaredSeats / 165) * 100);
   const featuredSeats = FEATURED_CONSTITUENCIES.map((name) => {
     const result = results.find((r) => r.name.toLowerCase() === name.toLowerCase());
@@ -161,17 +149,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {isDataStale && (
-        <div className="bg-amber-500/95 dark:bg-amber-600/90">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 text-[12px] font-medium text-slate-900">
-            {lang === "np"
-              ? `डेटा अपडेट रोकिएको जस्तो देखिन्छ (अन्तिम अपडेट करिब ${staleMinutes} मिनेट अघि)।`
-              : `Live feed appears stale (last update about ${staleMinutes} minutes ago).`}
-          </div>
-        </div>
-      )}
-
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
