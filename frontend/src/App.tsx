@@ -14,6 +14,7 @@ import { PrVotesBarsSkeleton, SummaryCardsSkeleton, SeatShareBarsSkeleton } from
 import Layout from "./components/Layout";
 import InstallPrompt from "./components/InstallPrompt";
 
+const FEATURED_CONSTITUENCIES = ["Jhapa-5", "Sarlahi-4"] as const;
 
 function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
@@ -85,6 +86,10 @@ export default function App() {
   const isDataStale = RESULTS_MODE === "live" && latestUpdatedMs > 0 && (nowMs - latestUpdatedMs) > STALE_AFTER_MS;
   const staleMinutes = latestUpdatedMs > 0 ? Math.floor((nowMs - latestUpdatedMs) / 60000) : 0;
   const declaredPct    = Math.round((declaredSeats / 165) * 100);
+  const featuredSeats = FEATURED_CONSTITUENCIES.map((name) => {
+    const result = results.find((r) => r.name.toLowerCase() === name.toLowerCase());
+    return { name, result };
+  });
 
   const statsContent = (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -169,6 +174,34 @@ export default function App() {
 
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              ⭐ {t("featuredSection", lang)}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("featuredSectionDesc", lang)}</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {featuredSeats.map(({ name, result }) => (
+              <Link
+                key={name}
+                to={result ? `/constituency/${encodeURIComponent(result.code)}` : "/explore"}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:border-[#2563eb]/40 hover:bg-white transition-colors dark:border-slate-700 dark:bg-slate-900/70 dark:hover:bg-slate-900"
+              >
+                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  {lang === "np" ? result?.nameNp ?? name : result?.name ?? name}
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {result
+                    ? `${t("votesCast", lang)}: ${result.votesCast.toLocaleString("en-IN")}`
+                    : (lang === "np" ? "निर्वाचन क्षेत्र हेर्न क्लिक गर्नुहोस्" : "Click to open constituency")}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <HotSeats results={results} lang={lang} />
         </section>

@@ -115,6 +115,8 @@ export const UI: Record<string, { np: string; en: string }> = {
   stillCounting:      { np: "निर्वाचन क्षेत्र मतगणना गर्दैछ।", en: "constituencies still counting." },
   hotSeats:           { np: "तातो सिटहरू",                        en: "Hot Seats" },
   hotSeatsDesc:       { np: "नजिकको प्रतिस्पर्धाका निर्वाचन क्षेत्र", en: "Closely contested constituencies" },
+  featuredSection:    { np: "विशेष खण्ड",                         en: "Featured Section" },
+  featuredSectionDesc:{ np: "Jhapa-5 र Sarlahi-4 लाई हाइलाइट गरिएको छ", en: "Highlighted constituencies: Jhapa-5 and Sarlahi-4" },
   closelyContested:   { np: "🔥 नजिकको प्रतिस्पर्धा",           en: "🔥 Closely Contested" },
   statsConstituencies:{ np: "निर्वाचन क्षेत्र",                   en: "Constituencies" },
   statsProvinces:     { np: "प्रदेशहरू",                           en: "Provinces" },
