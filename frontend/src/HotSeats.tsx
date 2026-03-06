@@ -109,15 +109,15 @@ export default function HotSeats({
                 <button key={result.code} type="button" onClick={() => navigate(`/constituency/${encodeURIComponent(result.code)}`)}
                   className="w-full text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 active:scale-[0.99] cursor-pointer dark:border-slate-700 dark:bg-slate-900 dark:hover:border-[#3b82f6]/40"
                 >
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex-1 min-w-0">
+                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
                       <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm leading-tight truncate">{constName}</div>
                       <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${provCls}`}>{provLabel}</span>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusCls}`}>{statusLabel}</span>
                       </div>
                     </div>
-                    <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                    <span className="self-start rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300 whitespace-normal">
                       {isTight
                         ? t("closelyContested", lang)
                         : (lang === "np" ? "शीर्ष २ प्रतिस्पर्धा" : "Top-2 race")}
@@ -127,8 +127,10 @@ export default function HotSeats({
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2 min-w-0">
                       <PartySymbol partyId={top1.partyId} size="md" />
-                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{lang === "np" ? top1.nameNp : top1.name}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{(lang === "np" ? top1.partyName : getParty(top1.partyId).nameEn).split(" (")[0]}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{lang === "np" ? top1.nameNp : top1.name}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{(lang === "np" ? top1.partyName : getParty(top1.partyId).nameEn).split(" (")[0]}</div>
+                      </div>
                     </div>
                     <span className="tabular-nums text-sm font-bold text-slate-800 dark:text-slate-100 shrink-0">{numberFmt(top1.votes)}</span>
                   </div>
@@ -141,8 +143,10 @@ export default function HotSeats({
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2 min-w-0">
                       <PartySymbol partyId={top2.partyId} size="md" />
-                      <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{lang === "np" ? top2.nameNp : top2.name}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{(lang === "np" ? top2.partyName : getParty(top2.partyId).nameEn).split(" (")[0]}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm text-slate-600 dark:text-slate-300 truncate">{lang === "np" ? top2.nameNp : top2.name}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{(lang === "np" ? top2.partyName : getParty(top2.partyId).nameEn).split(" (")[0]}</div>
+                      </div>
                     </div>
                     <span className="tabular-nums text-sm text-slate-600 dark:text-slate-300 shrink-0">{numberFmt(top2.votes)}</span>
                   </div>

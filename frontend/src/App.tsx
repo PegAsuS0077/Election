@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useElectionStore } from "./store/electionStore";
-import { t } from "./i18n";
+import { provinceName, t } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
+import { PROVINCE_COLORS } from "./lib/constants";
 import { RESULTS_MODE } from "./types";
 
 import SummaryCards from "./SummaryCards";
@@ -13,6 +14,7 @@ import LatestUpdates from "./LatestUpdates";
 import { PrVotesBarsSkeleton, SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
 import Layout from "./components/Layout";
 import InstallPrompt from "./components/InstallPrompt";
+import PartySymbol from "./components/PartySymbol";
 
 const FEATURED_CONSTITUENCIES = ["Jhapa-5", "Sarlahi-4"] as const;
 
@@ -20,6 +22,7 @@ function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
+function numberFmt(n: number) { return n.toLocaleString("en-IN"); }
 function useCountdownTimer(targetDate: string) {
   const [remaining, setRemaining] = useState(() => Math.max(0, new Date(targetDate).getTime() - Date.now()));
   useEffect(() => {
@@ -76,7 +79,12 @@ export default function App() {
   const declaredPct    = Math.round((declaredSeats / 165) * 100);
   const featuredSeats = FEATURED_CONSTITUENCIES.map((name) => {
     const result = results.find((r) => r.name.toLowerCase() === name.toLowerCase());
-    return { name, result };
+    const sorted = result ? [...result.candidates].sort((a, b) => b.votes - a.votes) : [];
+    const top1 = sorted[0];
+    const top2 = sorted[1];
+    const topTwoTotal = top1 && top2 ? top1.votes + top2.votes : 0;
+    const top1Pct = top1 && top2 && topTwoTotal > 0 ? (top1.votes / topTwoTotal) * 100 : 50;
+    return { name, result, top1, top2, top1Pct };
   });
 
   const statsContent = (
@@ -151,7 +159,7 @@ export default function App() {
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
+        <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <div className="mb-4">
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               ⭐ {t("featuredSection", lang)}
@@ -159,27 +167,91 @@ export default function App() {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("featuredSectionDesc", lang)}</p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {featuredSeats.map(({ name, result }) => (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {featuredSeats.map(({ name, result, top1, top2, top1Pct }) => (
               <Link
                 key={name}
                 to={result ? `/constituency/${encodeURIComponent(result.code)}` : "/explore"}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:border-[#2563eb]/40 hover:bg-white transition-colors dark:border-slate-700 dark:bg-slate-900/70 dark:hover:bg-slate-900"
+                className="block w-full text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-[#3b82f6]/40"
               >
-                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                  {lang === "np" ? result?.nameNp ?? name : result?.name ?? name}
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100 truncate">
+                      {lang === "np" ? result?.nameNp ?? name : result?.name ?? name}
+                    </div>
+                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                      {result ? (
+                        <>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${PROVINCE_COLORS[result.province] ?? "bg-slate-100 text-slate-700"}`}>
+                            {provinceName(result.province, lang)}
+                          </span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            result.status === "DECLARED"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                              : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                          }`}>
+                            {result.status === "DECLARED"
+                              ? (lang === "np" ? "घोषित" : "Declared")
+                              : (lang === "np" ? "मतगणना" : "Counting")}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          {lang === "np" ? "डेटा पर्खिँदै" : "Waiting for data"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="self-start rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                    {lang === "np" ? "विशेष" : "Featured"}
+                  </span>
                 </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {result
-                    ? `${t("votesCast", lang)}: ${result.votesCast.toLocaleString("en-IN")}`
-                    : (lang === "np" ? "निर्वाचन क्षेत्र हेर्न क्लिक गर्नुहोस्" : "Click to open constituency")}
-                </div>
+
+                {result && top1 && top2 ? (
+                  <>
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <PartySymbol partyId={top1.partyId} size="md" />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{lang === "np" ? top1.nameNp : top1.name}</div>
+                          <div className="truncate text-[10px] text-slate-400 dark:text-slate-500">{(lang === "np" ? top1.partyName : getParty(top1.partyId).nameEn).split(" (")[0]}</div>
+                        </div>
+                      </div>
+                      <span className="shrink-0 tabular-nums text-sm font-bold text-slate-800 dark:text-slate-100">{numberFmt(top1.votes)}</span>
+                    </div>
+
+                    <div className="relative mb-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                      <div className="absolute left-0 top-0 h-full rounded-l-full" style={{ width: `${top1Pct}%`, backgroundColor: getParty(top1.partyId).hex }} />
+                      <div className="absolute right-0 top-0 h-full rounded-r-full" style={{ left: `${top1Pct}%`, backgroundColor: getParty(top2.partyId).hex }} />
+                    </div>
+
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <PartySymbol partyId={top2.partyId} size="md" />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm text-slate-600 dark:text-slate-300">{lang === "np" ? top2.nameNp : top2.name}</div>
+                          <div className="truncate text-[10px] text-slate-400 dark:text-slate-500">{(lang === "np" ? top2.partyName : getParty(top2.partyId).nameEn).split(" (")[0]}</div>
+                        </div>
+                      </div>
+                      <span className="shrink-0 tabular-nums text-sm text-slate-600 dark:text-slate-300">{numberFmt(top2.votes)}</span>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400 flex items-center justify-between">
+                      <span>{t("votesCast", lang)}</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200">{numberFmt(result.votesCast)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {lang === "np" ? "निर्वाचन क्षेत्र हेर्न क्लिक गर्नुहोस्" : "Click to open constituency"}
+                  </div>
+                )}
               </Link>
             ))}
           </div>
         </section>
 
-        <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
+        <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <HotSeats results={results} lang={lang} />
         </section>
 
