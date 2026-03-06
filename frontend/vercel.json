@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/ads.txt",
+      "destination": "https://srv.adstxtmanager.com/YOUR_EZOIC_ACCOUNT_ID/nepalvotes.live",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/upstream/:path*",
