@@ -1181,7 +1181,7 @@ async function runOnce(env: Env): Promise<void> {
     }
   }
   if (!sessionId || !csrfToken) {
-    console.error("[scraper] session bootstrap failed after all URLs — R2 NOT updated");
+    console.warn("[scraper] session bootstrap failed after all URLs — R2 NOT updated");
     return;
   }
 
@@ -1211,12 +1211,12 @@ async function runOnce(env: Env): Promise<void> {
       RETRYABLE_STATUS,
     );
   } catch (err) {
-    console.error("[scraper] secure json network error after retries — R2 NOT updated:", err);
+    console.warn("[scraper] secure json network error after retries — R2 NOT updated:", err);
     return;
   }
 
   if (!res.ok) {
-    console.error(`[scraper] secure json returned ${res.status} ${res.statusText} — R2 NOT updated`);
+    console.warn(`[scraper] secure json returned ${res.status} ${res.statusText} — R2 NOT updated`);
     return;
   }
 
@@ -1224,7 +1224,7 @@ async function runOnce(env: Env): Promise<void> {
   try {
     text = await res.text();
   } catch (err) {
-    console.error("[scraper] failed to read upstream response body — R2 NOT updated:", err);
+    console.warn("[scraper] failed to read upstream response body — R2 NOT updated:", err);
     return;
   }
 
@@ -1235,12 +1235,12 @@ async function runOnce(env: Env): Promise<void> {
   try {
     records = JSON.parse(text) as UpstreamRecord[];
   } catch (err) {
-    console.error("[scraper] upstream JSON parse failed — R2 NOT updated:", err);
+    console.warn("[scraper] upstream JSON parse failed — R2 NOT updated:", err);
     return;
   }
 
   if (!Array.isArray(records) || records.length < 100) {
-    console.error(`[scraper] upstream data looks wrong (${records?.length ?? 0} records) — R2 NOT updated`);
+    console.warn(`[scraper] upstream data looks wrong (${records?.length ?? 0} records) — R2 NOT updated`);
     return;
   }
 
@@ -1250,7 +1250,7 @@ async function runOnce(env: Env): Promise<void> {
       toInt((r as Partial<UpstreamRecord>).TotalVoteReceived) !== null,
   );
   if (!recordsValid) {
-    console.error("[scraper] upstream schema check failed (CandidateID/TotalVoteReceived missing) — R2 NOT updated");
+    console.warn("[scraper] upstream schema check failed (CandidateID/TotalVoteReceived missing) — R2 NOT updated");
     return;
   }
 

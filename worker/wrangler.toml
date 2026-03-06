@@ -16,7 +16,7 @@ binding = "RESULTS_BUCKET"
 bucket_name = "nepal-election-gh-actions"
 
 [triggers]
-crons = ["* * * * *"]
+crons = ["*/2 * * * *"]
 
 [vars]
 # Base URL of the deployed frontend — used to fetch /neu_candidates.json
