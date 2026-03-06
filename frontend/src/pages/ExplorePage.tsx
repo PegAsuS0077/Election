@@ -215,8 +215,12 @@ export default function ExplorePage() {
         {/* ── Search ── */}
         <input
           type="search"
+          enterKeyHint="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
           placeholder={lang === "np" ? "निर्वाचन क्षेत्र / उम्मेद्वार खोज्नुहोस्…" : "Search constituency or candidate…"}
           className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] px-4 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-[#2563eb] transition"
         />

@@ -189,9 +189,14 @@ export default function ConstituencyTable({
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <input
+              type="search"
+              enterKeyHint="search"
               aria-label={i18n("searchAria", lang)}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
               placeholder={i18n("search", lang)}
               className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
                          focus:ring-2 focus:ring-slate-200 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-slate-700"

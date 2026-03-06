@@ -194,8 +194,12 @@ export default function PartiesPage() {
             </svg>
             <input
               type="search"
+              enterKeyHint="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
               placeholder={lang === "np" ? "दल खोज्नुस्…" : "Search parties…"}
               className="w-full h-9 pl-9 pr-4 rounded-xl border border-slate-200 dark:border-slate-700/80
                          bg-white dark:bg-slate-800/60 text-sm text-slate-900 dark:text-slate-100

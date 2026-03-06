@@ -10,12 +10,15 @@ type Snapshot = {
   leaderNameNp: string;
   leaderPartyId: string;
   leaderPartyName: string;
+  runnerUpId: number | null;
+  runnerUpName: string;
+  runnerUpNameNp: string;
   marginVotes: number;
 };
 
 type UpdateItem = {
   id: string;
-  kind: "declared" | "lead_change";
+  kind: "declared" | "lead_change" | "top2_change";
   at: string;
   constCode: string;
   constName: string;
@@ -24,8 +27,12 @@ type UpdateItem = {
   leaderNameNp: string;
   leaderPartyId: string;
   leaderPartyName: string;
+  runnerUpName: string;
+  runnerUpNameNp: string;
   previousLeaderName?: string;
   previousLeaderNameNp?: string;
+  previousRunnerUpName?: string;
+  previousRunnerUpNameNp?: string;
   marginVotes: number;
 };
 
@@ -42,12 +49,33 @@ function constituencySnapshot(r: ConstituencyResult): Snapshot {
     leaderNameNp: leader?.nameNp ?? "",
     leaderPartyId: leader?.partyId ?? "",
     leaderPartyName: leader?.partyName ?? "",
+    runnerUpId: runnerUp?.candidateId ?? null,
+    runnerUpName: runnerUp?.name ?? "",
+    runnerUpNameNp: runnerUp?.nameNp ?? "",
     marginVotes: leader && runnerUp ? Math.max(0, leader.votes - runnerUp.votes) : 0,
   };
 }
 
 function formatClock(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function declaredItem(r: ConstituencyResult, curr: Snapshot): UpdateItem {
+  return {
+    id: `declared-${r.code}-${r.lastUpdated}-${curr.leaderId ?? "none"}`,
+    kind: "declared",
+    at: r.lastUpdated,
+    constCode: r.code,
+    constName: r.name,
+    constNameNp: r.nameNp,
+    leaderName: curr.leaderName,
+    leaderNameNp: curr.leaderNameNp,
+    leaderPartyId: curr.leaderPartyId,
+    leaderPartyName: curr.leaderPartyName,
+    runnerUpName: curr.runnerUpName,
+    runnerUpNameNp: curr.runnerUpNameNp,
+    marginVotes: curr.marginVotes,
+  };
 }
 
 export default function LatestUpdates({ results, lang }: { results: ConstituencyResult[]; lang: Lang }) {
@@ -62,6 +90,18 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
     }
 
     if (prevRef.current.size === 0) {
+      // Prefill on first data load so this section is not empty until next poll.
+      // Show currently declared constituencies ordered by latest update time.
+      const seeded = results
+        .filter((r) => r.status === "DECLARED")
+        .map((r) => {
+          const curr = nextMap.get(r.code);
+          return curr ? declaredItem(r, curr) : null;
+        })
+        .filter((x): x is UpdateItem => x !== null)
+        .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+        .slice(0, MAX_ITEMS);
+      if (seeded.length > 0) setItems(seeded);
       prevRef.current = nextMap;
       return;
     }
@@ -73,30 +113,19 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
       if (!prev || !curr) continue;
 
       if (prev.status !== "DECLARED" && curr.status === "DECLARED") {
-        fresh.push({
-          id: `declared-${r.code}-${r.lastUpdated}`,
-          kind: "declared",
-          at: r.lastUpdated,
-          constCode: r.code,
-          constName: r.name,
-          constNameNp: r.nameNp,
-          leaderName: curr.leaderName,
-          leaderNameNp: curr.leaderNameNp,
-          leaderPartyId: curr.leaderPartyId,
-          leaderPartyName: curr.leaderPartyName,
-          marginVotes: curr.marginVotes,
-        });
+        fresh.push(declaredItem(r, curr));
         continue;
       }
 
       if (
-        curr.status !== "PENDING" &&
+        prev.status === "COUNTING" &&
+        curr.status === "COUNTING" &&
         prev.leaderId !== null &&
         curr.leaderId !== null &&
         prev.leaderId !== curr.leaderId
       ) {
         fresh.push({
-          id: `lead-${r.code}-${r.lastUpdated}`,
+          id: `lead-${r.code}-${r.lastUpdated}-${prev.leaderId}-${curr.leaderId}`,
           kind: "lead_change",
           at: r.lastUpdated,
           constCode: r.code,
@@ -106,8 +135,40 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
           leaderNameNp: curr.leaderNameNp,
           leaderPartyId: curr.leaderPartyId,
           leaderPartyName: curr.leaderPartyName,
+          runnerUpName: curr.runnerUpName,
+          runnerUpNameNp: curr.runnerUpNameNp,
           previousLeaderName: prev.leaderName,
           previousLeaderNameNp: prev.leaderNameNp,
+          marginVotes: curr.marginVotes,
+        });
+        continue;
+      }
+
+      if (
+        prev.status === "COUNTING" &&
+        curr.status === "COUNTING" &&
+        prev.leaderId !== null &&
+        curr.leaderId !== null &&
+        prev.leaderId === curr.leaderId &&
+        prev.runnerUpId !== null &&
+        curr.runnerUpId !== null &&
+        prev.runnerUpId !== curr.runnerUpId
+      ) {
+        fresh.push({
+          id: `top2-${r.code}-${r.lastUpdated}-${prev.runnerUpId}-${curr.runnerUpId}`,
+          kind: "top2_change",
+          at: r.lastUpdated,
+          constCode: r.code,
+          constName: r.name,
+          constNameNp: r.nameNp,
+          leaderName: curr.leaderName,
+          leaderNameNp: curr.leaderNameNp,
+          leaderPartyId: curr.leaderPartyId,
+          leaderPartyName: curr.leaderPartyName,
+          runnerUpName: curr.runnerUpName,
+          runnerUpNameNp: curr.runnerUpNameNp,
+          previousRunnerUpName: prev.runnerUpName,
+          previousRunnerUpNameNp: prev.runnerUpNameNp,
           marginVotes: curr.marginVotes,
         });
       }
@@ -135,7 +196,7 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
             {lang === "np" ? "ताजा अपडेट" : "Latest Updates"}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {lang === "np" ? "घोषित परिणाम र लिड परिवर्तन" : "Newly declared seats and lead changes"}
+            {lang === "np" ? "हालका घोषित परिणाम र शीर्ष-२ दौड परिवर्तन" : "Current declared seats and top-2 race changes"}
           </p>
         </div>
         <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
@@ -162,12 +223,16 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
                         "text-[10px] font-bold px-2 py-0.5 rounded-full " +
                         (u.kind === "declared"
                           ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300")
+                          : u.kind === "lead_change"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                            : "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300")
                       }
                     >
                       {u.kind === "declared"
                         ? (lang === "np" ? "घोषित" : "Declared")
-                        : (lang === "np" ? "लिड परिवर्तन" : "Lead Change")}
+                        : u.kind === "lead_change"
+                          ? (lang === "np" ? "लिड परिवर्तन" : "Lead Change")
+                          : (lang === "np" ? "शीर्ष-२ परिवर्तन" : "Top-2 Shift")}
                     </span>
                     <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
                       {formatClock(u.at)}
@@ -186,7 +251,7 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
                           {lang === "np" ? "विजेता घोषित" : "declared winner"}
                         </span>
                       </>
-                    ) : (
+                    ) : u.kind === "lead_change" ? (
                       <>
                         <span className="font-semibold">{lang === "np" ? u.constNameNp : u.constName}</span>
                         {" · "}
@@ -203,6 +268,26 @@ export default function LatestUpdates({ results, lang }: { results: Constituency
                             </span>
                             {" "}
                             <span className="font-medium">{lang === "np" ? u.previousLeaderNameNp : u.previousLeaderName}</span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold">{lang === "np" ? u.constNameNp : u.constName}</span>
+                        {" · "}
+                        <span className="font-medium">{lang === "np" ? u.runnerUpNameNp : u.runnerUpName}</span>
+                        {" "}
+                        <span className="text-slate-500 dark:text-slate-400">
+                          {lang === "np" ? "शीर्ष-२ मा आयो" : "entered top-2 race"}
+                        </span>
+                        {u.previousRunnerUpName && (
+                          <>
+                            {" "}
+                            <span className="text-slate-500 dark:text-slate-400">
+                              {lang === "np" ? "अघि:" : "replacing:"}
+                            </span>
+                            {" "}
+                            <span className="font-medium">{lang === "np" ? u.previousRunnerUpNameNp : u.previousRunnerUpName}</span>
                           </>
                         )}
                       </>
