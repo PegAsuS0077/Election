@@ -18,7 +18,7 @@ import Layout from "./components/Layout";
 import InstallPrompt from "./components/InstallPrompt";
 import PartySymbol from "./components/PartySymbol";
 
-const FEATURED_CONSTITUENCY_CODES = ["Jhapa-5", "Sarlahi-4"] as const;
+const FEATURED_CONSTITUENCY_CODES = ["Jhapa-5", "Sarlahi-4", "Sunsari-1"] as const;
 const TRENDING_CONSTITUENCY_CODES = [
   "Jhapa-5",
   "Kathmandu-1",
