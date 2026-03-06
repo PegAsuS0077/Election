@@ -322,6 +322,9 @@ const UPSTREAM_PR_HOR_URL =
 const UPSTREAM_HOR_MERGE_URL =
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
   "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json";
+const UPSTREAM_HOR_WINNER_URL =
+  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
+  "?file=JSONFiles/Election2082/Common/HOR-T5Winner.json";
 const HOR_TOP5_REFERER_URL = "https://result.election.gov.np/FPTPWLChartResult2082.aspx";
 
 const TOTAL_SEATS = 275;
@@ -516,9 +519,7 @@ function derivePartyId(rec: Partial<UpstreamRecord>): string {
 }
 
 function isWinner(rec: UpstreamRecord): boolean {
-  if (rec.E_STATUS === "W") return true;
-  if (toInt(rec.R) === 1 && toInt(rec.TotalVoteReceived) !== null && toInt(rec.TotalVoteReceived)! > 0) return true;
-  return false;
+  return rec.E_STATUS === "W";
 }
 
 function mapGender(g: string | undefined): "M" | "F" {
@@ -598,6 +599,55 @@ function mergeHigherVotesFromRows(
     upgraded,
     missingCandidateRows,
     usableRows: fresherVoteByCandidateId.size,
+  };
+}
+
+function mergeOfficialWinnersFromRows(
+  baseRecords: UpstreamRecord[],
+  winnerRows: HorLeaderRow[],
+): { winnerRows: number; matchedCandidates: number; missingCandidateRows: number; newlyMarked: number } {
+  const winnerCandidateIds = new Set<number>();
+  for (const row of winnerRows) {
+    const candidateId = toInt(row.CandidateID ?? row.CandidateId);
+    if (candidateId === null) continue;
+    winnerCandidateIds.add(candidateId);
+  }
+
+  if (winnerCandidateIds.size === 0) {
+    return {
+      winnerRows: 0,
+      matchedCandidates: 0,
+      missingCandidateRows: 0,
+      newlyMarked: 0,
+    };
+  }
+
+  let matchedCandidates = 0;
+  let newlyMarked = 0;
+  const seenBaseCandidateIds = new Set<number>();
+  for (const rec of baseRecords) {
+    const candidateId = toInt(rec.CandidateID);
+    if (candidateId === null) continue;
+    seenBaseCandidateIds.add(candidateId);
+    if (!winnerCandidateIds.has(candidateId)) continue;
+
+    matchedCandidates++;
+    if (rec.E_STATUS !== "W") {
+      rec.E_STATUS = "W";
+      newlyMarked++;
+    }
+  }
+
+  let missingCandidateRows = 0;
+  for (const candidateId of winnerCandidateIds) {
+    if (!seenBaseCandidateIds.has(candidateId)) missingCandidateRows++;
+  }
+
+  return {
+    winnerRows: winnerCandidateIds.size,
+    matchedCandidates,
+    missingCandidateRows,
+    newlyMarked,
   };
 }
 
@@ -1211,6 +1261,67 @@ async function fetchHorTop5Rows(
   return rows;
 }
 
+async function fetchHorWinnerRows(
+  csrfToken: string,
+  cookieHeader: string,
+): Promise<HorLeaderRow[] | null> {
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      "optional HOR winner json GET",
+      UPSTREAM_HOR_WINNER_URL,
+      {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "X-CSRF-Token": csrfToken,
+          "X-Requested-With": "XMLHttpRequest",
+          "Origin": "https://result.election.gov.np",
+          "Referer": HOR_TOP5_REFERER_URL,
+          "Cookie": cookieHeader,
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+        },
+        cf: { cacheTtl: 0 },
+      },
+      RETRYABLE_STATUS,
+      { maxAttempts: OPTIONAL_MAX_FETCH_ATTEMPTS, timeoutMs: OPTIONAL_REQUEST_TIMEOUT_MS },
+    );
+  } catch (err) {
+    console.warn(`[scraper] optional HOR winner fetch failed (${UPSTREAM_HOR_WINNER_URL}):`, err);
+    return null;
+  }
+  if (!res.ok) {
+    console.warn(`[scraper] optional HOR winner returned ${res.status} ${res.statusText} (${UPSTREAM_HOR_WINNER_URL})`);
+    return null;
+  }
+
+  let text: string;
+  try {
+    text = await res.text();
+  } catch (err) {
+    console.warn(`[scraper] optional HOR winner response body read failed (${UPSTREAM_HOR_WINNER_URL}):`, err);
+    return null;
+  }
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
+  let rows: HorLeaderRow[];
+  try {
+    rows = JSON.parse(text) as HorLeaderRow[];
+  } catch (err) {
+    console.warn(`[scraper] optional HOR winner JSON parse failed (${UPSTREAM_HOR_WINNER_URL}):`, err);
+    return null;
+  }
+  if (!Array.isArray(rows) || rows.length === 0) {
+    console.warn(`[scraper] optional HOR winner payload empty (${UPSTREAM_HOR_WINNER_URL})`);
+    return null;
+  }
+
+  console.log(`[scraper] optional HOR winner collected ${rows.length} rows`);
+  return rows;
+}
+
 // ── Scheduled handler ─────────────────────────────────────────────────────────
 
 async function runOnce(env: Env): Promise<void> {
@@ -1380,6 +1491,31 @@ async function runOnce(env: Env): Promise<void> {
     );
   } else {
     console.warn("[scraper] optional HOR leader feed unavailable — using primary candidate feed only");
+  }
+
+  const horWinnerRows = await fetchHorWinnerRows(csrfToken, cookieHeader);
+  if (horWinnerRows) {
+    const winnerVoteMergeStats = mergeHigherVotesFromRows(records, horWinnerRows);
+    const winnerMergeStats = mergeOfficialWinnersFromRows(records, horWinnerRows);
+    console.log(
+      "[scraper] optional HOR winner feed merged: " +
+      `${winnerMergeStats.newlyMarked} newly marked winners ` +
+      `(${winnerMergeStats.matchedCandidates}/${winnerMergeStats.winnerRows} matched)` +
+      (winnerMergeStats.missingCandidateRows > 0
+        ? ` (${winnerMergeStats.missingCandidateRows} candidate rows not present in primary feed)`
+        : ""),
+    );
+    if (winnerVoteMergeStats.usableRows > 0 && winnerVoteMergeStats.upgraded > 0) {
+      console.log(
+        "[scraper] optional HOR winner vote refresh merged: " +
+        `${winnerVoteMergeStats.upgraded} candidate vote updates from ${winnerVoteMergeStats.usableRows} usable rows` +
+        (winnerVoteMergeStats.missingCandidateRows > 0
+          ? ` (${winnerVoteMergeStats.missingCandidateRows} candidate rows not present in primary feed)`
+          : ""),
+      );
+    }
+  } else {
+    console.warn("[scraper] optional HOR winner feed unavailable — winner state relies on primary feed only");
   }
 
   const previousVotes = await loadPreviousCandidateVotes(env.RESULTS_BUCKET);
