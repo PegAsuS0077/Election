@@ -4,7 +4,7 @@ import { useElectionStore } from "./store/electionStore";
 import { provinceName, t } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
 import { PROVINCE_COLORS } from "./lib/constants";
-import { shouldTriggerSponsoredRedirect, SPONSORED_LINK_URL } from "./lib/sponsoredGate";
+import { shouldTriggerSponsoredRedirect, SPONSORED_LINK_URL, openSponsoredLinkInNewTab } from "./lib/sponsoredGate";
 import { RESULTS_MODE } from "./types";
 
 import SummaryCards from "./SummaryCards";
@@ -80,7 +80,7 @@ export default function App() {
       value: 1,
     });
 
-    window.location.assign(SPONSORED_LINK_URL);
+    openSponsoredLinkInNewTab(SPONSORED_LINK_URL);
   };
 
   // Give archive data load a short window before assuming empty

@@ -3,7 +3,7 @@ import type { ConstituencyResult } from "./types";
 import { t, provinceName } from "./i18n";
 import type { Lang } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
-import { shouldTriggerSponsoredRedirect, SPONSORED_LINK_URL } from "./lib/sponsoredGate";
+import { shouldTriggerSponsoredRedirect, SPONSORED_LINK_URL, openSponsoredLinkInNewTab } from "./lib/sponsoredGate";
 import PartySymbol from "./components/PartySymbol";
 
 const PROVINCE_COLORS: Record<string, string> = {
@@ -78,7 +78,7 @@ export default function HotSeats({
           event_label: "hot_seats_throttled_redirect",
           value: 1,
         });
-        window.location.assign(SPONSORED_LINK_URL);
+        openSponsoredLinkInNewTab(SPONSORED_LINK_URL);
         return;
       }
     }

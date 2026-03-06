@@ -55,3 +55,23 @@ export function shouldTriggerSponsoredRedirect(nowMs = Date.now()): boolean {
 
   return shouldRedirect;
 }
+
+export function openSponsoredLinkInNewTab(url = SPONSORED_LINK_URL): void {
+  if (typeof window === "undefined") return;
+
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (opened) {
+    opened.opener = null;
+    return;
+  }
+
+  // Fallback for popup blockers: trigger a direct anchor click.
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer nofollow sponsored";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
