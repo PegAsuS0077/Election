@@ -79,7 +79,12 @@ def derive_party_id(rec: dict[str, Any]) -> str:
 
 
 def is_winner(rec: dict[str, Any]) -> bool:
-    return rec.get("E_STATUS") == "W"
+    if rec.get("E_STATUS") == "W":
+        return True
+    # Fallback: treat rank-1 candidate with votes as winner when official flag is missing.
+    if rec.get("R") == 1 and rec.get("TotalVoteReceived", 0) > 0:
+        return True
+    return False
 
 
 def map_gender(g: str | None) -> str:

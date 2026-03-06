@@ -36,7 +36,9 @@ export default function SummaryCards({
 
   const countingLeads: Record<string, number> = {};
   for (const r of results) {
-    if (r.status !== "COUNTING" || r.candidates.length === 0) continue;
+    // Safeguard: if a winner is already marked in this constituency,
+    // do not count it as "leading" even if status is stale.
+    if (r.status !== "COUNTING" || r.candidates.length === 0 || r.candidates.some((c) => c.isWinner)) continue;
     const maxVotes = Math.max(...r.candidates.map((c) => c.votes));
     if (maxVotes <= 0) continue;
     const lead = r.candidates.find((c) => c.votes === maxVotes);
@@ -50,11 +52,11 @@ export default function SummaryCards({
 
   const totals = partyIds.map((partyId) => {
     const declared = seatTally[partyId]?.fptp ?? 0;
-    const counting = countingLeads[partyId] ?? 0;
-    const current  = declared + counting;
+    const leading  = countingLeads[partyId] ?? 0;
+    const current  = declared + leading;
     const base     = baselineTally[partyId];
     const baseTotal = base ? base.fptp : 0;
-    return { partyId, declared, counting, total: current, delta: declared - baseTotal };
+    return { partyId, declared, leading, total: current, delta: declared - baseTotal };
   });
 
   totals.sort((a, b) => (b.total - a.total) || (b.declared - a.declared));
@@ -82,7 +84,7 @@ export default function SummaryCards({
           <Card
             title={t("leadingParty", lang)}
             big={(lang === "np" ? leaderInfo.partyName : leaderInfo.nameEn).split(" (")[0]}
-            sub={`${leader.total} ${t("leading", lang)} · ${leader.declared} ${t("declared", lang)}`}
+            sub={`${leader.leading} ${t("leading", lang)} · ${leader.declared} ${t("declared", lang)}`}
             dotHex={leaderInfo.hex}
             symbol={leaderInfo.symbol}
             symbolUrl={leaderInfo.symbolUrl}
@@ -94,7 +96,7 @@ export default function SummaryCards({
           <Card
             title={t("runnerUp", lang)}
             big={(lang === "np" ? runnerUpInfo.partyName : runnerUpInfo.nameEn).split(" (")[0]}
-            sub={`${runnerUp.total} ${t("leading", lang)} · ${runnerUp.declared} ${t("declared", lang)}`}
+            sub={`${runnerUp.leading} ${t("leading", lang)} · ${runnerUp.declared} ${t("declared", lang)}`}
             dotHex={runnerUpInfo.hex}
             symbol={runnerUpInfo.symbol}
             symbolUrl={runnerUpInfo.symbolUrl}
@@ -118,7 +120,7 @@ export default function SummaryCards({
                 <CompactCard
                   rank={idx + 3}
                   name={partyName}
-                  seats={party.total}
+                  seats={party.leading}
                   seatsLabel={t("leading", lang)}
                   dotHex={partyInfo.hex}
                   symbol={partyInfo.symbol}
