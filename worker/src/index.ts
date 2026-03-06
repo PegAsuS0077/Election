@@ -617,6 +617,57 @@ function applyPrSeatsFromSnapshot(
   }
 }
 
+async function loadPreviousCandidateVotes(bucket: R2Bucket): Promise<Map<number, number>> {
+  const byCandidateId = new Map<number, number>();
+  try {
+    const obj = await bucket.get("constituencies.json");
+    if (!obj) return byCandidateId;
+
+    const text = await obj.text();
+    const parsed = JSON.parse(text) as unknown;
+    if (!Array.isArray(parsed)) return byCandidateId;
+
+    for (const constituency of parsed) {
+      if (!constituency || typeof constituency !== "object") continue;
+      const candidates = (constituency as { candidates?: unknown }).candidates;
+      if (!Array.isArray(candidates)) continue;
+      for (const cand of candidates) {
+        if (!cand || typeof cand !== "object") continue;
+        const candidateId = toInt((cand as { candidateId?: unknown }).candidateId);
+        const votes = toInt((cand as { votes?: unknown }).votes);
+        if (candidateId === null || votes === null || votes < 0) continue;
+
+        const prev = byCandidateId.get(candidateId);
+        if (prev === undefined || votes > prev) byCandidateId.set(candidateId, votes);
+      }
+    }
+  } catch (err) {
+    console.warn("[scraper] unable to load previous constituencies.json for rollback guard:", err);
+  }
+  return byCandidateId;
+}
+
+function applyMonotonicVoteFloor(
+  records: UpstreamRecord[],
+  previousVotesByCandidateId: Map<number, number>,
+): { pinned: number } {
+  let pinned = 0;
+  for (const rec of records) {
+    const candidateId = toInt(rec.CandidateID);
+    if (candidateId === null) continue;
+
+    const prevVotes = previousVotesByCandidateId.get(candidateId);
+    if (prevVotes === undefined) continue;
+
+    const currentVotes = toInt(rec.TotalVoteReceived) ?? 0;
+    if (prevVotes > currentVotes) {
+      rec.TotalVoteReceived = prevVotes;
+      pinned++;
+    }
+  }
+  return { pinned };
+}
+
 // ── Core transform ────────────────────────────────────────────────────────────
 
 function transform(
@@ -1207,6 +1258,16 @@ async function runOnce(env: Env): Promise<void> {
     );
   } else {
     console.warn("[scraper] optional HOR Top5 unavailable — using primary candidate feed only");
+  }
+
+  const previousVotes = await loadPreviousCandidateVotes(env.RESULTS_BUCKET);
+  if (previousVotes.size > 0) {
+    const floorStats = applyMonotonicVoteFloor(records, previousVotes);
+    if (floorStats.pinned > 0) {
+      console.log(
+        `[scraper] rollback guard pinned ${floorStats.pinned} candidate vote totals from previous R2 snapshot`,
+      );
+    }
   }
 
   const fetchMs = Date.now() - t0;
