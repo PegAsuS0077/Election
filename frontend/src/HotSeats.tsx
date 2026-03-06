@@ -3,6 +3,7 @@ import type { ConstituencyResult } from "./types";
 import { t, provinceName } from "./i18n";
 import type { Lang } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
+import { SPONSORED_GATE_KEY, SPONSORED_LINK_URL } from "./lib/sponsoredGate";
 import PartySymbol from "./components/PartySymbol";
 
 const PROVINCE_COLORS: Record<string, string> = {
@@ -67,6 +68,24 @@ export default function HotSeats({
 }) {
   const hotSeats = computeHotSeats(results);
   const navigate = useNavigate();
+  const handleHotSeatClick = (code: string) => {
+    if (typeof window !== "undefined") {
+      const isUnlocked = window.localStorage.getItem(SPONSORED_GATE_KEY) === "1";
+      if (!isUnlocked) {
+        window.localStorage.setItem(SPONSORED_GATE_KEY, "1");
+        const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
+        gtag?.("event", "hot_seat_gate_redirect", {
+          event_category: "advertising",
+          event_label: "hot_seats_first_click",
+          value: 1,
+        });
+        window.location.assign(SPONSORED_LINK_URL);
+        return;
+      }
+    }
+
+    navigate(`/constituency/${encodeURIComponent(code)}`);
+  };
 
   return (
     <>
@@ -106,7 +125,7 @@ export default function HotSeats({
                 : (lang === "np" ? "मतगणना" : "Counting");
 
               return (
-                <button key={result.code} type="button" onClick={() => navigate(`/constituency/${encodeURIComponent(result.code)}`)}
+                <button key={result.code} type="button" onClick={() => handleHotSeatClick(result.code)}
                   className="w-full text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 active:scale-[0.99] cursor-pointer dark:border-slate-700 dark:bg-slate-900 dark:hover:border-[#3b82f6]/40"
                 >
                   <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

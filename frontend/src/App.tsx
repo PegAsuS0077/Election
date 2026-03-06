@@ -4,6 +4,7 @@ import { useElectionStore } from "./store/electionStore";
 import { provinceName, t } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
 import { PROVINCE_COLORS } from "./lib/constants";
+import { SPONSORED_GATE_KEY, SPONSORED_LINK_URL } from "./lib/sponsoredGate";
 import { RESULTS_MODE } from "./types";
 
 import SummaryCards from "./SummaryCards";
@@ -17,7 +18,7 @@ import InstallPrompt from "./components/InstallPrompt";
 import PartySymbol from "./components/PartySymbol";
 
 const FEATURED_CONSTITUENCIES = ["Jhapa-5", "Sarlahi-4"] as const;
-const SPONSORED_LINK_URL = "https://omg10.com/4/10688870";
+const SPONSORED_VARIANT_KEY = "sponsored_link_variant_v1";
 
 function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
@@ -37,13 +38,50 @@ function useCountdownTimer(targetDate: string) {
 
 export default function App() {
   const { isLoading, setIsLoading, lang } = useElectionStore();
+  const [sponsoredVariant] = useState<"live_updates" | "fast_digest">(() => {
+    if (typeof window === "undefined") return "live_updates";
+    const saved = window.localStorage.getItem(SPONSORED_VARIANT_KEY);
+    if (saved === "live_updates" || saved === "fast_digest") return saved;
+    const next = Math.random() < 0.5 ? "live_updates" : "fast_digest";
+    window.localStorage.setItem(SPONSORED_VARIANT_KEY, next);
+    return next;
+  });
+
+  useEffect(() => {
+    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
+    gtag?.("event", "sponsored_impression", {
+      event_category: "advertising",
+      event_label: "home_mid_card",
+      sponsored_variant: sponsoredVariant,
+      non_interaction: true,
+    });
+  }, [sponsoredVariant]);
+
   const handleSponsoredClick = () => {
     const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
     gtag?.("event", "sponsored_click", {
       event_category: "advertising",
       event_label: "home_mid_card",
+      sponsored_variant: sponsoredVariant,
       value: 1,
     });
+  };
+  const handleFeaturedSeatClick = (e: React.MouseEvent<HTMLAnchorElement>, hasResult: boolean) => {
+    if (!hasResult || typeof window === "undefined") return;
+    const isUnlocked = window.localStorage.getItem(SPONSORED_GATE_KEY) === "1";
+    if (isUnlocked) return;
+
+    e.preventDefault();
+    window.localStorage.setItem(SPONSORED_GATE_KEY, "1");
+
+    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
+    gtag?.("event", "featured_gate_redirect", {
+      event_category: "advertising",
+      event_label: "featured_section_first_click",
+      value: 1,
+    });
+
+    window.location.assign(SPONSORED_LINK_URL);
   };
 
   // Give archive data load a short window before assuming empty
@@ -145,6 +183,20 @@ export default function App() {
     </div>
   );
 
+  const sponsoredTitle = lang === "np"
+    ? (sponsoredVariant === "live_updates" ? "त्वरित चुनाव अपडेट लिंक" : "छोटो चुनाव सारांश लिंक")
+    : (sponsoredVariant === "live_updates" ? "Quick Election Update Link" : "Short Election Digest Link");
+  const sponsoredDesc = lang === "np"
+    ? (sponsoredVariant === "live_updates"
+      ? "यो प्रायोजित लिंकले नयाँ ट्याबमा बाह्य अपडेट पृष्ठ खोल्छ।"
+      : "यो प्रायोजित लिंकले नयाँ ट्याबमा छोटो बाह्य सामग्री खोल्छ।")
+    : (sponsoredVariant === "live_updates"
+      ? "This sponsored link opens an external updates page in a new tab."
+      : "This sponsored link opens a short external digest page in a new tab.");
+  const sponsoredCta = lang === "np"
+    ? (sponsoredVariant === "live_updates" ? "अपडेट हेर्नुहोस्" : "डाइजेस्ट खोल्नुहोस्")
+    : (sponsoredVariant === "live_updates" ? "Open Updates" : "Open Digest");
+
   return (
     <Layout
       title="Nepal House of Representatives"
@@ -181,6 +233,7 @@ export default function App() {
               <Link
                 key={name}
                 to={result ? `/constituency/${encodeURIComponent(result.code)}` : "/explore"}
+                onClick={(e) => handleFeaturedSeatClick(e, Boolean(result))}
                 className="block w-full text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-[#3b82f6]/40"
               >
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -277,12 +330,10 @@ export default function App() {
                 {lang === "np" ? "प्रायोजित" : "Sponsored"}
               </span>
               <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {lang === "np" ? "साझेदार लिंक" : "Partner Link"}
+                {sponsoredTitle}
               </h3>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                {lang === "np"
-                  ? "तलको लिंकले प्रायोजित पृष्ठ नयाँ ट्याबमा खोल्छ।"
-                  : "The button below opens a sponsored page in a new tab."}
+                {sponsoredDesc}
               </p>
             </div>
             <a
@@ -292,7 +343,7 @@ export default function App() {
               onClick={handleSponsoredClick}
               className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-600 active:scale-[0.99]"
             >
-              {lang === "np" ? "साझेदार पृष्ठ खोल्नुहोस्" : "Open Partner Page"}
+              {sponsoredCta} ↗
             </a>
           </div>
         </section>
