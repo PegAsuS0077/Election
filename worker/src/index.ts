@@ -322,8 +322,11 @@ const HOR_TOP5_REFERER_URL = "https://result.election.gov.np/FPTPWLChartResult20
 const TOTAL_SEATS = 275;
 const PR_SEATS = 110;
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504, 520, 521, 522, 523, 524]);
-const MAX_FETCH_ATTEMPTS = 3; // 1 initial + 2 retries
-const RETRY_BACKOFF_MS = 500;
+const MAX_FETCH_ATTEMPTS = 2; // 1 initial + 1 retry
+const RETRY_BACKOFF_MS = 300;
+const REQUEST_TIMEOUT_MS = 15_000;
+const OPTIONAL_MAX_FETCH_ATTEMPTS = 1;
+const OPTIONAL_REQUEST_TIMEOUT_MS = 8_000;
 const LAST_GOOD_CONSTITUENCIES_KEY = "constituencies.last_good.json";
 const LAST_GOOD_SNAPSHOT_KEY = "snapshot.last_good.json";
 const LAST_GOOD_PARTIES_KEY = "parties.last_good.json";
@@ -893,25 +896,36 @@ async function fetchWithRetry(
   url: string,
   init: RequestInit,
   retryOnStatus: Set<number> = new Set(),
+  options: { maxAttempts?: number; timeoutMs?: number } = {},
 ): Promise<Response> {
-  for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt++) {
+  const maxAttempts = Math.max(1, options.maxAttempts ?? MAX_FETCH_ATTEMPTS);
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const res = await fetch(url, init);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort("request timeout"), timeoutMs);
+      let res: Response;
+      try {
+        res = await fetch(url, { ...init, signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
       if (res.ok) return res;
-      if (retryOnStatus.has(res.status) && attempt < MAX_FETCH_ATTEMPTS) {
+      if (retryOnStatus.has(res.status) && attempt < maxAttempts) {
         const waitMs = RETRY_BACKOFF_MS * (2 ** (attempt - 1));
         console.warn(
-          `[scraper] ${label} returned ${res.status} (attempt ${attempt}/${MAX_FETCH_ATTEMPTS}), retrying in ${waitMs}ms`,
+          `[scraper] ${label} returned ${res.status} (attempt ${attempt}/${maxAttempts}), retrying in ${waitMs}ms`,
         );
         await sleep(waitMs);
         continue;
       }
       return res;
     } catch (err) {
-      if (attempt === MAX_FETCH_ATTEMPTS) throw err;
+      if (attempt === maxAttempts) throw err;
       const waitMs = RETRY_BACKOFF_MS * (2 ** (attempt - 1));
       console.warn(
-        `[scraper] ${label} network error (attempt ${attempt}/${MAX_FETCH_ATTEMPTS}), retrying in ${waitMs}ms`,
+        `[scraper] ${label} network error (attempt ${attempt}/${maxAttempts}, timeout ${timeoutMs}ms), retrying in ${waitMs}ms`,
         err,
       );
       await sleep(waitMs);
@@ -1009,6 +1023,7 @@ async function fetchPrHorPartySnapshot(
         cf: { cacheTtl: 0 },
       },
       RETRYABLE_STATUS,
+      { maxAttempts: OPTIONAL_MAX_FETCH_ATTEMPTS, timeoutMs: OPTIONAL_REQUEST_TIMEOUT_MS },
     );
   } catch (err) {
     console.warn("[scraper] optional PR HOR fetch failed:", err);
@@ -1103,6 +1118,7 @@ async function fetchHorTop5Rows(
         cf: { cacheTtl: 0 },
       },
       RETRYABLE_STATUS,
+      { maxAttempts: OPTIONAL_MAX_FETCH_ATTEMPTS, timeoutMs: OPTIONAL_REQUEST_TIMEOUT_MS },
     );
   } catch (err) {
     console.warn(`[scraper] optional HOR leader fetch failed (${UPSTREAM_HOR_MERGE_URL}):`, err);
