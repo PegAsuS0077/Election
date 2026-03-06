@@ -18,12 +18,18 @@ from database import (
     save_constituency_results,
     save_snapshot,
 )
-from scraper import scrape_results
+from scraper import UPSTREAM_URL, scrape_results
 
 load_dotenv()
 
 DB_PATH = os.getenv("DB_PATH", "election.db")
-SCRAPE_URL = os.getenv("SCRAPE_URL", "https://result.election.gov.np")
+SCRAPE_URL = os.getenv("SCRAPE_URL", UPSTREAM_URL).strip() or UPSTREAM_URL
+if SCRAPE_URL.rstrip("/") == "https://result.election.gov.np":
+    print(
+        "[scraper] WARNING: SCRAPE_URL is set to site root; "
+        f"switching to upstream JSON endpoint: {UPSTREAM_URL}"
+    )
+    SCRAPE_URL = UPSTREAM_URL
 SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL_SECONDS", "30"))
 
 # Comma-separated list of allowed CORS origins; defaults to localhost dev server.
