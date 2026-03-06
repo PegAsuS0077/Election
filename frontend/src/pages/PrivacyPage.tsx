@@ -8,7 +8,7 @@ export default function PrivacyPage() {
   useEffect(() => {
     document.title = "Privacy Policy – NepalVotes";
     const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute("content", "Privacy Policy for NepalVotes (nepalvotes.live). Learn about data collection, cookies, Google Analytics, Google AdSense advertising, and your privacy rights.");
+    if (meta) meta.setAttribute("content", "Privacy Policy for NepalVotes (nepalvotes.live). Learn about data collection, cookies, Google Analytics, advertising partners (Google AdSense and Monetag), and your privacy rights.");
     const canonical = document.querySelector('link[rel="canonical"]');
     if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/privacy-policy");
     return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live"); };
@@ -83,29 +83,29 @@ export default function PrivacyPage() {
             </h2>
             <p className="mb-3">
               {lang === "np"
-                ? "यो साइटले दुईवटा उद्देश्यका लागि cookies प्रयोग गर्दछ: (१) Google Analytics — साइट विश्लेषण र ट्राफिक बुझ्न, र (२) Google AdSense — प्रासंगिक विज्ञापन प्रदर्शन गर्न।"
-                : "This site uses cookies for two purposes: (1) Google Analytics — to understand site traffic and usage, and (2) Google AdSense — to display relevant advertisements."}
+                ? "यो साइटले cookies विश्लेषण र विज्ञापन उद्देश्यका लागि प्रयोग गर्दछ। यसमा Google Analytics जस्ता विश्लेषण सेवा र Google AdSense/Monetag जस्ता विज्ञापन साझेदारहरू समावेश हुन सक्छन्।"
+                : "This site uses cookies for analytics and advertising purposes. This may include analytics providers like Google Analytics and ad partners such as Google AdSense and Monetag."}
             </p>
             <p>
               {lang === "np"
-                ? "हामी आफैंले कुनै cookies सेट गर्दैनौं। सबै cookies तेस्रो-पक्ष सेवाहरू (Google) द्वारा सेट गरिन्छन् र ती सेवाहरूको गोपनीयता नीति अन्तर्गत छन्। तपाईं आफ्नो ब्राउजरको सेटिङमा गएर cookies अस्वीकार गर्न वा हटाउन सक्नुहुन्छ, तर यसले साइटको केही सुविधाहरूलाई असर गर्न सक्छ।"
-                : "We do not set any first-party cookies ourselves. All cookies are set by third-party services (Google) and are governed by their respective privacy policies. You can refuse or delete cookies through your browser settings, though this may affect some site functionality."}
+                ? "cookies तेस्रो-पक्ष सेवाहरू द्वारा सेट हुन सक्छन् र ती सेवाहरूको गोपनीयता नीतिअन्तर्गत पर्छन्। तपाईं आफ्नो ब्राउजर सेटिङबाट cookies अस्वीकार वा हटाउन सक्नुहुन्छ, तर यसले साइटका केही सुविधामा असर गर्न सक्छ।"
+                : "Cookies may be set by third-party services and are governed by those providers' privacy policies. You can refuse or delete cookies through your browser settings, though this may affect some site functionality."}
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
-              {lang === "np" ? "Google AdSense विज्ञापन" : "Advertising (Google AdSense)"}
+              {lang === "np" ? "विज्ञापन साझेदारहरू" : "Advertising Partners"}
             </h2>
             <p className="mb-3">
               {lang === "np"
-                ? "यो साइट Google AdSense मार्फत विज्ञापन प्रदर्शन गर्दछ। Google AdSense एउटा तेस्रो-पक्ष विज्ञापन सेवा हो जुन Google LLC द्वारा सञ्चालित छ। विज्ञापन सेवा प्रदान गर्न Google ले यो साइटमा cookies र web beacons प्रयोग गर्न सक्छ।"
-                : "This site displays advertisements through Google AdSense, a third-party advertising service operated by Google LLC. To serve ads, Google may use cookies and web beacons on this site."}
+                ? "यो साइटले Google AdSense वा Monetag जस्ता तेस्रो-पक्ष विज्ञापन साझेदारमार्फत विज्ञापन देखाउन सक्छ। यी सेवाहरूले विज्ञापन देखाउन, मापन गर्न, र सुधार गर्न cookies, web beacons, वा device identifiers प्रयोग गर्न सक्छन्।"
+                : "This site may display ads via third-party partners such as Google AdSense and Monetag. These providers may use cookies, web beacons, or device identifiers to deliver, measure, and improve ads."}
             </p>
             <p className="mb-3">
               {lang === "np"
-                ? "Google AdSense ले तपाईंको यस साइट र अन्य साइटहरूमा भ्रमणको आधारमा प्रासंगिक विज्ञापनहरू देखाउन cookies प्रयोग गर्दछ। यी cookies मा व्यक्तिगत पहिचान योग्य जानकारी समावेश छैन।"
-                : "Google AdSense uses cookies to serve ads based on your prior visits to this site and other sites. These cookies do not contain personally identifiable information."}
+                ? "विज्ञापन साझेदारहरूले तपाईंको यस साइट वा अन्य साइटहरूमा भएका भ्रमणको आधारमा विज्ञापन वैयक्तिकरण गर्न सक्छन्। NepalVotes ले यस्ता साझेदारहरूलाई तपाईंको नाम, इमेल, वा फोन नम्बर जस्ता व्यक्तिगत जानकारी बेच्दैन।"
+                : "Ad partners may personalize ads based on your visits to this and other websites. NepalVotes does not sell your directly identifying personal information (such as your name, email, or phone number) to ad partners."}
             </p>
             <p>
               {lang === "np"
@@ -144,6 +144,27 @@ export default function PrivacyPage() {
                 </a>
               )}
               {lang !== "np" && "."}
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
+              {lang === "np" ? "Ad-Safe प्रतिबद्धता" : "Ad-Safe Commitment"}
+            </h2>
+            <p className="mb-3">
+              {lang === "np"
+                ? "हामी सुरक्षित र नीतिअनुकूल विज्ञापन अनुभवका लागि प्रतिबद्ध छौं। हामी क्लिक गर्न बाध्य पार्ने, भ्रामक प्लेसमेन्ट गर्ने, वा सामग्री छोप्ने intrusive विज्ञापन अभ्यासलाई समर्थन गर्दैनौं।"
+                : "We are committed to a safe, policy-compliant ad experience. We do not support forced clicks, deceptive ad placement, or intrusive ad behavior that blocks content."}
+            </p>
+            <p className="mb-3">
+              {lang === "np"
+                ? "हामीले जानाजानी malware, auto-download, auto-redirect, वा भ्रामक pop-up/pop-under विज्ञापन समावेश गर्दैनौं। कुनै विज्ञापन असुरक्षित वा आपत्तिजनक देखिएमा हामीलाई रिपोर्ट गर्न सक्नुहुन्छ।"
+                : "We do not intentionally run malware, auto-download, auto-redirect, or deceptive pop-up/pop-under ad behavior. If you see an unsafe or inappropriate ad, you can report it to us."}
+            </p>
+            <p>
+              {lang === "np"
+                ? "रिपोर्ट गर्दा सम्भव भए पेज URL, समय, र स्क्रिनसट पठाउनुहोस् ताकि हामी छिटो जाँच गर्न सकौं।"
+                : "When reporting, please include the page URL, time, and a screenshot if possible so we can investigate quickly."}
             </p>
           </section>
 

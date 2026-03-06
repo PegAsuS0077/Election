@@ -17,6 +17,7 @@ import InstallPrompt from "./components/InstallPrompt";
 import PartySymbol from "./components/PartySymbol";
 
 const FEATURED_CONSTITUENCIES = ["Jhapa-5", "Sarlahi-4"] as const;
+const SPONSORED_LINK_URL = "https://omg10.com/4/10688870";
 
 function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
@@ -36,6 +37,14 @@ function useCountdownTimer(targetDate: string) {
 
 export default function App() {
   const { isLoading, setIsLoading, lang } = useElectionStore();
+  const handleSponsoredClick = () => {
+    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
+    gtag?.("event", "sponsored_click", {
+      event_category: "advertising",
+      event_label: "home_mid_card",
+      value: 1,
+    });
+  };
 
   // Give archive data load a short window before assuming empty
   useEffect(() => {
@@ -260,6 +269,33 @@ export default function App() {
         {isLoading ? <PrVotesBarsSkeleton /> : <PrVotesBars lang={lang} />}
 
         <LatestUpdates results={results} lang={lang} />
+
+        <section className="rounded-2xl border border-amber-200/80 bg-amber-50/70 p-4 sm:p-5 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                {lang === "np" ? "प्रायोजित" : "Sponsored"}
+              </span>
+              <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {lang === "np" ? "साझेदार लिंक" : "Partner Link"}
+              </h3>
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                {lang === "np"
+                  ? "तलको लिंकले प्रायोजित पृष्ठ नयाँ ट्याबमा खोल्छ।"
+                  : "The button below opens a sponsored page in a new tab."}
+              </p>
+            </div>
+            <a
+              href={SPONSORED_LINK_URL}
+              target="_blank"
+              rel="noopener noreferrer nofollow sponsored"
+              onClick={handleSponsoredClick}
+              className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-600 active:scale-[0.99]"
+            >
+              {lang === "np" ? "साझेदार पृष्ठ खोल्नुहोस्" : "Open Partner Page"}
+            </a>
+          </div>
+        </section>
 
         {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
 
