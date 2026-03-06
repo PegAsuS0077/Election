@@ -1,7 +1,32 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <script>(function(s){s.dataset.zone='10689099',s.src='https://gizokraijaw.net/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <script>
+      (function () {
+        var KEY = "mn_vignette_10689099_last_load";
+        var COOLDOWN_MS = 10 * 60 * 1000;
+        var now = Date.now();
+        var last = 0;
+
+        try {
+          last = Number(window.localStorage.getItem(KEY) || 0);
+        } catch (_) {}
+
+        if (now - last < COOLDOWN_MS) return;
+
+        try {
+          window.localStorage.setItem(KEY, String(now));
+        } catch (_) {}
+
+        var parent = [document.documentElement, document.body].filter(Boolean).pop();
+        if (!parent) return;
+
+        var s = document.createElement("script");
+        s.dataset.zone = "10689099";
+        s.src = "https://gizokraijaw.net/vignette.min.js";
+        parent.appendChild(s);
+      })();
+    </script>
     <script src="https://5gvci.com/act/files/tag.min.js?z=10689121" data-cfasync="false" async></script>
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3808542280160607"
