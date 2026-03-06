@@ -3,7 +3,7 @@ scraper.py — Fetch and parse election results from result.election.gov.np.
 
 Discovery (2026-03-05): The site now requires a browser session (ASP.NET cookie
 + CSRF token) to access the JSON data via SecureJson.ashx handler.
-Primary endpoint: POST /Handlers/SecureJson.ashx?file=JSONFiles/ElectionResultCentral2082.txt
+Primary endpoint: GET /Handlers/SecureJson.ashx?file=JSONFiles/ElectionResultCentral2082.txt
   - Requires: ASP.NET_SessionId cookie + CsrfToken cookie + X-CSRF-Token header
   - Returns a UTF-8 (BOM-prefixed) JSON array of 3,406 candidate records.
   - No pagination — always returns full dataset.
@@ -14,6 +14,7 @@ Two-step fetch: GET the page first to establish session cookies, then GET data.
 
 import json
 import os
+import asyncio
 import httpx
 from datetime import datetime, timezone
 from typing import Any
@@ -42,22 +43,19 @@ _NEU: dict[int, dict] = _load_neu_lookup()
 SESSION_PAGE_URL = (
     "https://result.election.gov.np/ElectionResultCentral2082.aspx"
 )
+SESSION_BOOTSTRAP_URLS = (
+    "https://result.election.gov.np/ElectionResultCentral2082.aspx",
+    "https://result.election.gov.np/",
+)
 # Step 2: GET data via secure handler using session cookies
 UPSTREAM_URL = (
     "https://result.election.gov.np/Handlers/SecureJson.ashx"
     "?file=JSONFiles/ElectionResultCentral2082.txt"
 )
-UPSTREAM_HOR_TOP5_URLS = (
+DIRECT_UPSTREAM_URL = "https://result.election.gov.np/JSONFiles/ElectionResultCentral2082.txt"
+UPSTREAM_HOR_MERGE_URL = (
     "https://result.election.gov.np/Handlers/SecureJson.ashx"
-    "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json",
-    "https://result.election.gov.np/Handlers/SecureJson.ashx"
-    "?file=JSONFiles/Election2082/Common/HOR-T5Winner.json",
-    "https://result.election.gov.np/Handlers/SecureJson.ashx"
-    "?file=JSONFiles/Election2082/Common/HOR-T6Leader.json",
-    "https://result.election.gov.np/Handlers/SecureJson.ashx"
-    "?file=JSONFiles/Election2082/Common/HOR-T6Winner.json",
-    "https://result.election.gov.np/Handlers/SecureJson.ashx"
-    "?file=JSONFiles/Election2082/Common/HoRPartyTop5.txt",
+    "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json"
 )
 HOR_TOP5_REFERER_URL = "https://result.election.gov.np/FPTPWLChartResult2082.aspx"
 _BASE_HEADERS = {
@@ -68,6 +66,9 @@ _BASE_HEADERS = {
     ),
     "Accept": "application/json, text/javascript, */*; q=0.01",
 }
+RETRYABLE_STATUS = {429, 500, 502, 503, 504, 520, 521, 522, 523, 524}
+MAX_FETCH_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 0.5
 # Keep old name for backwards compat in tests
 HEADERS = _BASE_HEADERS
 
@@ -331,6 +332,76 @@ def _merge_higher_votes(
     }
 
 
+def _decode_json_bytes(raw: bytes, label: str) -> Any:
+    if raw.startswith(b"\xef\xbb\xbf"):   # strip UTF-8 BOM
+        raw = raw[3:]
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"{label} returned invalid JSON") from exc
+
+
+async def _get_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    headers: dict[str, str],
+    label: str,
+) -> httpx.Response:
+    last_error: Exception | None = None
+    for attempt in range(1, MAX_FETCH_ATTEMPTS + 1):
+        try:
+            resp = await client.get(url, headers=headers)
+        except Exception as exc:
+            last_error = exc
+            if attempt < MAX_FETCH_ATTEMPTS:
+                await asyncio.sleep(RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)))
+                continue
+            raise RuntimeError(f"{label} failed after retries") from exc
+
+        if resp.status_code in RETRYABLE_STATUS and attempt < MAX_FETCH_ATTEMPTS:
+            await asyncio.sleep(RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)))
+            continue
+
+        try:
+            resp.raise_for_status()
+        except Exception as exc:
+            raise RuntimeError(
+                f"{label} returned HTTP {resp.status_code}: {resp.reason_phrase}"
+            ) from exc
+        return resp
+
+    if last_error:
+        raise RuntimeError(f"{label} failed after retries") from last_error
+    raise RuntimeError(f"{label} failed after retries")
+
+
+async def _establish_session(client: httpx.AsyncClient) -> tuple[str, str]:
+    last_error: Exception | None = None
+    for bootstrap_url in SESSION_BOOTSTRAP_URLS:
+        try:
+            await _get_with_retry(
+                client,
+                bootstrap_url,
+                headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                },
+                label=f"session bootstrap via {bootstrap_url}",
+            )
+        except Exception as exc:
+            last_error = exc
+            continue
+
+        session_id = client.cookies.get("ASP.NET_SessionId", "")
+        csrf = client.cookies.get("CsrfToken", "")
+        if session_id and csrf:
+            return csrf, bootstrap_url
+
+    if last_error is not None:
+        raise RuntimeError("failed to establish upstream session") from last_error
+    raise RuntimeError("failed to establish upstream session: cookies missing")
+
+
 def parse_candidates_json(raw_candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Transform the raw upstream candidate records into ConstituencyResult[] shape
@@ -482,59 +553,77 @@ async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
         follow_redirects=True,
         headers=_BASE_HEADERS,
     ) as client:
-        # Step 1 — establish session
-        await client.get(SESSION_PAGE_URL)
+        used_secure = False
+        csrf = ""
 
-        # Step 2 — fetch data using session cookies
-        csrf = client.cookies.get("CsrfToken", "")
-        resp = await client.get(
-            url,
-            headers={
-                "X-CSRF-Token": csrf,
-                "X-Requested-With": "XMLHttpRequest",
-                "Referer": SESSION_PAGE_URL,
-            },
-        )
-        resp.raise_for_status()
-        raw = resp.content
-        if raw.startswith(b"\xef\xbb\xbf"):   # strip UTF-8 BOM
-            raw = raw[3:]
-        candidates = json.loads(raw.decode("utf-8"))
+        try:
+            # Step 1 — establish session
+            csrf, bootstrap_url = await _establish_session(client)
+            # Step 2 — fetch data using session cookies
+            resp = await _get_with_retry(
+                client,
+                url,
+                headers={
+                    "X-CSRF-Token": csrf,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": bootstrap_url,
+                },
+                label="secure json GET",
+            )
+            payload = _decode_json_bytes(resp.content, "secure json GET")
+            if not isinstance(payload, list):
+                raise RuntimeError("secure json GET returned non-list payload")
+            candidates = payload
+            used_secure = True
+        except Exception as secure_exc:
+            # Keep this fallback for resilience when the secure handler is flaky.
+            # Avoid swallowing errors for custom URLs.
+            if url != UPSTREAM_URL:
+                raise
+            print(f"[scraper] secure handler failed, trying direct JSON fallback: {secure_exc}")
+            fallback_resp = await _get_with_retry(
+                client,
+                DIRECT_UPSTREAM_URL,
+                headers={
+                    "Referer": SESSION_PAGE_URL,
+                },
+                label="direct json GET",
+            )
+            fallback_payload = _decode_json_bytes(fallback_resp.content, "direct json GET")
+            if not isinstance(fallback_payload, list):
+                raise RuntimeError("direct json GET returned non-list payload")
+            candidates = fallback_payload
 
         # Optional fast streams from the FPTP win/lead chart.
         # Rule: match candidate by ID and keep whichever vote total is higher.
         merged_updates = 0
         merged_rows = 0
         merged_missing = 0
-        for top5_url in UPSTREAM_HOR_TOP5_URLS:
+        if used_secure and csrf:
             try:
-                top5_resp = await client.get(
-                    top5_url,
+                top5_resp = await _get_with_retry(
+                    client,
+                    UPSTREAM_HOR_MERGE_URL,
                     headers={
                         "X-CSRF-Token": csrf,
                         "X-Requested-With": "XMLHttpRequest",
                         "Referer": HOR_TOP5_REFERER_URL,
                     },
+                    label="optional HOR leader feed",
                 )
-                if not top5_resp.is_success:
-                    continue
-                top5_raw = top5_resp.content
-                if top5_raw.startswith(b"\xef\xbb\xbf"):
-                    top5_raw = top5_raw[3:]
-                top5_rows = json.loads(top5_raw.decode("utf-8"))
-                if not isinstance(top5_rows, list) or not top5_rows:
-                    continue
-                stats = _merge_higher_votes(candidates, top5_rows)
-                merged_updates += stats["upgraded"]
-                merged_rows += stats["usable_rows"]
-                merged_missing += stats["missing_candidates"]
+                top5_rows = _decode_json_bytes(top5_resp.content, "optional HOR leader feed")
+                if isinstance(top5_rows, list) and top5_rows:
+                    stats = _merge_higher_votes(candidates, top5_rows)
+                    merged_updates += stats["upgraded"]
+                    merged_rows += stats["usable_rows"]
+                    merged_missing += stats["missing_candidates"]
             except Exception:
-                continue
+                pass
 
         if merged_rows > 0:
             extra = f", {merged_missing} rows missing in primary feed" if merged_missing > 0 else ""
             print(
-                "[scraper] optional HOR fast feeds merged: "
+                "[scraper] optional HOR leader feed merged: "
                 f"{merged_updates} candidate vote updates from "
                 f"{merged_rows} usable rows{extra}"
             )

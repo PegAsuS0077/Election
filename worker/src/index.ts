@@ -314,18 +314,9 @@ const UPSTREAM_URL =
 const UPSTREAM_PR_HOR_URL =
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
   "?file=JSONFiles/Election2082/Common/PRHoRPartyTop5.txt";
-const UPSTREAM_HOR_TOP5_URLS = [
+const UPSTREAM_HOR_MERGE_URL =
   "https://result.election.gov.np/Handlers/SecureJson.ashx" +
-  "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json",
-  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
-  "?file=JSONFiles/Election2082/Common/HOR-T5Winner.json",
-  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
-  "?file=JSONFiles/Election2082/Common/HOR-T6Leader.json",
-  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
-  "?file=JSONFiles/Election2082/Common/HOR-T6Winner.json",
-  "https://result.election.gov.np/Handlers/SecureJson.ashx" +
-  "?file=JSONFiles/Election2082/Common/HoRPartyTop5.txt",
-];
+  "?file=JSONFiles/Election2082/Common/HOR-T5Leader.json";
 const HOR_TOP5_REFERER_URL = "https://result.election.gov.np/FPTPWLChartResult2082.aspx";
 
 const TOTAL_SEATS = 275;
@@ -1066,68 +1057,60 @@ async function fetchHorTop5Rows(
   csrfToken: string,
   cookieHeader: string,
 ): Promise<Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }> | null> {
-  const mergedRows: Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }> = [];
-  let successfulSources = 0;
-
-  for (const sourceUrl of UPSTREAM_HOR_TOP5_URLS) {
-    let res: Response;
-    try {
-      res = await fetchWithRetry(
-        "optional HOR Top5 json GET",
-        sourceUrl,
-        {
-          method: "GET",
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "*/*",
-            "X-CSRF-Token": csrfToken,
-            "X-Requested-With": "XMLHttpRequest",
-            "Origin": "https://result.election.gov.np",
-            "Referer": HOR_TOP5_REFERER_URL,
-            "Cookie": cookieHeader,
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
-          },
-          cf: { cacheTtl: 0 },
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      "optional HOR leader json GET",
+      UPSTREAM_HOR_MERGE_URL,
+      {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "X-CSRF-Token": csrfToken,
+          "X-Requested-With": "XMLHttpRequest",
+          "Origin": "https://result.election.gov.np",
+          "Referer": HOR_TOP5_REFERER_URL,
+          "Cookie": cookieHeader,
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
         },
-        RETRYABLE_STATUS,
-      );
-    } catch (err) {
-      console.warn(`[scraper] optional HOR Top5 fetch failed (${sourceUrl}):`, err);
-      continue;
-    }
-    if (!res.ok) {
-      console.warn(`[scraper] optional HOR Top5 returned ${res.status} ${res.statusText} (${sourceUrl})`);
-      continue;
-    }
-
-    let text: string;
-    try {
-      text = await res.text();
-    } catch (err) {
-      console.warn(`[scraper] optional HOR Top5 response body read failed (${sourceUrl}):`, err);
-      continue;
-    }
-    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-
-    let rows: Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>;
-    try {
-      rows = JSON.parse(text) as Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>;
-    } catch (err) {
-      console.warn(`[scraper] optional HOR Top5 JSON parse failed (${sourceUrl}):`, err);
-      continue;
-    }
-    if (!Array.isArray(rows) || rows.length === 0) {
-      console.warn(`[scraper] optional HOR Top5 payload empty (${sourceUrl})`);
-      continue;
-    }
-    successfulSources++;
-    mergedRows.push(...rows);
+        cf: { cacheTtl: 0 },
+      },
+      RETRYABLE_STATUS,
+    );
+  } catch (err) {
+    console.warn(`[scraper] optional HOR leader fetch failed (${UPSTREAM_HOR_MERGE_URL}):`, err);
+    return null;
+  }
+  if (!res.ok) {
+    console.warn(`[scraper] optional HOR leader returned ${res.status} ${res.statusText} (${UPSTREAM_HOR_MERGE_URL})`);
+    return null;
   }
 
-  if (mergedRows.length === 0) return null;
-  console.log(`[scraper] optional HOR Top5 collected ${mergedRows.length} rows from ${successfulSources} sources`);
-  return mergedRows;
+  let text: string;
+  try {
+    text = await res.text();
+  } catch (err) {
+    console.warn(`[scraper] optional HOR leader response body read failed (${UPSTREAM_HOR_MERGE_URL}):`, err);
+    return null;
+  }
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
+  let rows: Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>;
+  try {
+    rows = JSON.parse(text) as Array<Partial<UpstreamRecord> & { CandidateId?: number | string; TotalVote?: number | string }>;
+  } catch (err) {
+    console.warn(`[scraper] optional HOR leader JSON parse failed (${UPSTREAM_HOR_MERGE_URL}):`, err);
+    return null;
+  }
+  if (!Array.isArray(rows) || rows.length === 0) {
+    console.warn(`[scraper] optional HOR leader payload empty (${UPSTREAM_HOR_MERGE_URL})`);
+    return null;
+  }
+
+  console.log(`[scraper] optional HOR leader collected ${rows.length} rows`);
+  return rows;
 }
 
 // ── Scheduled handler ─────────────────────────────────────────────────────────
