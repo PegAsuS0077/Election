@@ -8,6 +8,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      filename: 'pwa-sw.js',
       registerType: 'autoUpdate',
       manifest: false, // we use our own /public/manifest.webmanifest
       injectRegister: null, // we register manually in main.tsx
@@ -23,6 +24,8 @@ export default defineConfig({
           /\/robots\.txt$/,
           /\/sitemap\.xml$/,
           /\/manifest\.webmanifest$/,
+          /\/pwa-sw\.js$/,
+          /\/sw\.js$/,
         ],
         runtimeCaching: [
           {

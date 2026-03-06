@@ -3,7 +3,7 @@ import type { ConstituencyResult } from "./types";
 import { t, provinceName } from "./i18n";
 import type { Lang } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
-import { SPONSORED_GATE_KEY, SPONSORED_LINK_URL } from "./lib/sponsoredGate";
+import { shouldTriggerSponsoredRedirect, SPONSORED_LINK_URL } from "./lib/sponsoredGate";
 import PartySymbol from "./components/PartySymbol";
 
 const PROVINCE_COLORS: Record<string, string> = {
@@ -70,13 +70,12 @@ export default function HotSeats({
   const navigate = useNavigate();
   const handleHotSeatClick = (code: string) => {
     if (typeof window !== "undefined") {
-      const isUnlocked = window.localStorage.getItem(SPONSORED_GATE_KEY) === "1";
-      if (!isUnlocked) {
-        window.localStorage.setItem(SPONSORED_GATE_KEY, "1");
+      const shouldRedirect = shouldTriggerSponsoredRedirect();
+      if (shouldRedirect) {
         const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
         gtag?.("event", "hot_seat_gate_redirect", {
           event_category: "advertising",
-          event_label: "hot_seats_first_click",
+          event_label: "hot_seats_throttled_redirect",
           value: 1,
         });
         window.location.assign(SPONSORED_LINK_URL);

@@ -73,6 +73,23 @@ RETRY_BACKOFF_SECONDS = 0.5
 HEADERS = _BASE_HEADERS
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    val = raw.strip().lower()
+    if val in {"1", "true", "yes", "on"}:
+        return True
+    if val in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+SCRAPER_VERIFY_SSL = _env_bool("SCRAPER_VERIFY_SSL", True)
+if not SCRAPER_VERIFY_SSL:
+    print("[scraper] WARNING: SSL verification is disabled (SCRAPER_VERIFY_SSL=false)")
+
+
 # ── Party name → frontend PartyKey mapping ───────────────────────────────────
 # Exact Nepali strings from the upstream JSON field "PoliticalPartyName".
 # Unknown parties → their own Nepali name (no "OTH" collapse).
@@ -552,6 +569,7 @@ async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
         timeout=30.0,
         follow_redirects=True,
         headers=_BASE_HEADERS,
+        verify=SCRAPER_VERIFY_SSL,
     ) as client:
         used_secure = False
         csrf = ""

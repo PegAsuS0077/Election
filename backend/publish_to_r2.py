@@ -65,6 +65,21 @@ STATE_TO_PROVINCE: dict[int, str] = {
 INDEPENDENT_NP = "स्वतन्त्र"
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    val = raw.strip().lower()
+    if val in {"1", "true", "yes", "on"}:
+        return True
+    if val in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+SCRAPER_VERIFY_SSL = _env_bool("SCRAPER_VERIFY_SSL", True)
+
+
 # ── Helpers (mirror parseUpstreamData.ts) ─────────────────────────────────────
 
 def district_en(np_name: str, state_id: int) -> str:
@@ -232,7 +247,7 @@ def build_parties(constituencies: list[dict[str, Any]]) -> list[dict[str, Any]]:
 # ── Fetch ─────────────────────────────────────────────────────────────────────
 
 async def fetch_raw(url: str) -> list[dict[str, Any]]:
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, verify=SCRAPER_VERIFY_SSL) as client:
         resp = await client.get(url, headers=HEADERS)
         resp.raise_for_status()
         raw = resp.content
@@ -271,6 +286,8 @@ def upload_json(client, bucket: str, filename: str, data: object) -> None:
 
 def main() -> int:
     print(f"[{datetime.now(timezone.utc).isoformat()}] publish_to_r2 starting")
+    if not SCRAPER_VERIFY_SSL:
+        print("  WARNING: SSL verification is disabled (SCRAPER_VERIFY_SSL=false)")
 
     # 1. Fetch
     print(f"  fetching {UPSTREAM_URL} …")

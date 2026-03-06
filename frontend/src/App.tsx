@@ -4,7 +4,7 @@ import { useElectionStore } from "./store/electionStore";
 import { provinceName, t } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
 import { PROVINCE_COLORS } from "./lib/constants";
-import { SPONSORED_GATE_KEY, SPONSORED_LINK_URL } from "./lib/sponsoredGate";
+import { shouldTriggerSponsoredRedirect, SPONSORED_LINK_URL } from "./lib/sponsoredGate";
 import { RESULTS_MODE } from "./types";
 
 import SummaryCards from "./SummaryCards";
@@ -68,16 +68,15 @@ export default function App() {
   };
   const handleFeaturedSeatClick = (e: React.MouseEvent<HTMLAnchorElement>, hasResult: boolean) => {
     if (!hasResult || typeof window === "undefined") return;
-    const isUnlocked = window.localStorage.getItem(SPONSORED_GATE_KEY) === "1";
-    if (isUnlocked) return;
+    const shouldRedirect = shouldTriggerSponsoredRedirect();
+    if (!shouldRedirect) return;
 
     e.preventDefault();
-    window.localStorage.setItem(SPONSORED_GATE_KEY, "1");
 
     const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
     gtag?.("event", "featured_gate_redirect", {
       event_category: "advertising",
-      event_label: "featured_section_first_click",
+      event_label: "featured_section_throttled_redirect",
       value: 1,
     });
 
