@@ -115,6 +115,7 @@ export const UI: Record<string, { np: string; en: string }> = {
   stillCounting:      { np: "निर्वाचन क्षेत्र मतगणना गर्दैछ।", en: "constituencies still counting." },
   hotSeats:           { np: "तातो सिटहरू",                        en: "Hot Seats" },
   hotSeatsDesc:       { np: "नजिकको प्रतिस्पर्धाका निर्वाचन क्षेत्र", en: "Closely contested constituencies" },
+  trendingConstituencies: { np: "ट्रेन्डिङ निर्वाचन क्षेत्र",       en: "Trending Constituencies" },
   featuredSection:    { np: "विशेष खण्ड",                         en: "Featured Section" },
   featuredSectionDesc:{ np: "मनपर्ने सूचीबाट निर्वाचन क्षेत्र यहाँ विशेष रूपमा राख्न सक्नुहुन्छ। Featured सूची Favorites भन्दा छुट्टै हुन्छ।", en: "You can pin constituencies from Favorites here. Featured is separate from your Favorites list." },
   featuredSectionDescCustom: { np: "तपाईंले {n} निर्वाचन क्षेत्रलाई Featured मा राख्नुभएको छ। चाहिँदा यहीँबाट हटाउन सक्नुहुन्छ।", en: "You have {n} constituencies in Featured. You can remove them directly from this section." },

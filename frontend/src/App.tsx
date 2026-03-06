@@ -18,11 +18,26 @@ import InstallPrompt from "./components/InstallPrompt";
 import PartySymbol from "./components/PartySymbol";
 
 const FEATURED_CONSTITUENCY_CODES = ["Jhapa-5", "Sarlahi-4"] as const;
+const TRENDING_CONSTITUENCY_CODES = [
+  "Jhapa-5",
+  "Kathmandu-1",
+  "Kathmandu-3",
+  "Sarlahi-4",
+  "Bhaktapur-2",
+  "Sunsari-1",
+  "Kathmandu-5",
+  "Chitwan-3",
+  "Chitwan-2",
+  "Kathmandu-9",
+] as const;
 const SPONSORED_VARIANT_KEY = "sponsored_link_variant_v1";
 
 function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+function formatConstituencyLabel(name: string) {
+  return name.replace(/-(\d+)$/, " - $1");
 }
 function numberFmt(n: number) { return n.toLocaleString("en-IN"); }
 function useCountdownTimer(targetDate: string) {
@@ -140,6 +155,15 @@ export default function App() {
     const isUserFeatured = featuredFavorites.has(code);
     return { code, result, top1, top2, top1Pct, isUserFeatured };
   });
+  const trendingSeats = TRENDING_CONSTITUENCY_CODES.map((code) => {
+    const result = results.find(
+      (r) => r.code === code || r.name.toLowerCase() === code.toLowerCase(),
+    );
+    const label = lang === "np"
+      ? result?.nameNp ?? formatConstituencyLabel(code)
+      : result?.name ?? formatConstituencyLabel(code);
+    return { code, result, label };
+  });
   const featuredDesc = featuredFavorites.size > 0
     ? t("featuredSectionDescCustom", lang).replace("{n}", String(featuredFavorites.size))
     : t("featuredSectionDesc", lang);
@@ -230,6 +254,25 @@ export default function App() {
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        <section className="overflow-x-auto border-y border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-[#0c1525]">
+          <div className="flex min-w-max items-center text-sm">
+            <span className="shrink-0 font-semibold text-slate-900 dark:text-slate-100">
+              {t("trendingConstituencies", lang)}
+            </span>
+            {trendingSeats.map(({ code, result, label }) => (
+              <div key={code} className="flex items-center">
+                <span className="mx-3 text-slate-300 dark:text-slate-700">|</span>
+                <Link
+                  to={`/constituency/${encodeURIComponent(result?.code ?? code)}`}
+                  className="whitespace-nowrap text-slate-700 transition-colors hover:text-[#2563eb] dark:text-slate-300 dark:hover:text-[#3b82f6]"
+                >
+                  {label}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <div className="mb-4">
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
