@@ -469,8 +469,13 @@ export default function ConstituencyPage() {
           <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
             {lang === "np" ? "मतदाता संलग्नता" : "Voter Turnout"}
           </h2>
+          <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+            {lang === "np"
+              ? "टर्नआउट = खसेका मत / कुल दर्ता मतदाता"
+              : "Turnout = votes cast / total registered voters"}
+          </div>
           <div className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-200 mb-2">
-            <span>{lang === "np" ? "खसेका मत" : "Votes cast"}</span>
+            <span>{lang === "np" ? "खसेका मत / दर्ता मतदाता" : "Votes cast / Registered voters"}</span>
             <span className="font-semibold tabular-nums">
               {r.totalVoters
                 ? `${fmt(r.votesCast)} / ${fmt(r.totalVoters)}`
@@ -486,7 +491,9 @@ export default function ConstituencyPage() {
                 />
               </div>
               <div className="mt-1.5 text-xs text-slate-500">
-                {`${((r.votesCast / r.totalVoters) * 100).toFixed(1)}% turnout`}
+                {lang === "np"
+                  ? `${((r.votesCast / r.totalVoters) * 100).toFixed(1)}% टर्नआउट (दर्ता मतदातामा आधारित)`
+                  : `${((r.votesCast / r.totalVoters) * 100).toFixed(1)}% turnout (of registered voters)`}
               </div>
             </>
           ) : (

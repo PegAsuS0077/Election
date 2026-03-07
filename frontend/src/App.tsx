@@ -32,6 +32,8 @@ const TRENDING_CONSTITUENCY_CODES = [
   "Kathmandu-9",
 ] as const;
 const SPONSORED_VARIANT_KEY = "sponsored_link_variant_v1";
+const CANDIDATE_RANK_LIMIT = 20;
+const CANDIDATE_RANK_PAGE_SIZE = 5;
 
 function seatsToMajority(n: number) { return Math.floor(n / 2) + 1; }
 function formatTime(iso: string) {
@@ -67,6 +69,7 @@ export default function App() {
   });
   const [candidateRankMode, setCandidateRankMode] = useState<"percentage" | "votes">("percentage");
   const [showAllRankedCandidates, setShowAllRankedCandidates] = useState(false);
+  const [candidateRankPage, setCandidateRankPage] = useState(1);
 
   useEffect(() => {
     if (ADSENSE_REVIEW_MODE) return;
@@ -113,6 +116,7 @@ export default function App() {
 
   useEffect(() => {
     setShowAllRankedCandidates(false);
+    setCandidateRankPage(1);
   }, [candidateRankMode]);
 
   const results       = useElectionStore((s) => s.results);
@@ -221,12 +225,22 @@ export default function App() {
       return (b.votes - a.votes) || (b.votePct - a.votePct) || (a.name.localeCompare(b.name));
     });
 
-    return rows.slice(0, 5).map((row, idx) => ({ ...row, rank: idx + 1 }));
+    return rows.slice(0, CANDIDATE_RANK_LIMIT).map((row, idx) => ({ ...row, rank: idx + 1 }));
   }, [results, candidateRankMode]);
+  const rankedPageCount = Math.max(1, Math.ceil(rankedCandidates.length / CANDIDATE_RANK_PAGE_SIZE));
+  const safeRankedPage = Math.min(candidateRankPage, rankedPageCount);
+  const pagedRankedCandidates = rankedCandidates.slice(
+    (safeRankedPage - 1) * CANDIDATE_RANK_PAGE_SIZE,
+    safeRankedPage * CANDIDATE_RANK_PAGE_SIZE,
+  );
   const visibleRankedCandidates = showAllRankedCandidates
-    ? rankedCandidates
+    ? pagedRankedCandidates
     : rankedCandidates.slice(0, 2);
   const topRankedVotes = rankedCandidates[0]?.votes ?? 0;
+
+  useEffect(() => {
+    setCandidateRankPage((prev) => Math.min(prev, rankedPageCount));
+  }, [rankedPageCount]);
 
   const statsContent = (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -341,8 +355,8 @@ export default function App() {
               </h2>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 {lang === "np"
-                  ? "मत प्रतिशत वा कुल मत अनुसार शीर्ष ५ उम्मेदवार।"
-                  : "Top 5 candidates ranked by vote percentage or total votes."}
+                  ? "मत प्रतिशत वा कुल मत अनुसार शीर्ष २० उम्मेदवार।"
+                  : "Top 20 candidates ranked by vote percentage or total votes."}
               </p>
             </div>
             <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-900/70">
@@ -447,12 +461,54 @@ export default function App() {
                 <div className="mt-4">
                   <button
                     type="button"
-                    onClick={() => setShowAllRankedCandidates((prev) => !prev)}
+                    onClick={() => {
+                      setShowAllRankedCandidates((prev) => {
+                        const next = !prev;
+                        if (next) setCandidateRankPage(1);
+                        return next;
+                      });
+                    }}
                     className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-[#2563eb]/50 hover:text-[#2563eb] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#3b82f6]/50 dark:hover:text-[#3b82f6]"
                   >
                     {showAllRankedCandidates
                       ? (lang === "np" ? "शीर्ष २ मात्र देखाउनुहोस्" : "Show Top 2 Only")
-                      : (lang === "np" ? "शीर्ष ५ सबै देखाउनुहोस्" : "Show Full Top 5")}
+                      : (lang === "np" ? "शीर्ष २० सबै देखाउनुहोस्" : "Show Full Top 20")}
+                  </button>
+                </div>
+              )}
+
+              {showAllRankedCandidates && rankedCandidates.length > CANDIDATE_RANK_PAGE_SIZE && (
+                <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCandidateRankPage((p) => Math.max(1, p - 1))}
+                    disabled={safeRankedPage === 1}
+                    className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition disabled:cursor-default disabled:opacity-40 hover:border-[#2563eb]/50 hover:text-[#2563eb] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#3b82f6]/50 dark:hover:text-[#3b82f6]"
+                  >
+                    ←
+                  </button>
+                  {Array.from({ length: rankedPageCount }, (_, idx) => idx + 1).map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCandidateRankPage(page)}
+                      className={
+                        "h-8 min-w-[2rem] rounded-lg border px-2 text-xs font-semibold transition " +
+                        (page === safeRankedPage
+                          ? "border-[#2563eb] bg-[#2563eb] text-white"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-[#2563eb]/50 hover:text-[#2563eb] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#3b82f6]/50 dark:hover:text-[#3b82f6]")
+                      }
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCandidateRankPage((p) => Math.min(rankedPageCount, p + 1))}
+                    disabled={safeRankedPage === rankedPageCount}
+                    className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition disabled:cursor-default disabled:opacity-40 hover:border-[#2563eb]/50 hover:text-[#2563eb] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#3b82f6]/50 dark:hover:text-[#3b82f6]"
+                  >
+                    →
                   </button>
                 </div>
               )}
