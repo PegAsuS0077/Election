@@ -9,6 +9,7 @@ import type { ConstituencyResult, Province } from "./types";
 import { provinceName } from "./i18n";
 import type { Lang } from "./i18n";
 import { useConstituencyMap } from "./hooks/useConstituencyMap";
+import { partyHex } from "./lib/partyRegistry";
 import { geoIdentity, geoPath } from "d3-geo";
 import type { GeoPermissibleObjects } from "d3-geo";
 
@@ -171,7 +172,6 @@ export default function NepalMap({
   onSelectSeat,
   selectedDistrict,
   onSelectDistrict,
-  hotSeatCodes,
 }: {
   results: ConstituencyResult[];
   selectedProvince: "All" | Province;
@@ -182,7 +182,6 @@ export default function NepalMap({
   onSelectSeat: (code: string | null) => void;
   selectedDistrict?: string | null;
   onSelectDistrict?: (d: string | null) => void;
-  hotSeatCodes?: Set<string>;
 }) {
   // ── Constituency GeoJSON paths ────────────────────────────────────────────
   const { features: constFeatures, parkPaths, loading: constLoading } = useConstituencyMap(W, H);
@@ -210,6 +209,18 @@ export default function NepalMap({
   // ── JS hover state (no CSS filter — avoids per-path repaint storm) ────────
   const [hoveredDistrict, setHoveredDistrict]     = useState<string | null>(null);
   const [hoveredConstituency, setHoveredConstituency] = useState<string | null>(null);
+
+  const constituencyPartyFillBySeat = useMemo(() => {
+    const bySeat = new Map<string, string>();
+    for (const r of _results) {
+      if (r.status === "PENDING" || r.candidates.length === 0) continue;
+      const declaredWinner = r.status === "DECLARED" ? r.candidates.find((c) => c.isWinner) ?? null : null;
+      const leader = declaredWinner ?? [...r.candidates].sort((a, b) => b.votes - a.votes)[0] ?? null;
+      if (!leader || leader.votes <= 0) continue;
+      bySeat.set(r.name, partyHex(leader.partyId));
+    }
+    return bySeat;
+  }, [_results]);
 
   // ── Pan / zoom ────────────────────────────────────────────────────────────
   const [transform, setTransform] = useState<Transform>(INIT_TRANSFORM);
@@ -352,17 +363,17 @@ export default function NepalMap({
       ))}
       {constFeatures.map((feat) => {
         const isSelected = selectedSeat === feat.seatCode;
-        const isHot = hotSeatCodes?.has(feat.seatCode) ?? false;
         const dimmed = selectedProvince !== "All" && feat.province !== selectedProvince;
         const hovered = hoveredConstituency === feat.seatCode;
-        const baseFill = isHot ? "#fca5a5" : (PROVINCE_TINT[feat.province] ?? "#f1f5f9");
+        const seatPartyFill = constituencyPartyFillBySeat.get(feat.seatCode);
+        const baseFill = seatPartyFill ?? (PROVINCE_TINT[feat.province] ?? "#f1f5f9");
         const fill = hovered && !isSelected ? brighten(baseFill) : baseFill;
-        const fillOpacity = dimmed ? 0.20 : isSelected ? 1.0 : isHot ? 0.85 : 0.80;
+        const fillOpacity = dimmed ? 0.20 : isSelected ? 1.0 : seatPartyFill ? 0.88 : 0.80;
         return (
           <path key={feat.seatCode} d={feat.svgPath}
             fill={fill} fillOpacity={fillOpacity}
-            stroke={isSelected ? "#f59e0b" : isHot ? "#ef4444" : DISTRICT_BORDER_COLOR}
-            strokeWidth={isSelected ? 2.5 : isHot ? 1.2 : DISTRICT_BORDER_WIDTH}
+            stroke={isSelected ? "#f59e0b" : DISTRICT_BORDER_COLOR}
+            strokeWidth={isSelected ? 2.5 : seatPartyFill ? 1.0 : DISTRICT_BORDER_WIDTH}
             strokeLinejoin="round"
             style={{ cursor: "pointer" }}
             onMouseEnter={() => setHoveredConstituency(feat.seatCode)}
@@ -387,7 +398,7 @@ export default function NepalMap({
         />
       ))}
     </>
-  ), [constFeatures, parkPaths, geoDistFeatures, selectedSeat, selectedProvince, hoveredConstituency, hotSeatCodes, onSelectSeat]);
+  ), [constFeatures, parkPaths, geoDistFeatures, selectedSeat, selectedProvince, hoveredConstituency, constituencyPartyFillBySeat, onSelectSeat]);
 
   const isZoomed = transform.k > 1.05;
 

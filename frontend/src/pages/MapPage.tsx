@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES as provinces } from "../types";
-import type { Province } from "../types";
+import type { Province, ConstituencyResult, Candidate } from "../types";
 import { provinceName } from "../i18n";
+import { partyHex } from "../lib/partyRegistry";
 import Layout from "../components/Layout";
 import NepalMap from "../NepalMap";
 import type { MapMode } from "../NepalMap";
@@ -46,6 +47,16 @@ function computeCompetitive(
     }
   }
   return seats.sort((a, b) => a.marginVotes - b.marginVotes).slice(0, 20);
+}
+
+function getDeclaredOrLeadingCandidate(r: ConstituencyResult): Candidate | null {
+  if (r.status === "PENDING" || r.candidates.length === 0) return null;
+  if (r.status === "DECLARED") {
+    const winner = r.candidates.find((c) => c.isWinner);
+    if (winner && winner.votes > 0) return winner;
+  }
+  const leader = [...r.candidates].sort((a, b) => b.votes - a.votes)[0] ?? null;
+  return leader && leader.votes > 0 ? leader : null;
 }
 
 export default function MapPage() {
@@ -106,23 +117,6 @@ export default function MapPage() {
   const competitive = useMemo(() => computeCompetitive(results), [results]);
   const selectedResult = selectedSeat ? results.find((r) => r.name === selectedSeat) ?? null : null;
 
-  // Hot seat codes — constituencies with top-two margin <= 10% (matches HotSeats logic)
-  const hotSeatCodes = useMemo<Set<string>>(() => {
-    const s = new Set<string>();
-    for (const r of results) {
-      if (r.status === "PENDING") continue;
-      if (r.candidates.length < 2) continue;
-      const sorted = [...r.candidates].sort((a, b) => b.votes - a.votes);
-      const top1 = sorted[0];
-      const top2 = sorted[1];
-      if (!top1 || !top2 || top1.votes <= 0) continue;
-      const topTwoTotal = top1.votes + top2.votes;
-      const marginPct = topTwoTotal > 0 ? ((top1.votes - top2.votes) / topTwoTotal) * 100 : 100;
-      if (marginPct <= 10) s.add(r.name);
-    }
-    return s;
-  }, [results]);
-
   function candidateSlug(id: number, name: string) {
     return `${id}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   }
@@ -141,7 +135,7 @@ export default function MapPage() {
       subtitleNp="अन्तरक्रिय नक्सा · क्षेत्र चयन गर्न क्लिक गर्नुहोस्"
       badge={heroBadge}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+      <div className="max-w-[96rem] mx-auto px-4 sm:px-6 py-6 space-y-4">
 
         {/* ── Province + stats toolbar ──────────────────────────────────────── */}
         <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 px-4 py-3 shadow-sm space-y-3">
@@ -222,8 +216,10 @@ export default function MapPage() {
             <select
               value={selectedConst}
               onChange={(e) => {
-                setSelectedConst(e.target.value);
-                if (e.target.value !== "All" && mode !== "constituency") setMode("constituency");
+                const nextCode = e.target.value;
+                setSelectedConst(nextCode);
+                setSelectedSeat(nextCode === "All" ? null : (results.find((r) => r.code === nextCode)?.name ?? null));
+                if (nextCode !== "All" && mode !== "constituency") setMode("constituency");
               }}
               className={SELECT_CLS}
               disabled={constOptions.length === 0}
@@ -237,7 +233,7 @@ export default function MapPage() {
         </div>
 
         {/* ── Map card — full width ─────────────────────────────────────────── */}
-        <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-3 shadow-sm">
+        <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-2 sm:p-3 shadow-sm">
 
           {/* Mode toggle */}
           <div className="flex items-center gap-1.5 mb-2">
@@ -254,12 +250,6 @@ export default function MapPage() {
                   : (lang === "np" ? "निर्वाचन क्षेत्र" : "Constituencies")}
               </button>
             ))}
-            {mode === "constituency" && (
-              <span className="ml-auto flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500">
-                <span className="inline-block w-3 h-3 rounded-sm bg-[#fca5a5] border border-[#ef4444]" />
-                {lang === "np" ? "कडा प्रतिस्पर्धा" : "Hot seat"}
-              </span>
-            )}
           </div>
 
           <NepalMap
@@ -268,11 +258,14 @@ export default function MapPage() {
               onSelect={setSelected}
               lang={lang}
               mode={mode}
-              selectedSeat={selectedSeat ?? (selectedConst !== "All" ? selectedConst : null)}
-              onSelectSeat={(code) => {
-                setSelectedSeat(code);
-                setSelectedConst(code ?? "All");
-                if (code && mode !== "constituency") setMode("constituency");
+              selectedSeat={
+                selectedSeat ??
+                (selectedConst !== "All" ? (results.find((r) => r.code === selectedConst)?.name ?? null) : null)
+              }
+              onSelectSeat={(seatName) => {
+                setSelectedSeat(seatName);
+                setSelectedConst(seatName ? (results.find((r) => r.name === seatName)?.code ?? "All") : "All");
+                if (seatName && mode !== "constituency") setMode("constituency");
               }}
               selectedDistrict={selectedDistrict}
               onSelectDistrict={(d) => {
@@ -280,7 +273,6 @@ export default function MapPage() {
                 setSelectedConst("All");
                 setSelectedSeat(null);
               }}
-              hotSeatCodes={hotSeatCodes}
             />
         </div>
 
@@ -360,7 +352,11 @@ export default function MapPage() {
                 <div className="space-y-0.5">
                   {competitive.map((seat: CompetitiveSeat) => (
                     <button key={seat.name}
-                      onClick={() => { setSelectedSeat(seat.name); setSelectedConst(seat.name); setMode("constituency"); }}
+                      onClick={() => {
+                        setSelectedSeat(seat.name);
+                        setSelectedConst(results.find((r) => r.name === seat.name)?.code ?? "All");
+                        setMode("constituency");
+                      }}
                       className={"w-full text-left rounded-lg px-2.5 py-1.5 transition " +
                         (selectedSeat === seat.name
                           ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700"
@@ -392,24 +388,25 @@ export default function MapPage() {
                 <div className="space-y-1">
                   {filtered.map((r) => {
                     const top = [...r.candidates].sort((a, b) => b.votes - a.votes)[0];
-                    const isHot = hotSeatCodes.has(r.name);
-                    const accent =
-                      r.status === "DECLARED" ? "border-l-emerald-500" :
-                      r.status === "COUNTING"  ? "border-l-amber-400"   : "border-l-slate-300";
+                    const leader = getDeclaredOrLeadingCandidate(r);
+                    const leaderHex = leader ? partyHex(leader.partyId) : null;
+                    const accentClass = leaderHex
+                      ? "border-l-[3px]"
+                      : r.status === "DECLARED"
+                        ? "border-l-emerald-500"
+                        : r.status === "COUNTING"
+                          ? "border-l-amber-400"
+                          : "border-l-slate-300";
                     return (
                       <button key={r.code}
                         onClick={() => navigate(`/constituency/${encodeURIComponent(r.code)}`)}
-                        className={"w-full text-left rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 border-l-2 transition hover:bg-slate-100 dark:hover:bg-slate-700/60 " + accent}
+                        className={"w-full text-left rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 border-l-2 transition hover:bg-slate-100 dark:hover:bg-slate-700/60 " + accentClass}
+                        style={leaderHex ? { borderLeftColor: leaderHex } : undefined}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                             {lang === "np" ? r.nameNp : r.name}
                           </div>
-                          {isHot && (
-                            <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
-                              🔥
-                            </span>
-                          )}
                         </div>
                         {top && top.votes > 0 ? (
                           <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
@@ -436,24 +433,25 @@ export default function MapPage() {
                 <div className="space-y-1">
                   {filtered.map((r) => {
                     const top = [...r.candidates].sort((a, b) => b.votes - a.votes)[0];
-                    const isHot = hotSeatCodes.has(r.name);
-                    const accent =
-                      r.status === "DECLARED" ? "border-l-emerald-500" :
-                      r.status === "COUNTING"  ? "border-l-amber-400"   : "border-l-slate-300";
+                    const leader = getDeclaredOrLeadingCandidate(r);
+                    const leaderHex = leader ? partyHex(leader.partyId) : null;
+                    const accentClass = leaderHex
+                      ? "border-l-[3px]"
+                      : r.status === "DECLARED"
+                        ? "border-l-emerald-500"
+                        : r.status === "COUNTING"
+                          ? "border-l-amber-400"
+                          : "border-l-slate-300";
                     return (
                       <button key={r.code}
                         onClick={() => navigate(`/constituency/${encodeURIComponent(r.code)}`)}
-                        className={"w-full text-left rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 border-l-2 transition hover:bg-slate-100 dark:hover:bg-slate-700/60 " + accent}
+                        className={"w-full text-left rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 border-l-2 transition hover:bg-slate-100 dark:hover:bg-slate-700/60 " + accentClass}
+                        style={leaderHex ? { borderLeftColor: leaderHex } : undefined}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                             {lang === "np" ? r.nameNp : r.name}
                           </div>
-                          {isHot && (
-                            <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
-                              🔥
-                            </span>
-                          )}
                         </div>
                         {top && top.votes > 0 ? (
                           <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
