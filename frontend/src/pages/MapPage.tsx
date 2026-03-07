@@ -180,31 +180,14 @@ export default function MapPage() {
               {lang === "np" ? "निर्वाचन क्षेत्र नक्सा" : "Constituency Map"}
             </span>
           </div>
-
-          <NepalMap
-              results={results}
-              selectedProvince={selected}
-              onSelect={setSelected}
-              lang={lang}
-              mode="constituency"
-              selectedSeat={
-                selectedSeat ??
-                (selectedConst !== "All" ? (results.find((r) => r.code === selectedConst)?.name ?? null) : null)
-              }
-              onSelectSeat={(seatName) => {
-                setSelectedSeat(seatName);
-                setSelectedConst(seatName ? (results.find((r) => r.name === seatName)?.code ?? "All") : "All");
-              }}
-            />
-
-          <div className="mt-3">
+          <div className="mb-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300">
               <span className="inline-block h-2.5 w-2.5 rounded-sm border border-emerald-600/80 bg-emerald-400" />
               {lang === "np" ? "राष्ट्रिय निकुञ्ज क्षेत्र" : "National Park Area"}
             </span>
           </div>
           {partyLegend.items.length > 0 && (
-            <div className="mt-2 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 px-2.5 py-2">
+            <div className="mb-2 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 px-2.5 py-2">
               <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                 {lang === "np" ? "दल रंग / चिन्ह मार्गदर्शिका" : "Party Color & Symbol Legend"}
               </div>
@@ -232,6 +215,22 @@ export default function MapPage() {
               </div>
             </div>
           )}
+
+          <NepalMap
+              results={results}
+              selectedProvince={selected}
+              onSelect={setSelected}
+              lang={lang}
+              mode="constituency"
+              selectedSeat={
+                selectedSeat ??
+                (selectedConst !== "All" ? (results.find((r) => r.code === selectedConst)?.name ?? null) : null)
+              }
+              onSelectSeat={(seatName) => {
+                setSelectedSeat(seatName);
+                setSelectedConst(seatName ? (results.find((r) => r.name === seatName)?.code ?? "All") : "All");
+              }}
+            />
         </div>
 
         {/* ── Sidebar panels — horizontal scroll row below map ──────────────── */}
