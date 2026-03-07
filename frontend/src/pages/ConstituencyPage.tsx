@@ -293,7 +293,7 @@ export default function ConstituencyPage() {
           <StatBox value={margin > 0 ? fmt(margin) : "—"} label={lang === "np" ? "अन्तर" : "Margin"} />
           <StatBox
             value={hasRegisteredVoters ? `${turnoutPct.toFixed(0)}%` : "—"}
-            label={lang === "np" ? "टर्नआउट*" : "Turnout*"}
+            label={lang === "np" ? "टर्नआउट" : "Turnout"}
             highlight
           />
         </div>
@@ -472,7 +472,7 @@ export default function ConstituencyPage() {
         {/* ── Turnout ─────────────────────────────────────────────────────────── */}
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0c1525] p-5">
           <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
-            {lang === "np" ? "मतदाता संलग्नता (अनुमानित)" : "Voter Turnout (Estimated)"}
+            {lang === "np" ? "मतदाता संलग्नता" : "Voter Turnout"}
           </h2>
           <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
             {lang === "np"
@@ -497,8 +497,8 @@ export default function ConstituencyPage() {
               </div>
               <div className="mt-1.5 text-xs text-slate-500">
                 {lang === "np"
-                  ? `${turnoutPct.toFixed(1)}% अनुमानित टर्नआउट (गणना गरिएको उम्मेदवार मतका आधारमा)`
-                  : `${turnoutPct.toFixed(1)}% estimated turnout (based on counted candidate votes)`}
+                  ? `${turnoutPct.toFixed(1)}% टर्नआउट (खसेको मत / दर्ता मतदाता)`
+                  : `${turnoutPct.toFixed(1)}% turnout (votes cast / registered voters)`}
               </div>
             </>
           ) : (
