@@ -73,6 +73,7 @@ const DISTRICT_NORM: Record<string, string> = {
   Chitawan:        "Chitwan",
   Makawanpur:      "Makwanpur",
   Kapilbastu:      "Kapilvastu",
+  Tanahu:          "Tanahun",
   Nawalparasi_e:   "Nawalpur",   // Gandaki side (state 4)
   Nawalparasi_w:   "Parasi",     // Lumbini side (state 5)
   Rukum_e:         "Rukum East",

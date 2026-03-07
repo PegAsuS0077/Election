@@ -182,7 +182,7 @@ export default function MapPage() {
           </div>
           <div className="mb-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300">
-              <span className="inline-block h-2.5 w-2.5 rounded-sm border border-emerald-600/80 bg-emerald-400" />
+              <span className="inline-block h-2.5 w-2.5 rounded-sm border border-slate-300/80 bg-white" />
               {lang === "np" ? "राष्ट्रिय निकुञ्ज क्षेत्र" : "National Park Area"}
             </span>
           </div>

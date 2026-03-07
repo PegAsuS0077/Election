@@ -347,6 +347,22 @@ export default function App() {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-blue-200/70 bg-blue-50/70 px-4 py-3 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              {lang === "np"
+                ? "दलहरूको क्षेत्रगत कवरेज हेर्न नक्सा खण्डमा जानुहोस्।"
+                : "See party-wise area coverage in the Map section."}
+            </p>
+            <Link
+              to="/map"
+              className="inline-flex items-center rounded-lg border border-[#2563eb]/30 bg-white px-3 py-1.5 text-xs font-semibold text-[#2563eb] transition hover:bg-[#2563eb]/5 dark:bg-slate-900 dark:text-blue-300"
+            >
+              {lang === "np" ? "नक्सा खोल्नुहोस् →" : "Open Map →"}
+            </Link>
+          </div>
+        </section>
+
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>

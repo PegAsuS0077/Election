@@ -307,8 +307,8 @@ export default function NepalMap({
     <>
       {geoDistFeatures.filter((f) => f.province === "NP").map((f) => (
         <path key={f.district} d={f.svgPath}
-          fill="#4ade80" fillOpacity={0.45}
-          stroke="#16a34a" strokeWidth={0.6} strokeLinejoin="round"
+          fill="#ffffff" fillOpacity={1}
+          stroke="#cbd5e1" strokeWidth={0.6} strokeLinejoin="round"
           style={{ pointerEvents: "none" }}
         />
       ))}
@@ -356,8 +356,8 @@ export default function NepalMap({
     <>
       {parkPaths.map((d, i) => (
         <path key={`park-${i}`} d={d}
-          fill="#4ade80" fillOpacity={0.45}
-          stroke="#16a34a" strokeWidth={0.5} strokeLinejoin="round"
+          fill="#ffffff" fillOpacity={1}
+          stroke="#cbd5e1" strokeWidth={0.5} strokeLinejoin="round"
           style={{ pointerEvents: "none" }}
         />
       ))}
