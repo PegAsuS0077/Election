@@ -253,6 +253,9 @@ export default function ConstituencyPage() {
   const totalVotesCast  = r.votesCast > 0 ? r.votesCast : cands.sorted.reduce((s, c) => s + c.votes, 0);
   const totalRegisteredVoters = Math.max(0, Number(r.totalVoters ?? 0));
   const hasRegisteredVoters = totalRegisteredVoters > 0;
+  const turnoutPct = hasRegisteredVoters
+    ? Math.max(0, Math.min(100, (totalVotesCast / totalRegisteredVoters) * 100))
+    : 0;
   const topTwoTotal     = (cands.leader?.votes ?? 0) + (cands.runnerUp?.votes ?? 0);
   const leadPct         = topTwoTotal > 0 ? Math.round(((cands.leader?.votes ?? 0) / topTwoTotal) * 100) : 0;
   const runPct          = topTwoTotal > 0 ? Math.round(((cands.runnerUp?.votes ?? 0) / topTwoTotal) * 100) : 0;
@@ -289,8 +292,8 @@ export default function ConstituencyPage() {
           <StatBox value={totalVotesCast > 0 ? fmt(totalVotesCast) : "—"} label={lang === "np" ? "कुल मत" : "Votes Cast"} />
           <StatBox value={margin > 0 ? fmt(margin) : "—"} label={lang === "np" ? "अन्तर" : "Margin"} />
           <StatBox
-            value={hasRegisteredVoters ? fmt(totalRegisteredVoters) : "—"}
-            label={lang === "np" ? "दर्ता मतदाता" : "Registered Voters"}
+            value={hasRegisteredVoters ? `${turnoutPct.toFixed(0)}%` : "—"}
+            label={lang === "np" ? "टर्नआउट*" : "Turnout*"}
             highlight
           />
         </div>
@@ -466,27 +469,38 @@ export default function ConstituencyPage() {
           </div>
         </div>
 
-        {/* ── Count Context ───────────────────────────────────────────────────── */}
+        {/* ── Turnout ─────────────────────────────────────────────────────────── */}
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0c1525] p-5">
           <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">
-            {lang === "np" ? "मत गणना सन्दर्भ" : "Vote Count Context"}
+            {lang === "np" ? "मतदाता संलग्नता (अनुमानित)" : "Voter Turnout (Estimated)"}
           </h2>
           <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
             {lang === "np"
               ? "हालको फिडमा उम्मेदवार मतको जम्मा मात्र उपलब्ध छ। आधिकारिक कुल मत खसेको संख्या र टर्नआउट दर अलग रूपमा उपलब्ध छैन।"
               : "Current feed provides candidate vote totals only. Official total ballots cast and turnout rate are not provided separately."}
           </div>
-          <div className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-200">
-            <span>{lang === "np" ? "हालसम्मको उम्मेदवार मत जम्मा" : "Counted candidate votes"}</span>
+          <div className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-200 mb-2">
+            <span>{lang === "np" ? "गणना गरिएको उम्मेदवार मत / दर्ता मतदाता" : "Counted candidate votes / Registered voters"}</span>
             <span className="font-semibold tabular-nums">
-              {fmt(totalVotesCast) || "—"}
+              {hasRegisteredVoters
+                ? `${fmt(totalVotesCast)} / ${fmt(totalRegisteredVoters)}`
+                : fmt(totalVotesCast) || "—"}
             </span>
           </div>
           {hasRegisteredVoters ? (
-            <div className="mt-2 flex items-center justify-between text-sm text-slate-700 dark:text-slate-200">
-              <span>{lang === "np" ? "दर्ता मतदाता (रोल)" : "Registered voters (roll)"}</span>
-              <span className="font-semibold tabular-nums">{fmt(totalRegisteredVoters)}</span>
-            </div>
+            <>
+              <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#2563eb] transition-[width] duration-700"
+                  style={{ width: `${turnoutPct.toFixed(1)}%` }}
+                />
+              </div>
+              <div className="mt-1.5 text-xs text-slate-500">
+                {lang === "np"
+                  ? `${turnoutPct.toFixed(1)}% अनुमानित टर्नआउट (गणना गरिएको उम्मेदवार मतका आधारमा)`
+                  : `${turnoutPct.toFixed(1)}% estimated turnout (based on counted candidate votes)`}
+              </div>
+            </>
           ) : (
             <div className="mt-2 text-xs text-slate-400">
               {lang === "np" ? "दर्ता मतदाता संख्या उपलब्ध छैन।" : "Registered voter count is not available."}
@@ -494,8 +508,8 @@ export default function ConstituencyPage() {
           )}
           <div className="mt-2 text-xs text-slate-400">
             {lang === "np"
-              ? "टर्नआउट देखाउन आधिकारिक 'कुल मत खसेको' संख्या आवश्यक छ।"
-              : "Turnout can be shown only when official total ballots cast is available."}
+              ? "* आधिकारिक टर्नआउट देखाउन छुट्टै 'कुल मत खसेको' डेटा आवश्यक हुन्छ।"
+              : "* Official turnout requires a separate 'total ballots cast' dataset."}
           </div>
         </div>
 
