@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useElectionStore } from "./store/electionStore";
 import { provinceName, t } from "./i18n";
@@ -41,6 +41,9 @@ function formatConstituencyLabel(name: string) {
   return name.replace(/-(\d+)$/, " - $1");
 }
 function numberFmt(n: number) { return n.toLocaleString("en-IN"); }
+function candidateSlug(candidateId: number, name: string) {
+  return `${candidateId}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+}
 function useCountdownTimer(targetDate: string) {
   const [remaining, setRemaining] = useState(() => Math.max(0, new Date(targetDate).getTime() - Date.now()));
   useEffect(() => {
@@ -62,6 +65,8 @@ export default function App() {
     window.localStorage.setItem(SPONSORED_VARIANT_KEY, next);
     return next;
   });
+  const [candidateRankMode, setCandidateRankMode] = useState<"percentage" | "votes">("percentage");
+  const [showAllRankedCandidates, setShowAllRankedCandidates] = useState(false);
 
   useEffect(() => {
     if (ADSENSE_REVIEW_MODE) return;
@@ -105,6 +110,10 @@ export default function App() {
     const timer = setTimeout(() => setIsLoading(false), 8000);
     return () => clearTimeout(timer);
   }, [setIsLoading]);
+
+  useEffect(() => {
+    setShowAllRankedCandidates(false);
+  }, [candidateRankMode]);
 
   const results       = useElectionStore((s) => s.results);
   const seatTally     = useElectionStore((s) => s.seatTally);
@@ -169,6 +178,55 @@ export default function App() {
   const featuredDesc = featuredFavorites.size > 0
     ? t("featuredSectionDescCustom", lang).replace("{n}", String(featuredFavorites.size))
     : t("featuredSectionDesc", lang);
+  const rankedCandidates = useMemo(() => {
+    const rows: {
+      candidateId: number;
+      name: string;
+      nameNp: string;
+      partyId: string;
+      partyName: string;
+      votes: number;
+      votePct: number;
+      constituencyCode: string;
+      constituencyName: string;
+      constituencyNameNp: string;
+    }[] = [];
+
+    for (const r of results) {
+      const constituencyTotalVotes = r.votesCast > 0
+        ? r.votesCast
+        : r.candidates.reduce((sum, c) => sum + c.votes, 0);
+
+      for (const c of r.candidates) {
+        if (c.votes <= 0) continue;
+        rows.push({
+          candidateId: c.candidateId,
+          name: c.name,
+          nameNp: c.nameNp,
+          partyId: c.partyId,
+          partyName: c.partyName,
+          votes: c.votes,
+          votePct: constituencyTotalVotes > 0 ? (c.votes / constituencyTotalVotes) * 100 : 0,
+          constituencyCode: r.code,
+          constituencyName: r.name,
+          constituencyNameNp: r.nameNp,
+        });
+      }
+    }
+
+    rows.sort((a, b) => {
+      if (candidateRankMode === "percentage") {
+        return (b.votePct - a.votePct) || (b.votes - a.votes) || (a.name.localeCompare(b.name));
+      }
+      return (b.votes - a.votes) || (b.votePct - a.votePct) || (a.name.localeCompare(b.name));
+    });
+
+    return rows.slice(0, 5).map((row, idx) => ({ ...row, rank: idx + 1 }));
+  }, [results, candidateRankMode]);
+  const visibleRankedCandidates = showAllRankedCandidates
+    ? rankedCandidates
+    : rankedCandidates.slice(0, 2);
+  const topRankedVotes = rankedCandidates[0]?.votes ?? 0;
 
   const statsContent = (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -273,6 +331,133 @@ export default function App() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                🏅 {lang === "np" ? "शीर्ष उम्मेदवार र्याङ्किङ" : "Top Candidate Rankings"}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {lang === "np"
+                  ? "मत प्रतिशत वा कुल मत अनुसार शीर्ष ५ उम्मेदवार।"
+                  : "Top 5 candidates ranked by vote percentage or total votes."}
+              </p>
+            </div>
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-900/70">
+              <button
+                type="button"
+                onClick={() => setCandidateRankMode("percentage")}
+                className={
+                  "rounded-lg px-3 py-1.5 text-xs font-semibold transition " +
+                  (candidateRankMode === "percentage"
+                    ? "bg-[#2563eb] text-white shadow-sm"
+                    : "text-slate-600 hover:text-[#2563eb] dark:text-slate-300 dark:hover:text-[#3b82f6]")
+                }
+              >
+                {lang === "np" ? "मत %" : "Vote %"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCandidateRankMode("votes")}
+                className={
+                  "rounded-lg px-3 py-1.5 text-xs font-semibold transition " +
+                  (candidateRankMode === "votes"
+                    ? "bg-[#2563eb] text-white shadow-sm"
+                    : "text-slate-600 hover:text-[#2563eb] dark:text-slate-300 dark:hover:text-[#3b82f6]")
+                }
+              >
+                {lang === "np" ? "कुल मत" : "Total Votes"}
+              </button>
+            </div>
+          </div>
+
+          {rankedCandidates.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-900/60">
+              {lang === "np" ? "र्याङ्किङका लागि डेटा उपलब्ध छैन।" : "No candidate ranking data available yet."}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {visibleRankedCandidates.map((cand) => {
+                  const primaryValue = candidateRankMode === "percentage"
+                    ? `${cand.votePct.toFixed(2)}%`
+                    : numberFmt(cand.votes);
+                  const secondaryLabel = candidateRankMode === "percentage"
+                    ? `${numberFmt(cand.votes)} ${lang === "np" ? "मत" : "votes"}`
+                    : `${cand.votePct.toFixed(2)}% ${lang === "np" ? "मत प्रतिशत" : "vote share"}`;
+                  const progressWidth = candidateRankMode === "percentage"
+                    ? Math.min(100, Math.max(0, cand.votePct))
+                    : (topRankedVotes > 0 ? (cand.votes / topRankedVotes) * 100 : 0);
+                  return (
+                    <div
+                      key={`${cand.candidateId}-${cand.constituencyCode}`}
+                      className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-900/40"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                              #{cand.rank}
+                            </span>
+                            <PartySymbol partyId={cand.partyId} size="sm" />
+                            <Link
+                              to={`/candidate/${candidateSlug(cand.candidateId, cand.name)}`}
+                              className="truncate text-sm font-semibold text-slate-900 transition-colors hover:text-[#2563eb] dark:text-slate-100 dark:hover:text-[#3b82f6]"
+                            >
+                              {lang === "np" ? cand.nameNp : cand.name}
+                            </Link>
+                          </div>
+                          <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <span className="truncate">
+                              {(lang === "np" ? cand.partyName : getParty(cand.partyId).nameEn).split(" (")[0]}
+                            </span>
+                            <span>·</span>
+                            <Link
+                              to={`/constituency/${encodeURIComponent(cand.constituencyCode)}`}
+                              className="truncate hover:text-[#2563eb] dark:hover:text-[#3b82f6]"
+                            >
+                              {lang === "np" ? cand.constituencyNameNp : cand.constituencyName}
+                            </Link>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div
+                            className="text-base font-bold tabular-nums text-slate-800 dark:text-slate-100"
+                            style={{ fontFamily: "'DM Mono', monospace" }}
+                          >
+                            {primaryValue}
+                          </div>
+                          <div className="text-[11px] text-slate-400">{secondaryLabel}</div>
+                        </div>
+                      </div>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                        <div
+                          className="h-full rounded-full bg-[#2563eb]"
+                          style={{ width: `${Math.max(0, Math.min(100, progressWidth))}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {rankedCandidates.length > 2 && (
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllRankedCandidates((prev) => !prev)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-[#2563eb]/50 hover:text-[#2563eb] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#3b82f6]/50 dark:hover:text-[#3b82f6]"
+                  >
+                    {showAllRankedCandidates
+                      ? (lang === "np" ? "शीर्ष २ मात्र देखाउनुहोस्" : "Show Top 2 Only")
+                      : (lang === "np" ? "शीर्ष ५ सबै देखाउनुहोस्" : "Show Full Top 5")}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
