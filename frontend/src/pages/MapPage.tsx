@@ -8,7 +8,6 @@ import { getParty, partyHex } from "../lib/partyRegistry";
 import Layout from "../components/Layout";
 import PartySymbol from "../components/PartySymbol";
 import NepalMap from "../NepalMap";
-import type { MapMode } from "../NepalMap";
 
 const SELECT_CLS =
   "h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1525] " +
@@ -38,48 +37,31 @@ export default function MapPage() {
   const lang     = useElectionStore((s) => s.lang);
   const navigate = useNavigate();
 
-  const [mode, setMode]                   = useState<MapMode>("constituency");
   const [selected, setSelected]           = useState<"All" | Province>("All");
-  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedConst, setSelectedConst] = useState<string>("All");
   const [selectedSeat, setSelectedSeat]   = useState<string | null>(null);
-
-  function handleModeSwitch(m: MapMode) {
-    setMode(m);
-    if (m === "district") setSelectedSeat(null);
-  }
-
-  // ── Cascading district options ─────────────────────────────────────────────
-  const districtOptions = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const r of results) {
-      if (selected === "All" || r.province === selected) seen.set(r.district, r.districtNp ?? r.district);
-    }
-    return Array.from(seen.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [results, selected]);
 
   // ── Cascading constituency options ─────────────────────────────────────────
   const constOptions = useMemo(() => {
     const seen = new Map<string, [string, string]>();
     for (const r of results) {
       if (selected !== "All" && r.province !== selected) continue;
-      if (selectedDistrict && r.district !== selectedDistrict) continue;
       seen.set(r.code, [r.name, r.nameNp]);
     }
     return Array.from(seen.entries()).sort((a, b) => a[1][0].localeCompare(b[1][0]));
-  }, [results, selected, selectedDistrict]);
+  }, [results, selected]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let list = selected === "All" ? results : results.filter((r) => r.province === selected);
-    if (selectedDistrict) list = list.filter((r) => r.district === selectedDistrict);
     if (selectedConst !== "All") list = list.filter((r) => r.code === selectedConst);
     return list;
-  }, [results, selected, selectedDistrict, selectedConst]);
+  }, [results, selected, selectedConst]);
   const declared = filtered.filter((r) => r.status === "DECLARED").length;
   const counting = filtered.filter((r) => r.status === "COUNTING").length;
   const total    = filtered.length;
   const selectedResult = selectedSeat ? results.find((r) => r.name === selectedSeat) ?? null : null;
+  const selectedLeader = selectedResult ? getDeclaredOrLeadingCandidate(selectedResult) : null;
   const partyLegend = useMemo(() => {
     const scope = selected === "All" ? results : results.filter((r) => r.province === selected);
     const counts = new Map<string, number>();
@@ -152,7 +134,6 @@ export default function MapPage() {
               onChange={(e) => {
                 const v = e.target.value as "All" | Province;
                 setSelected(v);
-                setSelectedDistrict(null);
                 setSelectedConst("All");
                 setSelectedSeat(null);
               }}
@@ -165,28 +146,11 @@ export default function MapPage() {
             </select>
 
             <select
-              value={selectedDistrict ?? "All"}
-              onChange={(e) => {
-                const v = e.target.value;
-                setSelectedDistrict(v === "All" ? null : v);
-                setSelectedConst("All");
-              }}
-              className={SELECT_CLS}
-              disabled={districtOptions.length === 0}
-            >
-              <option value="All">{lang === "np" ? "सबै जिल्ला" : "All Districts"}</option>
-              {districtOptions.map(([en, np]) => (
-                <option key={en} value={en}>{lang === "np" ? np : en}</option>
-              ))}
-            </select>
-
-            <select
               value={selectedConst}
               onChange={(e) => {
                 const nextCode = e.target.value;
                 setSelectedConst(nextCode);
                 setSelectedSeat(nextCode === "All" ? null : (results.find((r) => r.code === nextCode)?.name ?? null));
-                if (nextCode !== "All" && mode !== "constituency") setMode("constituency");
               }}
               className={SELECT_CLS}
               disabled={constOptions.length === 0}
@@ -199,7 +163,7 @@ export default function MapPage() {
 
             {selectedSeat && (
               <button
-                onClick={() => setSelectedSeat(null)}
+                onClick={() => { setSelectedSeat(null); setSelectedConst("All"); }}
                 className="h-8 px-3 rounded-xl text-[11px] font-medium transition border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
               >
                 {lang === "np" ? "× क्षेत्र हटाउनुहोस्" : "× clear seat"}
@@ -211,21 +175,10 @@ export default function MapPage() {
         {/* ── Map card — full width ─────────────────────────────────────────── */}
         <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-2 sm:p-3 shadow-sm">
 
-          {/* Mode toggle */}
           <div className="flex items-center gap-1.5 mb-2">
-            {(["district", "constituency"] as MapMode[]).map((m) => (
-              <button key={m} onClick={() => handleModeSwitch(m)}
-                className={"h-7 px-4 rounded-full text-xs font-semibold transition border " +
-                  (mode === m
-                    ? "bg-[#2563eb] border-[#2563eb] text-white"
-                    : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-[#2563eb]/50"
-                  )}
-              >
-                {m === "district"
-                  ? (lang === "np" ? "जिल्ला" : "Districts")
-                  : (lang === "np" ? "निर्वाचन क्षेत्र" : "Constituencies")}
-              </button>
-            ))}
+            <span className="inline-flex items-center rounded-full border border-[#2563eb]/30 bg-[#2563eb]/10 px-3 py-1 text-[11px] font-semibold text-[#2563eb] dark:text-blue-300">
+              {lang === "np" ? "निर्वाचन क्षेत्र नक्सा" : "Constituency Map"}
+            </span>
           </div>
           <div className="mb-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 px-2 py-1 text-[10px] text-slate-600 dark:text-slate-300">
@@ -233,7 +186,7 @@ export default function MapPage() {
               {lang === "np" ? "राष्ट्रिय निकुञ्ज क्षेत्र" : "National Park Area"}
             </span>
           </div>
-          {mode === "constituency" && partyLegend.items.length > 0 && (
+          {partyLegend.items.length > 0 && (
             <div className="mb-2 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 px-2.5 py-2">
               <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                 {lang === "np" ? "दल रंग / चिन्ह मार्गदर्शिका" : "Party Color & Symbol Legend"}
@@ -268,7 +221,7 @@ export default function MapPage() {
               selectedProvince={selected}
               onSelect={setSelected}
               lang={lang}
-              mode={mode}
+              mode="constituency"
               selectedSeat={
                 selectedSeat ??
                 (selectedConst !== "All" ? (results.find((r) => r.code === selectedConst)?.name ?? null) : null)
@@ -276,13 +229,6 @@ export default function MapPage() {
               onSelectSeat={(seatName) => {
                 setSelectedSeat(seatName);
                 setSelectedConst(seatName ? (results.find((r) => r.name === seatName)?.code ?? "All") : "All");
-                if (seatName && mode !== "constituency") setMode("constituency");
-              }}
-              selectedDistrict={selectedDistrict}
-              onSelectDistrict={(d) => {
-                setSelectedDistrict(d);
-                setSelectedConst("All");
-                setSelectedSeat(null);
               }}
             />
         </div>
@@ -305,6 +251,13 @@ export default function MapPage() {
                     <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                       {selectedResult.province} · {selectedResult.district}
                     </div>
+                    {selectedLeader && (
+                      <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/60 px-2 py-1 text-[10px] text-slate-700 dark:text-slate-300">
+                        <span className="text-slate-500 dark:text-slate-400">{lang === "np" ? "अग्रणी दल" : "Leading party"}</span>
+                        <PartySymbol partyId={selectedLeader.partyId} size="sm" />
+                        <span className="font-semibold">{lang === "np" ? selectedLeader.partyName : getParty(selectedLeader.partyId).nameEn}</span>
+                      </div>
+                    )}
                   </div>
                   <span className={"text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 " +
                     (selectedResult.status === "DECLARED" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" :
@@ -351,96 +304,6 @@ export default function MapPage() {
                 >
                   {lang === "np" ? "पूर्ण दौड हेर्नुहोस् →" : "View full race →"}
                 </button>
-              </div>
-            )}
-
-            {/* ── District constituency list (district mode, district selected) */}
-            {mode === "district" && selectedDistrict && (
-              <div className="w-72 shrink-0 bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-4 shadow-sm">
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
-                  {selectedDistrict} — {lang === "np" ? "क्षेत्रहरू" : "Constituencies"} ({filtered.length})
-                </div>
-                <div className="space-y-1">
-                  {filtered.map((r) => {
-                    const top = [...r.candidates].sort((a, b) => b.votes - a.votes)[0];
-                    const leader = getDeclaredOrLeadingCandidate(r);
-                    const leaderHex = leader ? partyHex(leader.partyId) : null;
-                    const accentClass = leaderHex
-                      ? "border-l-[3px]"
-                      : r.status === "DECLARED"
-                        ? "border-l-emerald-500"
-                        : r.status === "COUNTING"
-                          ? "border-l-amber-400"
-                          : "border-l-slate-300";
-                    return (
-                      <button key={r.code}
-                        onClick={() => navigate(`/constituency/${encodeURIComponent(r.code)}`)}
-                        className={"w-full text-left rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 border-l-2 transition hover:bg-slate-100 dark:hover:bg-slate-700/60 " + accentClass}
-                        style={leaderHex ? { borderLeftColor: leaderHex } : undefined}
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                            {lang === "np" ? r.nameNp : r.name}
-                          </div>
-                        </div>
-                        {top && top.votes > 0 ? (
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                            {lang === "np" ? top.nameNp : top.name}
-                          </div>
-                        ) : (
-                          <div className="text-[10px] text-slate-400 dark:text-slate-600">
-                            {lang === "np" ? "मत अद्यावधिक छैन" : "No votes yet"}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ── Province constituency list (district mode, province selected, no district) */}
-            {mode === "district" && selected !== "All" && !selectedDistrict && (
-              <div className="w-72 shrink-0 bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 p-4 shadow-sm">
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">
-                  {provinceName(selected, lang)} — {lang === "np" ? "क्षेत्रहरू" : "Constituencies"} ({filtered.length})
-                </div>
-                <div className="space-y-1">
-                  {filtered.map((r) => {
-                    const top = [...r.candidates].sort((a, b) => b.votes - a.votes)[0];
-                    const leader = getDeclaredOrLeadingCandidate(r);
-                    const leaderHex = leader ? partyHex(leader.partyId) : null;
-                    const accentClass = leaderHex
-                      ? "border-l-[3px]"
-                      : r.status === "DECLARED"
-                        ? "border-l-emerald-500"
-                        : r.status === "COUNTING"
-                          ? "border-l-amber-400"
-                          : "border-l-slate-300";
-                    return (
-                      <button key={r.code}
-                        onClick={() => navigate(`/constituency/${encodeURIComponent(r.code)}`)}
-                        className={"w-full text-left rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 border-l-2 transition hover:bg-slate-100 dark:hover:bg-slate-700/60 " + accentClass}
-                        style={leaderHex ? { borderLeftColor: leaderHex } : undefined}
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                            {lang === "np" ? r.nameNp : r.name}
-                          </div>
-                        </div>
-                        {top && top.votes > 0 ? (
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                            {lang === "np" ? top.nameNp : top.name} · {r.district}
-                          </div>
-                        ) : (
-                          <div className="text-[10px] text-slate-400 dark:text-slate-600">
-                            {r.district}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             )}
 
