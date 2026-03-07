@@ -73,7 +73,7 @@ export default function MapPage() {
   const lang     = useElectionStore((s) => s.lang);
   const navigate = useNavigate();
 
-  const [mode, setMode]                   = useState<MapMode>("district");
+  const [mode, setMode]                   = useState<MapMode>("constituency");
   const [selected, setSelected]           = useState<"All" | Province>("All");
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const [selectedConst, setSelectedConst] = useState<string>("All");
@@ -135,7 +135,7 @@ export default function MapPage() {
       subtitleNp="अन्तरक्रिय नक्सा · क्षेत्र चयन गर्न क्लिक गर्नुहोस्"
       badge={heroBadge}
     >
-      <div className="max-w-[96rem] mx-auto px-4 sm:px-6 py-6 space-y-4">
+      <div className="max-w-[96rem] mx-auto px-2 sm:px-6 py-6 space-y-4">
 
         {/* ── Province + stats toolbar ──────────────────────────────────────── */}
         <div className="bg-white dark:bg-[#0c1525] rounded-2xl border border-slate-200 dark:border-slate-800/80 px-4 py-3 shadow-sm space-y-3">
