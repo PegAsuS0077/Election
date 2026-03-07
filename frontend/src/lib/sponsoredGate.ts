@@ -45,13 +45,7 @@ export function shouldTriggerSponsoredRedirect(nowMs = Date.now()): boolean {
 export function openSponsoredLinkInNewTab(url = SPONSORED_LINK_URL): void {
   if (typeof window === "undefined") return;
 
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
-  if (opened) {
-    opened.opener = null;
-    return;
-  }
-
-  // Fallback for popup blockers: trigger a direct anchor click.
+  // Use a direct anchor click (in the same user gesture) to minimize popup blocks.
   const a = document.createElement("a");
   a.href = url;
   a.target = "_blank";
