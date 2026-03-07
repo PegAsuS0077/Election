@@ -167,6 +167,71 @@ export default function PartyConstituenciesPage() {
 
   const slug = slugParam ?? "";
   const found = useMemo(() => getPartyBySlug(slug), [slug, results]);
+  const partyId = found?.partyId ?? "";
+
+  const declaredRows = useMemo<PartyConstituencyRow[]>(() => {
+    if (!partyId) return [];
+    const rows: PartyConstituencyRow[] = [];
+    for (const r of results) {
+      if (r.status !== "DECLARED" || r.candidates.length === 0) continue;
+      const sorted = [...r.candidates].sort((a, b) => b.votes - a.votes);
+      const winner = r.candidates.find((c) => c.isWinner) ?? sorted[0];
+      if (!winner) continue;
+      if (winner.partyId !== partyId) continue;
+      const runnerUpVotes = Math.max(
+        0,
+        ...r.candidates
+          .filter((c) => c.candidateId !== winner.candidateId)
+          .map((c) => c.votes),
+      );
+      rows.push({
+        code: r.code,
+        name: r.name,
+        nameNp: r.nameNp,
+        district: r.district,
+        districtNp: r.districtNp,
+        province: r.province,
+        candidateName: winner.name,
+        candidateNameNp: winner.nameNp,
+        partyId: winner.partyId,
+        votes: winner.votes,
+        margin: winner.votes - runnerUpVotes,
+      });
+    }
+    return rows.sort((a, b) => b.votes - a.votes || a.name.localeCompare(b.name));
+  }, [results, partyId]);
+
+  const leadingRows = useMemo<PartyConstituencyRow[]>(() => {
+    if (!partyId) return [];
+    const rows: PartyConstituencyRow[] = [];
+    for (const r of results) {
+      if (r.status !== "COUNTING" || r.candidates.length === 0) continue;
+      const maxVotes = Math.max(...r.candidates.map((c) => c.votes));
+      if (maxVotes <= 0) continue;
+      const leadCandidate = r.candidates.find((c) => c.partyId === partyId && c.votes === maxVotes);
+      if (!leadCandidate) continue;
+      const runnerUpVotes = Math.max(
+        0,
+        ...r.candidates
+          .filter((c) => c.candidateId !== leadCandidate.candidateId)
+          .map((c) => c.votes),
+      );
+      rows.push({
+        code: r.code,
+        name: r.name,
+        nameNp: r.nameNp,
+        district: r.district,
+        districtNp: r.districtNp,
+        province: r.province,
+        candidateName: leadCandidate.name,
+        candidateNameNp: leadCandidate.nameNp,
+        partyId: leadCandidate.partyId,
+        votes: leadCandidate.votes,
+        margin: leadCandidate.votes - runnerUpVotes,
+      });
+    }
+    return rows.sort((a, b) => b.votes - a.votes || a.name.localeCompare(b.name));
+  }, [results, partyId]);
 
   useEffect(() => {
     if (results.length > 0 && !found) navigate("/parties", { replace: true });
@@ -208,71 +273,7 @@ export default function PartyConstituenciesPage() {
       </Layout>
     );
   }
-
-  const partyId = found.partyId;
   const hex = partyHex(partyId);
-
-  const declaredRows = useMemo<PartyConstituencyRow[]>(() => {
-    const rows: PartyConstituencyRow[] = [];
-    for (const r of results) {
-      if (r.status !== "DECLARED" || r.candidates.length === 0) continue;
-      const sorted = [...r.candidates].sort((a, b) => b.votes - a.votes);
-      const winner = r.candidates.find((c) => c.isWinner) ?? sorted[0];
-      if (!winner) continue;
-      if (winner.partyId !== partyId) continue;
-      const runnerUpVotes = Math.max(
-        0,
-        ...r.candidates
-          .filter((c) => c.candidateId !== winner.candidateId)
-          .map((c) => c.votes),
-      );
-      rows.push({
-        code: r.code,
-        name: r.name,
-        nameNp: r.nameNp,
-        district: r.district,
-        districtNp: r.districtNp,
-        province: r.province,
-        candidateName: winner.name,
-        candidateNameNp: winner.nameNp,
-        partyId: winner.partyId,
-        votes: winner.votes,
-        margin: winner.votes - runnerUpVotes,
-      });
-    }
-    return rows.sort((a, b) => b.votes - a.votes || a.name.localeCompare(b.name));
-  }, [results, partyId]);
-
-  const leadingRows = useMemo<PartyConstituencyRow[]>(() => {
-    const rows: PartyConstituencyRow[] = [];
-    for (const r of results) {
-      if (r.status !== "COUNTING" || r.candidates.length === 0) continue;
-      const maxVotes = Math.max(...r.candidates.map((c) => c.votes));
-      if (maxVotes <= 0) continue;
-      const leadCandidate = r.candidates.find((c) => c.partyId === partyId && c.votes === maxVotes);
-      if (!leadCandidate) continue;
-      const runnerUpVotes = Math.max(
-        0,
-        ...r.candidates
-          .filter((c) => c.candidateId !== leadCandidate.candidateId)
-          .map((c) => c.votes),
-      );
-      rows.push({
-        code: r.code,
-        name: r.name,
-        nameNp: r.nameNp,
-        district: r.district,
-        districtNp: r.districtNp,
-        province: r.province,
-        candidateName: leadCandidate.name,
-        candidateNameNp: leadCandidate.nameNp,
-        partyId: leadCandidate.partyId,
-        votes: leadCandidate.votes,
-        margin: leadCandidate.votes - runnerUpVotes,
-      });
-    }
-    return rows.sort((a, b) => b.votes - a.votes || a.name.localeCompare(b.name));
-  }, [results, partyId]);
 
   const declaredPageCount = Math.max(1, Math.ceil(declaredRows.length / PAGE_SIZE));
   const leadingPageCount = Math.max(1, Math.ceil(leadingRows.length / PAGE_SIZE));
