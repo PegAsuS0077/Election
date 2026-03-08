@@ -8,7 +8,7 @@ export default function PrivacyPage() {
   useEffect(() => {
     document.title = "Privacy Policy – NepalVotes";
     const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute("content", "Privacy Policy for NepalVotes (nepalvotes.live). Learn about data collection, cookies, Google Analytics, advertising partners (Google AdSense and Monetag), and your privacy rights.");
+    if (meta) meta.setAttribute("content", "Privacy Policy for NepalVotes (nepalvotes.live). Learn about data collection, cookies, Google Analytics, Google AdSense, and your privacy rights.");
     const canonical = document.querySelector('link[rel="canonical"]');
     if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/privacy-policy");
     return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live"); };
@@ -18,8 +18,8 @@ export default function PrivacyPage() {
     <Layout
       title="Privacy Policy"
       titleNp="गोपनीयता नीति"
-      subtitle="Last updated: March 2, 2026"
-      subtitleNp="अन्तिम अपडेट: मार्च २, २०२६"
+      subtitle="Last updated: March 8, 2026"
+      subtitleNp="अन्तिम अपडेट: मार्च ८, २०२६"
     >
       <main className="max-w-3xl mx-auto px-6 py-12">
         <div className="space-y-8 text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -83,8 +83,8 @@ export default function PrivacyPage() {
             </h2>
             <p className="mb-3">
               {lang === "np"
-                ? "यो साइटले cookies विश्लेषण र विज्ञापन उद्देश्यका लागि प्रयोग गर्दछ। यसमा Google Analytics जस्ता विश्लेषण सेवा र Google AdSense/Monetag जस्ता विज्ञापन साझेदारहरू समावेश हुन सक्छन्।"
-                : "This site uses cookies for analytics and advertising purposes. This may include analytics providers like Google Analytics and ad partners such as Google AdSense and Monetag."}
+                ? "यो साइटले cookies विश्लेषण र विज्ञापन उद्देश्यका लागि प्रयोग गर्दछ। यसमा Google Analytics जस्ता विश्लेषण सेवा र Google AdSense जस्ता विज्ञापन सेवा समावेश हुन सक्छन्।"
+                : "This site uses cookies for analytics and advertising purposes. This may include analytics providers like Google Analytics and advertising services such as Google AdSense."}
             </p>
             <p>
               {lang === "np"
@@ -99,8 +99,8 @@ export default function PrivacyPage() {
             </h2>
             <p className="mb-3">
               {lang === "np"
-                ? "यो साइटले Google AdSense वा Monetag जस्ता तेस्रो-पक्ष विज्ञापन साझेदारमार्फत विज्ञापन देखाउन सक्छ। यी सेवाहरूले विज्ञापन देखाउन, मापन गर्न, र सुधार गर्न cookies, web beacons, वा device identifiers प्रयोग गर्न सक्छन्।"
-                : "This site may display ads via third-party partners such as Google AdSense and Monetag. These providers may use cookies, web beacons, or device identifiers to deliver, measure, and improve ads."}
+                ? "यो साइटले Google AdSense मार्फत विज्ञापन देखाउन सक्छ। Google र यसका साझेदारहरूले विज्ञापन देखाउन, मापन गर्न, र सुधार गर्न cookies, web beacons, वा device identifiers प्रयोग गर्न सक्छन्।"
+                : "This site may display ads via Google AdSense. Google and its partners may use cookies, web beacons, or device identifiers to deliver, measure, and improve ads."}
             </p>
             <p className="mb-3">
               {lang === "np"
