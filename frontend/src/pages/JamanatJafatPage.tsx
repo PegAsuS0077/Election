@@ -5,7 +5,7 @@ import { PROVINCES } from "../types";
 import type { ConstituencyStatus, Province } from "../types";
 import type { Lang } from "../i18n";
 import { provinceName } from "../i18n";
-import { getParty, partyHex, partySlug } from "../lib/partyRegistry";
+import { getParty, partyHex } from "../lib/partyRegistry";
 import Layout from "../components/Layout";
 import PartySymbol from "../components/PartySymbol";
 
@@ -55,6 +55,12 @@ export default function JamanatJafatPage() {
   const [selConst, setSelConst] = useState("All");
   const [selParty, setSelParty] = useState("All");
   const [page, setPage] = useState(1);
+
+  const focusFilteredList = (partyId: string) => {
+    setSelParty(partyId);
+    const list = document.getElementById("jamanat-candidate-list");
+    if (list) list.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   useEffect(() => {
     document.title = "Jamanat Jafat – Candidates below 10% vote share | NepalVotes";
@@ -405,19 +411,16 @@ export default function JamanatJafatPage() {
                         </div>
                       </div>
 
-                      <div className="mt-3 flex items-center justify-between text-[11px]">
-                        <Link
-                          to={`/party/${partySlug(getParty(party.partyId).nameEn)}`}
-                          className="font-medium text-[#2563eb] hover:underline dark:text-[#3b82f6]"
-                        >
-                          {lang === "np" ? "पूरा दल पृष्ठ →" : "Open party page →"}
-                        </Link>
+                    <div className="mt-3 flex items-center justify-between text-[11px]">
+                        <span className="font-medium text-slate-500 dark:text-slate-400">
+                          {lang === "np" ? "दल अनुसार सूची" : "Party-wise candidate list"}
+                        </span>
                         <button
                           type="button"
-                          onClick={() => setSelParty(party.partyId)}
+                          onClick={() => focusFilteredList(party.partyId)}
                           className="font-medium text-slate-500 hover:text-[#2563eb] dark:text-slate-400 dark:hover:text-[#3b82f6]"
                         >
-                          {lang === "np" ? "सबै हेर्नुहोस्" : "See all"}
+                          {lang === "np" ? "शीर्ष सूची हेर्नुहोस्" : "See top list"}
                         </button>
                       </div>
                     </div>
@@ -428,10 +431,10 @@ export default function JamanatJafatPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden dark:border-slate-800/80 dark:bg-[#0c1525]">
+        <section id="jamanat-candidate-list" className="rounded-2xl border border-slate-200 bg-white overflow-hidden dark:border-slate-800/80 dark:bg-[#0c1525]">
           <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800/80">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              {lang === "np" ? "जमानत जफत उम्मेदवार सूची" : "Jamanat Jafat Candidate List"}
+              {lang === "np" ? "शीर्ष जमानत जफत उम्मेदवार सूची" : "Top Jamanat Jafat Candidate List"}
             </p>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               {lang === "np"
@@ -474,18 +477,12 @@ export default function JamanatJafatPage() {
                             <PartySymbol partyId={row.partyId} size="sm" />
                             <button
                               type="button"
-                              onClick={() => setSelParty(row.partyId)}
+                              onClick={() => focusFilteredList(row.partyId)}
                               className="truncate text-left text-slate-600 transition-colors hover:text-[#2563eb] dark:text-slate-300 dark:hover:text-[#3b82f6]"
                               title={lang === "np" ? "यस दलको सूची फिल्टर गर्नुहोस्" : "Filter this party"}
                             >
                               {lang === "np" ? getParty(row.partyId).partyName : getParty(row.partyId).nameEn}
                             </button>
-                            <Link
-                              to={`/party/${partySlug(getParty(row.partyId).nameEn)}`}
-                              className="shrink-0 text-[10px] text-[#2563eb] hover:underline dark:text-[#3b82f6]"
-                            >
-                              {lang === "np" ? "दल →" : "Party →"}
-                            </Link>
                           </div>
                         </td>
                         <td className="px-4 py-3 align-middle">
