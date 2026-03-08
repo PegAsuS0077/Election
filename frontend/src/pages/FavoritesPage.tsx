@@ -249,8 +249,8 @@ export default function FavoritesPage() {
                         </Link>
                         <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-400">
                           <span>FPTP: <span className="font-semibold text-slate-600 dark:text-slate-300">{tally.fptp}</span></span>
-                          <span>PR: <span className="font-semibold text-slate-600 dark:text-slate-300">{tally.pr}</span></span>
-                          <span className="font-semibold" style={{ color: pInfo.hex }}>Total: {total}</span>
+                          <span>{lang === "np" ? "समानुपातिक" : "PR"}: <span className="font-semibold text-slate-600 dark:text-slate-300">{tally.pr}</span></span>
+                          <span className="font-semibold" style={{ color: pInfo.hex }}>{lang === "np" ? "कुल" : "Total"}: {total}</span>
                         </div>
                       </div>
                       <button

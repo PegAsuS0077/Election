@@ -83,7 +83,9 @@ export default function SeatShareBars({
             {lang === "np" ? majorityLabelNP : majorityLabelEN}
           </p>
         </div>
-        <div className="text-xs text-slate-500 dark:text-slate-400">FPTP + PR</div>
+        <div className="text-xs text-slate-500 dark:text-slate-400">
+          {lang === "np" ? "FPTP + समानुपातिक" : "FPTP + PR"}
+        </div>
       </div>
 
       <div className="mt-4 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">

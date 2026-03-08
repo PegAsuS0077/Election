@@ -33,11 +33,11 @@ export default function PrVotesBars({ lang = "en" }: { lang?: Lang }) {
     return (
       <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          {lang === "np" ? "समानुपातिक मत (PR)" : "Proportional Votes (PR)"}
+          {lang === "np" ? "समानुपातिक मत" : "Proportional Votes (PR)"}
         </h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           {lang === "np"
-            ? "PR दलगत आधिकारिक मत फिड उपलब्ध भएपछि मात्र यहाँ परिणाम देखाइनेछ।"
+            ? "समानुपातिक दलगत आधिकारिक मत फिड उपलब्ध भएपछि मात्र यहाँ परिणाम देखाइनेछ।"
             : "Results appear here only when the official PR party-vote feed is available."}
         </p>
       </section>
@@ -81,16 +81,16 @@ export default function PrVotesBars({ lang = "en" }: { lang?: Lang }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            {lang === "np" ? "समानुपातिक मत (PR)" : "Proportional Votes (PR)"}
+            {lang === "np" ? "समानुपातिक मत" : "Proportional Votes (PR)"}
           </h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
             {lang === "np"
-              ? `कुल PR मत: ${fmt(totalVotes)}`
+              ? `कुल समानुपातिक मत: ${fmt(totalVotes)}`
               : `Total PR votes: ${fmt(totalVotes)}`}
           </p>
         </div>
         <div className="text-xs text-slate-500 dark:text-slate-400">
-          {lang === "np" ? "अपेक्षित PR सिट (110)" : "Expected PR seats (110)"}
+          {lang === "np" ? "अपेक्षित समानुपातिक सिट (110)" : "Expected PR seats (110)"}
         </div>
       </div>
 
