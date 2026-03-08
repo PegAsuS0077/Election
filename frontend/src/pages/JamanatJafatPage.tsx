@@ -5,13 +5,12 @@ import { PROVINCES } from "../types";
 import type { ConstituencyStatus, Province } from "../types";
 import type { Lang } from "../i18n";
 import { provinceName } from "../i18n";
-import { getParty, partySlug } from "../lib/partyRegistry";
+import { getParty, partyHex, partySlug } from "../lib/partyRegistry";
 import Layout from "../components/Layout";
 import PartySymbol from "../components/PartySymbol";
 
 const THRESHOLD_PCT = 10;
 const PAGE_SIZE = 24;
-const MAJOR_PARTY_ORDER = ["NC", "CPN-UML", "NCP", "RSP", "RPP", "CPN-US", "JSP", "JMP", "NUP", "LSP"] as const;
 
 type JamanatRow = {
   candidateId: number;
@@ -34,10 +33,6 @@ function fmt(n: number) { return n.toLocaleString("en-IN"); }
 function candidateSlug(candidateId: number, name: string) {
   return `${candidateId}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
-function majorPartyPriority(partyId: string) {
-  const idx = MAJOR_PARTY_ORDER.indexOf(partyId as (typeof MAJOR_PARTY_ORDER)[number]);
-  return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
-}
 function statusLabel(status: ConstituencyStatus, lang: Lang) {
   if (status === "DECLARED") return lang === "np" ? "घोषित" : "Declared";
   if (status === "COUNTING") return lang === "np" ? "मतगणना" : "Counting";
@@ -51,6 +46,7 @@ function statusClass(status: ConstituencyStatus) {
 
 export default function JamanatJafatPage() {
   const results = useElectionStore((s) => s.results);
+  const seatTally = useElectionStore((s) => s.seatTally);
   const lang = useElectionStore((s) => s.lang);
 
   const [search, setSearch] = useState("");
@@ -126,6 +122,26 @@ export default function JamanatJafatPage() {
     return Array.from(seen.entries()).sort((a, b) => a[1][0].localeCompare(b[1][0]));
   }, [allRows, selProv, selDistrict]);
 
+  const partyRanking = useMemo(() => {
+    const votesByParty = new Map<string, number>();
+    for (const r of results) {
+      for (const c of r.candidates) {
+        votesByParty.set(c.partyId, (votesByParty.get(c.partyId) ?? 0) + c.votes);
+      }
+    }
+
+    return Array.from(votesByParty.entries())
+      .map(([partyId, partyVotes]) => ({
+        partyId,
+        partyVotes,
+        declaredSeats: seatTally[partyId]?.fptp ?? 0,
+      }))
+      .sort((a, b) => {
+        if (b.declaredSeats !== a.declaredSeats) return b.declaredSeats - a.declaredSeats;
+        return b.partyVotes - a.partyVotes;
+      });
+  }, [results, seatTally]);
+
   const scopedRows = useMemo(() => {
     return allRows.filter((row) => {
       if (selProv !== "All" && row.province !== selProv) return false;
@@ -141,14 +157,16 @@ export default function JamanatJafatPage() {
   }, [allRows, selProv, selDistrict, selConst, search]);
 
   const partyCards = useMemo(() => {
-    const grouped = new Map<string, { count: number; voteShareTotal: number }>();
+    const partiesPageRank = new Map(partyRanking.map((p, idx) => [p.partyId, idx + 1]));
+    const grouped = new Map<string, { count: number; voteShareTotal: number; candidates: JamanatRow[] }>();
     for (const row of scopedRows) {
       const prev = grouped.get(row.partyId);
       if (prev) {
         prev.count += 1;
         prev.voteShareTotal += row.voteSharePct;
+        prev.candidates.push(row);
       } else {
-        grouped.set(row.partyId, { count: 1, voteShareTotal: row.voteSharePct });
+        grouped.set(row.partyId, { count: 1, voteShareTotal: row.voteSharePct, candidates: [row] });
       }
     }
 
@@ -157,16 +175,25 @@ export default function JamanatJafatPage() {
         partyId,
         count: values.count,
         avgVoteSharePct: values.voteShareTotal / values.count,
+        topCandidates: [...values.candidates]
+          .sort((a, b) => (a.voteSharePct - b.voteSharePct) || (b.votes - a.votes))
+          .slice(0, 3),
+        partiesPageRank: partiesPageRank.get(partyId) ?? null,
+        declaredSeats: seatTally[partyId]?.fptp ?? 0,
+        partyVotes: partyRanking.find((p) => p.partyId === partyId)?.partyVotes ?? 0,
         partyName: getParty(partyId).nameEn,
       }))
       .sort((a, b) => {
-        const majorDelta = majorPartyPriority(a.partyId) - majorPartyPriority(b.partyId);
-        if (majorDelta !== 0) return majorDelta;
+        if (a.partiesPageRank !== null && b.partiesPageRank !== null && a.partiesPageRank !== b.partiesPageRank) {
+          return a.partiesPageRank - b.partiesPageRank;
+        }
+        if (a.partiesPageRank !== null && b.partiesPageRank === null) return -1;
+        if (a.partiesPageRank === null && b.partiesPageRank !== null) return 1;
         if (b.count !== a.count) return b.count - a.count;
         if (a.avgVoteSharePct !== b.avgVoteSharePct) return a.avgVoteSharePct - b.avgVoteSharePct;
         return a.partyName.localeCompare(b.partyName);
       });
-  }, [scopedRows]);
+  }, [scopedRows, partyRanking, seatTally]);
 
   const filteredRows = useMemo(() => {
     return scopedRows
@@ -298,53 +325,101 @@ export default function JamanatJafatPage() {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {partyCards.map((party, idx) => {
                 const selected = selParty === party.partyId;
-                const rank = idx + 1;
+                const rank = party.partiesPageRank ?? idx + 1;
                 return (
                   <div
                     key={party.partyId}
-                    className={"rounded-xl border p-3 transition " +
+                    className={"overflow-hidden rounded-xl border transition " +
                       (selected
                         ? "border-[#2563eb]/50 bg-blue-50/60 dark:border-[#3b82f6]/50 dark:bg-blue-950/20"
-                        : "border-slate-200 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/40")}
+                        : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900/40")}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className="inline-flex h-6 min-w-[2.1rem] items-center justify-center rounded-full bg-blue-100 px-1.5 text-[10px] font-extrabold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 tabular-nums"
-                            style={{ fontFamily: "'DM Mono', monospace" }}
-                          >
-                            #{rank}
-                          </span>
-                          <PartySymbol partyId={party.partyId} size="md" />
-                          <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {lang === "np" ? getParty(party.partyId).partyName : getParty(party.partyId).nameEn}
+                    <div className="h-1.5 w-full" style={{ backgroundColor: partyHex(party.partyId) }} />
+                    <div className="p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="inline-flex h-6 min-w-[2.1rem] items-center justify-center rounded-full bg-blue-100 px-1.5 text-[10px] font-extrabold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 tabular-nums"
+                              style={{ fontFamily: "'DM Mono', monospace" }}
+                            >
+                              #{rank}
+                            </span>
+                            <PartySymbol partyId={party.partyId} size="md" />
+                            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {lang === "np" ? getParty(party.partyId).partyName : getParty(party.partyId).nameEn}
+                            </p>
+                          </div>
+                          <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                            {lang === "np" ? "पार्टी र्याङ्क" : "Parties rank"}: #{rank}
+                            {party.partiesPageRank === null ? ` (${lang === "np" ? "नयाँ" : "new"})` : ""}
                           </p>
                         </div>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          {party.count} {lang === "np" ? "उम्मेदवार" : "candidates"} · {party.avgVoteSharePct.toFixed(2)}% {lang === "np" ? "औसत" : "avg"}
-                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSelParty((prev) => prev === party.partyId ? "All" : party.partyId)}
+                          className={"rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition " +
+                            (selected
+                              ? "border-[#2563eb] bg-[#2563eb] text-white"
+                              : "border-slate-300 text-slate-600 hover:border-[#2563eb]/40 hover:text-[#2563eb] dark:border-slate-600 dark:text-slate-300 dark:hover:border-[#3b82f6]/40 dark:hover:text-[#3b82f6]")}
+                        >
+                          {selected
+                            ? (lang === "np" ? "हटाउनुहोस्" : "Clear")
+                            : (lang === "np" ? "हेर्नुहोस्" : "Show")}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelParty((prev) => prev === party.partyId ? "All" : party.partyId)}
-                        className={"rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition " +
-                          (selected
-                            ? "border-[#2563eb] bg-[#2563eb] text-white"
-                            : "border-slate-300 text-slate-600 hover:border-[#2563eb]/40 hover:text-[#2563eb] dark:border-slate-600 dark:text-slate-300 dark:hover:border-[#3b82f6]/40 dark:hover:text-[#3b82f6]")}
-                      >
-                        {selected
-                          ? (lang === "np" ? "हटाउनुहोस्" : "Clear")
-                          : (lang === "np" ? "हेर्नुहोस्" : "Show")}
-                      </button>
-                    </div>
-                    <div className="mt-2">
-                      <Link
-                        to={`/party/${partySlug(getParty(party.partyId).nameEn)}`}
-                        className="text-[11px] font-medium text-[#2563eb] hover:underline dark:text-[#3b82f6]"
-                      >
-                        {lang === "np" ? "पूरा दल पृष्ठ →" : "Open party page →"}
-                      </Link>
+
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+                        <div className="rounded-lg bg-slate-50 px-2 py-1.5 text-center dark:bg-slate-800/70">
+                          <div className="font-bold tabular-nums text-slate-800 dark:text-slate-200">{party.count}</div>
+                          <div className="text-slate-400">{lang === "np" ? "जफत" : "Jafat"}</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 px-2 py-1.5 text-center dark:bg-slate-800/70">
+                          <div className="font-bold tabular-nums text-slate-800 dark:text-slate-200">{party.avgVoteSharePct.toFixed(2)}%</div>
+                          <div className="text-slate-400">{lang === "np" ? "औसत" : "Avg"}</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 px-2 py-1.5 text-center dark:bg-slate-800/70">
+                          <div className="font-bold tabular-nums text-slate-800 dark:text-slate-200">{party.declaredSeats}</div>
+                          <div className="text-slate-400">{lang === "np" ? "सिट" : "Seats"}</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 border-t border-slate-100 pt-2 dark:border-slate-700">
+                        <p className="mb-1 text-[10px] uppercase tracking-wide text-slate-400">
+                          {lang === "np" ? "शीर्ष जमानत जफत उम्मेदवार" : "Top Jamanat Jafat Candidates"}
+                        </p>
+                        <div className="space-y-1.5">
+                          {party.topCandidates.map((cand) => (
+                            <div key={`${party.partyId}-${cand.candidateId}-${cand.constCode}`} className="flex items-center justify-between gap-2">
+                              <Link
+                                to={`/candidate/${candidateSlug(cand.candidateId, cand.candidateName)}`}
+                                className="truncate text-xs text-slate-700 hover:text-[#2563eb] dark:text-slate-200 dark:hover:text-[#3b82f6]"
+                              >
+                                {lang === "np" ? cand.candidateNameNp : cand.candidateName}
+                              </Link>
+                              <span className="shrink-0 text-[11px] tabular-nums font-semibold text-rose-600 dark:text-rose-300">
+                                {cand.voteSharePct.toFixed(2)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between text-[11px]">
+                        <Link
+                          to={`/party/${partySlug(getParty(party.partyId).nameEn)}`}
+                          className="font-medium text-[#2563eb] hover:underline dark:text-[#3b82f6]"
+                        >
+                          {lang === "np" ? "पूरा दल पृष्ठ →" : "Open party page →"}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setSelParty(party.partyId)}
+                          className="font-medium text-slate-500 hover:text-[#2563eb] dark:text-slate-400 dark:hover:text-[#3b82f6]"
+                        >
+                          {lang === "np" ? "सबै हेर्नुहोस्" : "See all"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
