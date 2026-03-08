@@ -335,6 +335,12 @@ export default function App() {
           </div>
         </section>
 
+        {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards lang={lang} />}
+
+        {isLoading ? <PrVotesBarsSkeleton /> : <PrVotesBars lang={lang} />}
+
+        {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
+
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -503,12 +509,6 @@ export default function App() {
             </>
           )}
         </section>
-
-        {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards lang={lang} />}
-
-        {isLoading ? <PrVotesBarsSkeleton /> : <PrVotesBars lang={lang} />}
-
-        {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <div className="mb-4">
