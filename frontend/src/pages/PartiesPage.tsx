@@ -288,7 +288,9 @@ export default function PartiesPage() {
 
       {/* ── Party cards grid ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 grid gap-5 sm:grid-cols-2 xl:grid-cols-2">
-        {paginatedPartyData.map(({ key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount }) => (
+        {paginatedPartyData.map(({ key, pInfo, tally, total, pct, voteSharePct, partyVotes, winners, provBreakdown, hex, candidateCount }, idx) => {
+          const rank = (page - 1) * PARTY_PAGE_SIZE + idx + 1;
+          return (
           <div
             key={key}
             className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0c1525] overflow-hidden shadow-sm hover:shadow-md transition-shadow"
@@ -299,6 +301,12 @@ export default function PartiesPage() {
               {/* Header */}
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
+                  <span
+                    className="inline-flex h-7 min-w-[2.25rem] items-center justify-center rounded-full bg-blue-100 px-2 text-[11px] font-extrabold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 tabular-nums"
+                    style={{ fontFamily: "'DM Mono', monospace" }}
+                  >
+                    #{rank}
+                  </span>
 
                   {pInfo.symbolUrl
                     ? <img src={pInfo.symbolUrl} alt={pInfo.symbol} className="h-10 w-10 object-contain flex-shrink-0" />
@@ -425,7 +433,7 @@ export default function PartiesPage() {
               </Link>
             </div>
           </div>
-        ))}
+        )})}
       </div>
 
       {/* ── Pagination ── */}

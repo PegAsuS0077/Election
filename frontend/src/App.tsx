@@ -298,6 +298,27 @@ export default function App() {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-amber-200/70 bg-amber-50/70 px-4 py-3 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                {lang === "np" ? "⚖️ जमानत जफत ट्र्याकर" : "⚖️ Jamanat Jafat Tracker"}
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {lang === "np"
+                  ? "१०% भन्दा कम मत पाएका उम्मेदवार हेर्नुहोस्।"
+                  : "Track candidates who are below the 10% vote-share threshold."}
+              </p>
+            </div>
+            <Link
+              to="/jamanat-jafat"
+              className="inline-flex items-center rounded-lg border border-amber-400/60 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100/60 dark:bg-slate-900 dark:text-amber-300 dark:hover:bg-amber-900/30"
+            >
+              {lang === "np" ? "सूची खोल्नुहोस् →" : "Open list →"} ({jamanatJafatCount})
+            </Link>
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-blue-200/70 bg-blue-50/70 px-4 py-3 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-700 dark:text-slate-200">
@@ -484,28 +505,7 @@ export default function App() {
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
-          <div className="rounded-2xl border border-amber-200/70 bg-amber-50/70 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/20">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                  {lang === "np" ? "⚖️ जमानत जफत ट्र्याकर" : "⚖️ Jamanat Jafat Tracker"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {lang === "np"
-                    ? "१०% भन्दा कम मत पाएका उम्मेदवार हेर्नुहोस्।"
-                    : "Track candidates who are below the 10% vote-share threshold."}
-                </p>
-              </div>
-              <Link
-                to="/jamanat-jafat"
-                className="inline-flex items-center rounded-lg border border-amber-400/60 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100/60 dark:bg-slate-900 dark:text-amber-300 dark:hover:bg-amber-900/30"
-              >
-                {lang === "np" ? "सूची खोल्नुहोस् →" : "Open list →"} ({jamanatJafatCount})
-              </Link>
-            </div>
-          </div>
-
-          <div className="mb-4 mt-5">
+          <div className="mb-4">
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               ⭐ {t("featuredSection", lang)}
             </h2>

@@ -296,8 +296,9 @@ export default function JamanatJafatPage() {
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {partyCards.map((party) => {
+              {partyCards.map((party, idx) => {
                 const selected = selParty === party.partyId;
+                const rank = idx + 1;
                 return (
                   <div
                     key={party.partyId}
@@ -309,6 +310,12 @@ export default function JamanatJafatPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="inline-flex h-6 min-w-[2.1rem] items-center justify-center rounded-full bg-blue-100 px-1.5 text-[10px] font-extrabold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 tabular-nums"
+                            style={{ fontFamily: "'DM Mono', monospace" }}
+                          >
+                            #{rank}
+                          </span>
                           <PartySymbol partyId={party.partyId} size="md" />
                           <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                             {lang === "np" ? getParty(party.partyId).partyName : getParty(party.partyId).nameEn}
@@ -390,9 +397,20 @@ export default function JamanatJafatPage() {
                         <td className="px-4 py-3 align-middle">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <PartySymbol partyId={row.partyId} size="sm" />
-                            <span className="truncate text-slate-600 dark:text-slate-300">
+                            <button
+                              type="button"
+                              onClick={() => setSelParty(row.partyId)}
+                              className="truncate text-left text-slate-600 transition-colors hover:text-[#2563eb] dark:text-slate-300 dark:hover:text-[#3b82f6]"
+                              title={lang === "np" ? "यस दलको सूची फिल्टर गर्नुहोस्" : "Filter this party"}
+                            >
                               {lang === "np" ? getParty(row.partyId).partyName : getParty(row.partyId).nameEn}
-                            </span>
+                            </button>
+                            <Link
+                              to={`/party/${partySlug(getParty(row.partyId).nameEn)}`}
+                              className="shrink-0 text-[10px] text-[#2563eb] hover:underline dark:text-[#3b82f6]"
+                            >
+                              {lang === "np" ? "दल →" : "Party →"}
+                            </Link>
                           </div>
                         </td>
                         <td className="px-4 py-3 align-middle">
