@@ -4,8 +4,6 @@ import { useElectionStore } from "./store/electionStore";
 import { provinceName, t } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
 import { PROVINCE_COLORS } from "./lib/constants";
-import { shouldTriggerSponsoredRedirect, SPONSORED_LINK_URL, openSponsoredLinkInNewTab } from "./lib/sponsoredGate";
-import { ADSENSE_REVIEW_MODE } from "./lib/adsenseReviewMode";
 import { RESULTS_MODE } from "./types";
 
 import SummaryCards from "./SummaryCards";
@@ -31,7 +29,6 @@ const TRENDING_CONSTITUENCY_CODES = [
   "Chitwan-2",
   "Kathmandu-9",
 ] as const;
-const SPONSORED_VARIANT_KEY = "sponsored_link_variant_v1";
 const CANDIDATE_RANK_LIMIT = 20;
 const CANDIDATE_RANK_PAGE_SIZE = 5;
 
@@ -59,54 +56,9 @@ function useCountdownTimer(targetDate: string) {
 
 export default function App() {
   const { isLoading, setIsLoading, lang } = useElectionStore();
-  const [sponsoredVariant] = useState<"live_updates" | "fast_digest">(() => {
-    if (ADSENSE_REVIEW_MODE || typeof window === "undefined") return "live_updates";
-    const saved = window.localStorage.getItem(SPONSORED_VARIANT_KEY);
-    if (saved === "live_updates" || saved === "fast_digest") return saved;
-    const next = Math.random() < 0.5 ? "live_updates" : "fast_digest";
-    window.localStorage.setItem(SPONSORED_VARIANT_KEY, next);
-    return next;
-  });
   const [candidateRankMode, setCandidateRankMode] = useState<"percentage" | "votes">("percentage");
   const [showAllRankedCandidates, setShowAllRankedCandidates] = useState(false);
   const [candidateRankPage, setCandidateRankPage] = useState(1);
-
-  useEffect(() => {
-    if (ADSENSE_REVIEW_MODE) return;
-    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
-    gtag?.("event", "sponsored_impression", {
-      event_category: "advertising",
-      event_label: "home_mid_card",
-      sponsored_variant: sponsoredVariant,
-      non_interaction: true,
-    });
-  }, [sponsoredVariant]);
-
-  const handleSponsoredClick = () => {
-    if (ADSENSE_REVIEW_MODE) return;
-    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
-    gtag?.("event", "sponsored_click", {
-      event_category: "advertising",
-      event_label: "home_mid_card",
-      sponsored_variant: sponsoredVariant,
-      value: 1,
-    });
-  };
-  const handleFeaturedSeatClick = (hasResult: boolean) => {
-    if (ADSENSE_REVIEW_MODE) return;
-    if (!hasResult || typeof window === "undefined") return;
-    const shouldRedirect = shouldTriggerSponsoredRedirect();
-    if (!shouldRedirect) return;
-
-    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
-    gtag?.("event", "featured_gate_redirect", {
-      event_category: "advertising",
-      event_label: "featured_section_throttled_redirect",
-      value: 1,
-    });
-
-    openSponsoredLinkInNewTab(SPONSORED_LINK_URL);
-  };
 
   // Give archive data load a short window before assuming empty
   useEffect(() => {
@@ -290,20 +242,6 @@ export default function App() {
       <span className="text-[11px] text-white/30 tabular-nums">{t("lastUpdated", lang)} {lastUpdatedStr}</span>
     </div>
   );
-
-  const sponsoredTitle = lang === "np"
-    ? (sponsoredVariant === "live_updates" ? "त्वरित चुनाव अपडेट लिंक" : "छोटो चुनाव सारांश लिंक")
-    : (sponsoredVariant === "live_updates" ? "Quick Election Update Link" : "Short Election Digest Link");
-  const sponsoredDesc = lang === "np"
-    ? (sponsoredVariant === "live_updates"
-      ? "यो प्रायोजित लिंकले नयाँ ट्याबमा बाह्य अपडेट पृष्ठ खोल्छ।"
-      : "यो प्रायोजित लिंकले नयाँ ट्याबमा छोटो बाह्य सामग्री खोल्छ।")
-    : (sponsoredVariant === "live_updates"
-      ? "This sponsored link opens an external updates page in a new tab."
-      : "This sponsored link opens a short external digest page in a new tab.");
-  const sponsoredCta = lang === "np"
-    ? (sponsoredVariant === "live_updates" ? "अपडेट हेर्नुहोस्" : "डाइजेस्ट खोल्नुहोस्")
-    : (sponsoredVariant === "live_updates" ? "Open Updates" : "Open Digest");
 
   return (
     <Layout
@@ -545,7 +483,6 @@ export default function App() {
               <Link
                 key={code}
                 to={result ? `/constituency/${encodeURIComponent(result.code)}` : "/explore"}
-                onClick={() => handleFeaturedSeatClick(Boolean(result))}
                 className="block w-full text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#2563eb]/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-[#3b82f6]/40"
               >
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -651,33 +588,6 @@ export default function App() {
         {isLoading ? <PrVotesBarsSkeleton /> : <PrVotesBars lang={lang} />}
 
         <LatestUpdates results={results} lang={lang} />
-
-        {!ADSENSE_REVIEW_MODE && (
-          <section className="rounded-2xl border border-amber-200/80 bg-amber-50/70 p-4 sm:p-5 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                  {lang === "np" ? "प्रायोजित" : "Sponsored"}
-                </span>
-                <h3 className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {sponsoredTitle}
-                </h3>
-                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                  {sponsoredDesc}
-                </p>
-              </div>
-              <a
-                href={SPONSORED_LINK_URL}
-                target="_blank"
-                rel="noopener noreferrer nofollow sponsored"
-                onClick={handleSponsoredClick}
-                className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-600 active:scale-[0.99]"
-              >
-                {sponsoredCta} ↗
-              </a>
-            </div>
-          </section>
-        )}
 
         {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
 
