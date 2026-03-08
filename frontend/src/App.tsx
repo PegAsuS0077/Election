@@ -504,6 +504,12 @@ export default function App() {
           )}
         </section>
 
+        {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards lang={lang} />}
+
+        {isLoading ? <PrVotesBarsSkeleton /> : <PrVotesBars lang={lang} />}
+
+        {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
+
         <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm dark:bg-[#0c1525] dark:border-slate-800/80">
           <div className="mb-4">
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -617,13 +623,7 @@ export default function App() {
           <HotSeats results={results} lang={lang} />
         </section>
 
-        {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards lang={lang} />}
-
-        {isLoading ? <PrVotesBarsSkeleton /> : <PrVotesBars lang={lang} />}
-
         <LatestUpdates results={results} lang={lang} />
-
-        {isLoading ? <SeatShareBarsSkeleton /> : <SeatShareBars lang={lang} />}
 
         {/* ── Declared Constituencies + Countdown ─────────────────────────── */}
         <div className="flex flex-col items-center gap-5 py-2">
