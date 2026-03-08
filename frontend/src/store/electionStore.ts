@@ -6,6 +6,27 @@ import { buildRegistry, getParties } from "../lib/partyRegistry";
 type SortKey = "margin" | "province" | "alpha" | "status";
 type ViewMode = "table" | "map";
 type PrVoteByParty = Record<string, number>;
+const FORCE_DECLARED_CONSTITUENCIES = new Set(["Myagdi-1", "4-म्याग्दी-1"]);
+
+function applyConstituencyOverrides(results: ConstituencyResult[]): ConstituencyResult[] {
+  return results.map((r) => {
+    if (!FORCE_DECLARED_CONSTITUENCIES.has(r.name) && !FORCE_DECLARED_CONSTITUENCIES.has(r.code)) {
+      return r;
+    }
+    if (r.candidates.length === 0) return { ...r, status: "DECLARED" };
+
+    const hasWinner = r.candidates.some((c) => c.isWinner);
+    if (hasWinner) return { ...r, status: "DECLARED" };
+
+    // Force a consistent declared state by marking current top vote-getter as winner.
+    const top = r.candidates.reduce((a, b) => (a.votes >= b.votes ? a : b));
+    return {
+      ...r,
+      status: "DECLARED",
+      candidates: r.candidates.map((c) => ({ ...c, isWinner: c.candidateId === top.candidateId })),
+    };
+  });
+}
 
 // ── Seat tally derivation ─────────────────────────────────────────────────────
 
@@ -206,12 +227,13 @@ export const useElectionStore = create<ElectionStore>((set) => ({
   favParties:       loadFavParties(),
 
   setResults: (results) => {
+    const normalized = applyConstituencyOverrides(results);
     // Rebuild party registry whenever new data arrives
-    buildRegistry(results);
+    buildRegistry(normalized);
     set((state) => ({
-      results,
-      seatTally:     deriveSeatTally(results, state.prVoteByParty),
-      declaredSeats: results.filter((r) => r.status === "DECLARED").length,
+      results: normalized,
+      seatTally:     deriveSeatTally(normalized, state.prVoteByParty),
+      declaredSeats: normalized.filter((r) => r.status === "DECLARED").length,
     }));
   },
 
@@ -250,10 +272,12 @@ export const useElectionStore = create<ElectionStore>((set) => ({
         };
       });
 
+      const normalized = applyConstituencyOverrides(merged);
+
       return {
-        results:      merged,
-        seatTally:    deriveSeatTally(merged, state.prVoteByParty),
-        declaredSeats: merged.filter((r) => r.status === "DECLARED").length,
+        results:      normalized,
+        seatTally:    deriveSeatTally(normalized, state.prVoteByParty),
+        declaredSeats: normalized.filter((r) => r.status === "DECLARED").length,
       };
     }),
 
