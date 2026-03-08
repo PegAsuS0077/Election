@@ -23,6 +23,7 @@ import PartyPage from "./pages/PartyPage.tsx";
 import PartyConstituenciesPage from "./pages/PartyConstituenciesPage.tsx";
 import ConstituencyPage from "./pages/ConstituencyPage.tsx";
 import FavoritesPage from "./pages/FavoritesPage.tsx";
+import JamanatJafatPage from "./pages/JamanatJafatPage.tsx";
 
 // Register service worker (autoUpdate — silently refreshes on new version)
 registerSW({ immediate: true });
@@ -46,6 +47,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/privacy-policy" element={<PrivacyPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/jamanat-jafat" element={<JamanatJafatPage />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>
