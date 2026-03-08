@@ -47,11 +47,22 @@ function deriveSeatTally(results: ConstituencyResult[], prVotes: PrVoteByParty):
     totalVotes += votes;
   }
   const PR_SEATS = 110;
+  const PR_THRESHOLD = 0.03; // 3% minimum PR vote share required for seat eligibility
+
   if (totalVotes > 0) {
-    for (const pid of partyIds) {
-      if (tally[pid]) {
+    const eligiblePartyIds = partyIds.filter((pid) => ((voteShare[pid] ?? 0) / totalVotes) >= PR_THRESHOLD);
+    const eligiblePartySet = new Set(eligiblePartyIds);
+    const eligibleVotes = eligiblePartyIds.reduce((sum, pid) => sum + (voteShare[pid] ?? 0), 0);
+
+    if (eligibleVotes > 0) {
+      for (const pid of partyIds) {
+        if (!tally[pid]) continue;
+        if (!eligiblePartySet.has(pid)) {
+          (tally[pid] as SeatEntry).pr = 0;
+          continue;
+        }
         (tally[pid] as SeatEntry).pr = Math.round(
-          ((voteShare[pid] ?? 0) / totalVotes) * PR_SEATS
+          ((voteShare[pid] ?? 0) / eligibleVotes) * PR_SEATS
         );
       }
     }
