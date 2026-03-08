@@ -64,8 +64,16 @@ export default function Footer({ lang = "en" }: { lang?: Lang }) {
               {lang === "np" ? "हाम्रोबारे" : "About"}
             </Link>
             <span aria-hidden="true">·</span>
+            <Link to="/editorial-policy" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              {lang === "np" ? "सम्पादकीय नीति" : "Editorial Policy"}
+            </Link>
+            <span aria-hidden="true">·</span>
             <Link to="/privacy-policy" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
               {lang === "np" ? "गोपनीयता नीति" : "Privacy Policy"}
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/terms" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              {lang === "np" ? "प्रयोग सर्त" : "Terms"}
             </Link>
             <span aria-hidden="true">·</span>
             <Link to="/contact" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">

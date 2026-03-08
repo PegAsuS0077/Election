@@ -18,6 +18,8 @@ import CandidatesPage from "./pages/CandidatesPage.tsx";
 import AboutPage from "./pages/AboutPage.tsx";
 import PrivacyPage from "./pages/PrivacyPage.tsx";
 import ContactPage from "./pages/ContactPage.tsx";
+import TermsPage from "./pages/TermsPage.tsx";
+import EditorialPolicyPage from "./pages/EditorialPolicyPage.tsx";
 import CandidateDetailPage from "./pages/CandidateDetailPage.tsx";
 import PartyPage from "./pages/PartyPage.tsx";
 import PartyConstituenciesPage from "./pages/PartyConstituenciesPage.tsx";
@@ -45,6 +47,8 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/candidate/:candidateSlug" element={<CandidateDetailPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/privacy-policy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/editorial-policy" element={<EditorialPolicyPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
         <Route path="/jamanat-jafat" element={<JamanatJafatPage />} />

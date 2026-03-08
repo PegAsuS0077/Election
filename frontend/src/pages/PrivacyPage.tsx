@@ -41,7 +41,7 @@ export default function PrivacyPage() {
             </h2>
             <p className="mb-3">
               {lang === "np"
-                ? "हामी कुनै व्यक्तिगत जानकारी (नाम, इमेल, फोन नम्बर, आदि) संकलन गर्दैनौं र भण्डारण गर्दैनौं। हामीले मात्र निम्न익명 उपयोग डेटा संकलन गर्छौं:"
+                ? "हामी कुनै व्यक्तिगत जानकारी (नाम, इमेल, फोन नम्बर, आदि) संकलन गर्दैनौं र भण्डारण गर्दैनौं। हामीले मात्र निम्न अनामिक उपयोग डेटा संकलन गर्छौं:"
                 : "We do not collect or store any personal information (name, email, phone number, etc.). We only collect the following anonymous usage data:"}
             </p>
             <ul className="list-disc list-inside space-y-1 ml-2">
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
             </h2>
             <p>
               {lang === "np"
-                ? "यो साइटले Google Analytics प्रयोग गर्दछ। Google Analytics ले cookies मार्फत익명 प्रयोगकर्ता व्यवहारको डेटा संकलन गर्दछ। यो डेटा Google को सर्भरमा भण्डारण हुन्छ र Google को गोपनीयता नीति अन्तर्गत छ।"
+                ? "यो साइटले Google Analytics प्रयोग गर्दछ। Google Analytics ले cookies मार्फत अनामिक प्रयोगकर्ता व्यवहारको डेटा संकलन गर्दछ। यो डेटा Google को सर्भरमा भण्डारण हुन्छ र Google को गोपनीयता नीति अन्तर्गत छ।"
                 : "This site uses Google Analytics to understand how visitors use it. Google Analytics collects anonymous usage data via cookies. This data is stored on Google's servers and is subject to Google's privacy policy."}
             </p>
             <p className="mt-3">

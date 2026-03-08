@@ -54,7 +54,9 @@ function build() {
     { path: "/parties", changefreq: "hourly", priority: "0.8" },
     { path: "/candidates", changefreq: "hourly", priority: "0.8" },
     { path: "/about", changefreq: "monthly", priority: "0.5" },
+    { path: "/editorial-policy", changefreq: "monthly", priority: "0.5" },
     { path: "/privacy-policy", changefreq: "monthly", priority: "0.4" },
+    { path: "/terms", changefreq: "monthly", priority: "0.4" },
     { path: "/contact", changefreq: "monthly", priority: "0.4" },
   ];
 

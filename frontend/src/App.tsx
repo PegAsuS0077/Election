@@ -259,7 +259,7 @@ export default function App() {
   return (
     <Layout
       title="Nepal House of Representatives"
-      titleNp="प्रतिनिधि सभा निर्वाचन ⃦⃨⃨⃨"
+      titleNp="प्रतिनिधि सभा निर्वाचन"
       subtitle={"General Election · " + t("electionDate", lang)}
       subtitleNp={"सामान्य निर्वाचन · " + t("electionDate", lang)}
       badge={heroBadge}
