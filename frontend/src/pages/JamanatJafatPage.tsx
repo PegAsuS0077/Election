@@ -3,14 +3,12 @@ import { Link } from "react-router-dom";
 import { useElectionStore } from "../store/electionStore";
 import { PROVINCES } from "../types";
 import type { ConstituencyStatus, Province } from "../types";
-import type { Lang } from "../i18n";
 import { provinceName } from "../i18n";
 import { getParty, partyHex } from "../lib/partyRegistry";
 import Layout from "../components/Layout";
 import PartySymbol from "../components/PartySymbol";
 
 const THRESHOLD_PCT = 10;
-const PAGE_SIZE = 24;
 
 type JamanatRow = {
   candidateId: number;
@@ -33,16 +31,6 @@ function fmt(n: number) { return n.toLocaleString("en-IN"); }
 function candidateSlug(candidateId: number, name: string) {
   return `${candidateId}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
-function statusLabel(status: ConstituencyStatus, lang: Lang) {
-  if (status === "DECLARED") return lang === "np" ? "घोषित" : "Declared";
-  if (status === "COUNTING") return lang === "np" ? "मतगणना" : "Counting";
-  return lang === "np" ? "बाँकी" : "Pending";
-}
-function statusClass(status: ConstituencyStatus) {
-  if (status === "DECLARED") return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
-  if (status === "COUNTING") return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
-  return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
-}
 
 export default function JamanatJafatPage() {
   const results = useElectionStore((s) => s.results);
@@ -54,12 +42,13 @@ export default function JamanatJafatPage() {
   const [selDistrict, setSelDistrict] = useState("All");
   const [selConst, setSelConst] = useState("All");
   const [selParty, setSelParty] = useState("All");
-  const [page, setPage] = useState(1);
 
-  const focusFilteredList = (partyId: string) => {
+  const openPartyTopList = (partyId: string) => {
     setSelParty(partyId);
-    const list = document.getElementById("jamanat-candidate-list");
-    if (list) list.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => {
+      const list = document.getElementById("jamanat-top-list");
+      if (list) list.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   };
 
   useEffect(() => {
@@ -211,13 +200,7 @@ export default function JamanatJafatPage() {
       });
   }, [scopedRows, selParty]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [selProv, selDistrict, selConst, selParty, search]);
-
-  const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount);
-  const paginatedRows = filteredRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const openedPartyRows = selParty === "All" ? [] : filteredRows;
   const totalConstituencies = new Set(allRows.map((r) => r.constCode)).size;
 
   const heroBadge = (
@@ -315,6 +298,45 @@ export default function JamanatJafatPage() {
             ))}
           </select>
         </div>
+
+        {selParty !== "All" && (
+          <section id="jamanat-top-list" className="rounded-2xl border border-rose-200 bg-rose-50/60 overflow-hidden dark:border-rose-900/50 dark:bg-rose-950/20">
+            <div className="border-b border-rose-200/70 px-4 py-3 dark:border-rose-900/40">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                {lang === "np" ? "शीर्ष जमानत जफत उम्मेदवार" : "Top Jamanat Jafat Candidates"}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {lang === "np" ? getParty(selParty).partyName : getParty(selParty).nameEn} · {openedPartyRows.length} {lang === "np" ? "उम्मेदवार" : "candidates"}
+              </p>
+            </div>
+
+            {openedPartyRows.length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-slate-400">
+                {lang === "np" ? "यो फिल्टरमा कुनै उम्मेदवार छैन।" : "No candidates for this filter."}
+              </div>
+            ) : (
+              <div className="divide-y divide-rose-100 dark:divide-rose-900/30">
+                {openedPartyRows.map((row) => (
+                  <Link
+                    key={`top-${row.constCode}-${row.candidateId}`}
+                    to={`/candidate/${candidateSlug(row.candidateId, row.candidateName)}`}
+                    className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-2.5 hover:bg-white/80 dark:hover:bg-slate-900/40 transition-colors"
+                  >
+                    <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                      {lang === "np" ? row.candidateNameNp : row.candidateName}
+                    </span>
+                    <span className="text-xs tabular-nums text-slate-600 dark:text-slate-300" style={{ fontFamily: "'DM Mono', monospace" }}>
+                      {fmt(row.votes)}
+                    </span>
+                    <span className="text-xs tabular-nums font-bold text-rose-700 dark:text-rose-300" style={{ fontFamily: "'DM Mono', monospace" }}>
+                      {row.voteSharePct.toFixed(2)}%
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800/80 dark:bg-[#0c1525]">
           <div className="mb-3 flex items-center justify-between gap-2">
@@ -417,7 +439,7 @@ export default function JamanatJafatPage() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => focusFilteredList(party.partyId)}
+                          onClick={() => openPartyTopList(party.partyId)}
                           className="font-medium text-slate-500 hover:text-[#2563eb] dark:text-slate-400 dark:hover:text-[#3b82f6]"
                         >
                           {lang === "np" ? "शीर्ष सूची हेर्नुहोस्" : "See top list"}
@@ -431,120 +453,6 @@ export default function JamanatJafatPage() {
           )}
         </section>
 
-        <section id="jamanat-candidate-list" className="rounded-2xl border border-slate-200 bg-white overflow-hidden dark:border-slate-800/80 dark:bg-[#0c1525]">
-          <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800/80">
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              {lang === "np" ? "शीर्ष जमानत जफत उम्मेदवार सूची" : "Top Jamanat Jafat Candidate List"}
-            </p>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              {lang === "np"
-                ? `${filteredRows.length} उम्मेदवार`
-                : `${filteredRows.length} candidates`}
-              {selParty !== "All" ? ` · ${lang === "np" ? getParty(selParty).partyName : getParty(selParty).nameEn}` : ""}
-            </p>
-          </div>
-
-          {filteredRows.length === 0 ? (
-            <div className="px-4 py-12 text-center text-sm text-slate-400">
-              {lang === "np" ? "फिल्टर अनुसार कुनै उम्मेदवार फेला परेन।" : "No candidates match your filters."}
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-[#060d1f] border-b border-slate-100 dark:border-slate-800/80">
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Candidate</th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Party</th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Constituency</th>
-                      <th className="text-right px-4 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Votes</th>
-                      <th className="text-right px-4 py-2.5 font-semibold text-slate-500 dark:text-slate-400">Vote %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedRows.map((row) => (
-                      <tr key={`${row.constCode}-${row.candidateId}`} className="border-b border-slate-50 dark:border-slate-800/60 last:border-0">
-                        <td className="px-4 py-3 align-middle">
-                          <Link
-                            to={`/candidate/${candidateSlug(row.candidateId, row.candidateName)}`}
-                            className="font-medium text-slate-800 transition-colors hover:text-[#2563eb] dark:text-slate-200 dark:hover:text-[#3b82f6]"
-                          >
-                            {lang === "np" ? row.candidateNameNp : row.candidateName}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 align-middle">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <PartySymbol partyId={row.partyId} size="sm" />
-                            <button
-                              type="button"
-                              onClick={() => focusFilteredList(row.partyId)}
-                              className="truncate text-left text-slate-600 transition-colors hover:text-[#2563eb] dark:text-slate-300 dark:hover:text-[#3b82f6]"
-                              title={lang === "np" ? "यस दलको सूची फिल्टर गर्नुहोस्" : "Filter this party"}
-                            >
-                              {lang === "np" ? getParty(row.partyId).partyName : getParty(row.partyId).nameEn}
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 align-middle">
-                          <div className="flex flex-col gap-1">
-                            <Link
-                              to={`/constituency/${encodeURIComponent(row.constCode)}`}
-                              className="truncate text-slate-700 transition-colors hover:text-[#2563eb] dark:text-slate-200 dark:hover:text-[#3b82f6]"
-                            >
-                              {lang === "np" ? row.constNameNp : row.constName}
-                            </Link>
-                            <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="text-slate-400">{lang === "np" ? row.districtNp : row.district}</span>
-                              <span className={"rounded-full px-1.5 py-0.5 font-semibold " + statusClass(row.constStatus)}>
-                                {statusLabel(row.constStatus, lang)}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td
-                          className="px-4 py-3 text-right tabular-nums font-semibold text-slate-700 dark:text-slate-200"
-                          style={{ fontFamily: "'DM Mono', monospace" }}
-                        >
-                          {fmt(row.votes)}
-                        </td>
-                        <td
-                          className="px-4 py-3 text-right tabular-nums font-bold text-rose-600 dark:text-rose-300"
-                          style={{ fontFamily: "'DM Mono', monospace" }}
-                        >
-                          {row.voteSharePct.toFixed(2)}%
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {pageCount > 1 && (
-                <div className="flex items-center justify-center gap-1 px-4 py-3 border-t border-slate-100 dark:border-slate-800/80">
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={safePage === 1}
-                    className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                  >
-                    ←
-                  </button>
-                  <span className="px-2 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                    {safePage} / {pageCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                    disabled={safePage === pageCount}
-                    className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                  >
-                    →
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </section>
       </div>
     </Layout>
   );
