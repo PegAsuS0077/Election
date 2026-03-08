@@ -366,7 +366,7 @@ export default function PartiesPage() {
                   <span className="font-bold text-slate-800 dark:text-slate-200 tabular-nums">{tally.fptp}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400">PR </span>
+                  <span className="text-slate-400">{lang === "np" ? "समानुपातिक " : "PR "}</span>
                   <span className="font-bold text-slate-800 dark:text-slate-200 tabular-nums">{tally.pr}</span>
                 </div>
                 <div>
