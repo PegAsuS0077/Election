@@ -63,6 +63,7 @@ STATE_TO_PROVINCE: dict[int, str] = {
 }
 
 INDEPENDENT_NP = "स्वतन्त्र"
+INDEPENDENT_SYMBOLCODE = 999
 
 
 # ── Helpers (mirror parseUpstreamData.ts) ─────────────────────────────────────
@@ -73,9 +74,13 @@ def district_en(np_name: str, state_id: int) -> str:
 
 def derive_party_id(rec: dict[str, Any]) -> str:
     """String(SYMBOLCODE), or 'IND' for independents."""
-    if rec.get("PoliticalPartyName") == INDEPENDENT_NP:
+    party_name = str(rec.get("PoliticalPartyName", "")).strip()
+    if party_name == INDEPENDENT_NP or INDEPENDENT_NP in party_name:
         return "IND"
-    return str(rec.get("SYMBOLCODE", "0"))
+    symbol_code = rec.get("SYMBOLCODE")
+    if str(symbol_code).strip() == str(INDEPENDENT_SYMBOLCODE):
+        return "IND"
+    return str(symbol_code if symbol_code is not None else "0")
 
 
 def is_winner(rec: dict[str, Any]) -> bool:

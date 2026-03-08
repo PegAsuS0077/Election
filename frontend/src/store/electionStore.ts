@@ -224,10 +224,21 @@ export const useElectionStore = create<ElectionStore>((set) => ({
         const update = byCode.get(existing.code);
         if (!update) return existing;
 
-        // Build a vote lookup from candidateId → { votes, isWinner }
-        const voteMap = new Map(
-          update.candidates.map((c) => [c.candidateId, { votes: c.votes, isWinner: c.isWinner }])
+        // Keep existing candidate order where possible, but allow newly
+        // appearing candidates from upstream to be appended.
+        const byCandidateId = new Map(
+          update.candidates.map((c) => [c.candidateId, c])
         );
+        const existingIds = new Set(existing.candidates.map((c) => c.candidateId));
+        const mergedCandidates = existing.candidates.map((cand) => {
+          const incomingCandidate = byCandidateId.get(cand.candidateId);
+          return incomingCandidate ?? cand;
+        });
+        for (const incomingCandidate of update.candidates) {
+          if (!existingIds.has(incomingCandidate.candidateId)) {
+            mergedCandidates.push(incomingCandidate);
+          }
+        }
 
         return {
           ...existing,
@@ -235,11 +246,7 @@ export const useElectionStore = create<ElectionStore>((set) => ({
           votesCast:    update.votesCast,
           lastUpdated:  update.lastUpdated,
           totalVoters:  update.totalVoters ?? existing.totalVoters,
-          candidates:  existing.candidates.map((cand) => {
-            const v = voteMap.get(cand.candidateId);
-            if (!v) return cand;
-            return { ...cand, votes: v.votes, isWinner: v.isWinner };
-          }),
+          candidates:   mergedCandidates,
         };
       });
 

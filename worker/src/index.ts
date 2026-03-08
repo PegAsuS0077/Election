@@ -503,7 +503,7 @@ const GENERIC_COLORS = [
 
 function derivePartyId(rec: Partial<UpstreamRecord>): string {
   const partyName = (rec.PoliticalPartyName ?? "").trim();
-  if (partyName === "स्वतन्त्र") return "IND";
+  if (partyName === "स्वतन्त्र" || partyName.includes("स्वतन्त्र")) return "IND";
 
   const symbolCode = toInt(
     rec.SYMBOLCODE ??
@@ -512,6 +512,7 @@ function derivePartyId(rec: Partial<UpstreamRecord>): string {
     rec.PartyId ??
     rec.PoliticalPartyID,
   );
+  if (symbolCode === 999) return "IND";
   if (symbolCode !== null) return String(symbolCode);
 
   if (partyName) return partyName;

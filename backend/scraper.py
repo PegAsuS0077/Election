@@ -164,13 +164,23 @@ PARTY_MAP: dict[str, str] = {
     "नेपाली जनश्रमदान संस्कृति पार्टी":                                             "NJSKP",
     # ── Independent ───────────────────────────────────────────────────────────
     "स्वतन्त्र":                                                                    "IND",
+    "स्वतन्त्र उम्मेदवार":                                                          "IND",
 }
+
+
+def _is_independent_party_name(party_name: str) -> bool:
+    normalized = " ".join((party_name or "").split())
+    if not normalized:
+        return False
+    return normalized == "स्वतन्त्र" or "स्वतन्त्र" in normalized
 
 
 def map_party_key(party_name: str) -> str:
     """Map upstream PoliticalPartyName to a frontend PartyKey.
     Falls back to the Nepali name itself so no party is lost in an OTH bucket."""
     name = party_name.strip()
+    if _is_independent_party_name(name):
+        return "IND"
     return PARTY_MAP.get(name, name)
 
 
@@ -205,7 +215,8 @@ def _derive_party_id(rec: dict[str, Any]) -> str:
       - str(SYMBOLCODE) for all other parties
     Mirrors parseUpstreamData.ts derivePartyId().
     """
-    if (rec.get("PoliticalPartyName") or "") == "स्वतन्त्र":
+    party_name = (rec.get("PoliticalPartyName") or "").strip()
+    if _is_independent_party_name(party_name):
         return "IND"
     symbol_code = _to_int(rec.get("SYMBOLCODE"))
     if symbol_code is None:
@@ -216,6 +227,8 @@ def _derive_party_id(rec: dict[str, Any]) -> str:
         symbol_code = _to_int(rec.get("PartyID"))
     if symbol_code is None:
         symbol_code = _to_int(rec.get("PartyId"))
+    if symbol_code == 999:
+        return "IND"
     if symbol_code is None:
         return "0"
     return str(symbol_code)
@@ -322,6 +335,51 @@ def _merge_higher_votes(
         "upgraded": upgraded,
         "missing_candidates": missing_candidates,
         "usable_rows": len(fresher_vote_by_candidate),
+    }
+
+
+def _merge_missing_candidates(
+    base_records: list[dict[str, Any]],
+    supplemental_rows: list[dict[str, Any]],
+) -> dict[str, int]:
+    """
+    Backfill candidates that are missing from the primary secure feed.
+
+    We only append rows that include the minimum fields required by
+    parse_candidates_json() grouping (state, district, constituency, candidate id).
+    """
+    existing_ids: set[int] = set()
+    for row in base_records:
+        candidate_id = _candidate_id(row)
+        if candidate_id is not None:
+            existing_ids.add(candidate_id)
+
+    added = 0
+    incomplete = 0
+    seen_in_supplement: set[int] = set()
+    for row in supplemental_rows:
+        if not isinstance(row, dict):
+            continue
+        candidate_id = _candidate_id(row)
+        if candidate_id is None:
+            continue
+        if candidate_id in seen_in_supplement:
+            continue
+        seen_in_supplement.add(candidate_id)
+        if candidate_id in existing_ids:
+            continue
+
+        if not constituency_id(row):
+            incomplete += 1
+            continue
+
+        base_records.append(dict(row))
+        existing_ids.add(candidate_id)
+        added += 1
+
+    return {
+        "added": added,
+        "incomplete": incomplete,
     }
 
 
@@ -562,7 +620,12 @@ def build_snapshot_from_constituencies(
             winners = [cand for cand in c["candidates"] if cand.get("isWinner")]
             winner = winners[0] if winners else max(c["candidates"], key=lambda x: x["votes"])
             # Prefer the mapped abbreviation key; fall back to raw partyName
-            key = map_party_key(winner.get("partyName", "")) or winner.get("partyId", "UNK")
+            winner_party_id = winner.get("partyId", "")
+            key = (
+                "IND"
+                if winner_party_id == "IND"
+                else map_party_key(winner.get("partyName", "")) or winner_party_id or "UNK"
+            )
             if key not in seat_tally:
                 seat_tally[key] = {"fptp": 0, "pr": 0}
             seat_tally[key]["fptp"] += 1
@@ -703,6 +766,36 @@ async def fetch_candidates(url: str = UPSTREAM_URL) -> list[dict[str, Any]]:
                 f"{winner_newly_marked} newly marked winners "
                 f"({winner_matched}/{winner_rows} matched){extra}"
             )
+
+        # Best-effort row backfill:
+        # the secure endpoint has intermittently omitted some candidates that
+        # still exist in the direct file. Merge missing rows by CandidateID.
+        if used_secure:
+            try:
+                direct_resp = await _get_with_retry(
+                    client,
+                    DIRECT_UPSTREAM_URL,
+                    headers={"Referer": SESSION_PAGE_URL},
+                    label="direct json backfill GET",
+                )
+                direct_payload = _decode_json_bytes(
+                    direct_resp.content,
+                    "direct json backfill GET",
+                )
+                if isinstance(direct_payload, list) and direct_payload:
+                    backfill = _merge_missing_candidates(candidates, direct_payload)
+                    if backfill["added"] > 0:
+                        extra = (
+                            f", {backfill['incomplete']} skipped as incomplete"
+                            if backfill["incomplete"] > 0
+                            else ""
+                        )
+                        print(
+                            "[scraper] direct backfill merged: "
+                            f"{backfill['added']} missing candidates added{extra}"
+                        )
+            except Exception:
+                pass
 
         return candidates
 

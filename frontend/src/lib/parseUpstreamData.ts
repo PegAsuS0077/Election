@@ -44,6 +44,13 @@ const PROVINCE_EN: Record<number, string> = {
 // ── Party ID derivation ───────────────────────────────────────────────────────
 
 const INDEPENDENT_NP = "स्वतन्त्र";
+const INDEPENDENT_SYMBOLCODE = 999;
+
+function isIndependentPartyName(name: string | undefined): boolean {
+  const normalized = (name ?? "").trim().replace(/\s+/g, " ");
+  if (!normalized) return false;
+  return normalized === INDEPENDENT_NP || normalized.includes(INDEPENDENT_NP);
+}
 
 /**
  * Derives a stable partyId from a raw candidate record.
@@ -52,7 +59,8 @@ const INDEPENDENT_NP = "स्वतन्त्र";
  * SYMBOLCODE is the Election Commission's own numeric party identifier.
  */
 function derivePartyId(rec: UpstreamRecord): string {
-  if ((rec.PoliticalPartyName ?? "") === INDEPENDENT_NP) return "IND";
+  if (isIndependentPartyName(rec.PoliticalPartyName)) return "IND";
+  if (Number(rec.SYMBOLCODE) === INDEPENDENT_SYMBOLCODE) return "IND";
   // SYMBOLCODE is always present and numeric in the upstream data
   return String(rec.SYMBOLCODE);
 }
