@@ -49,7 +49,7 @@ const INDEPENDENT_SYMBOLCODE = 999;
 function isIndependentPartyName(name: string | undefined): boolean {
   const normalized = (name ?? "").trim().replace(/\s+/g, " ");
   if (!normalized) return false;
-  return normalized === INDEPENDENT_NP || normalized.includes(INDEPENDENT_NP);
+  return normalized === INDEPENDENT_NP || normalized === "स्वतन्त्र उम्मेदवार" || normalized === "स्वतन्त्र उमेदवार";
 }
 
 /**
@@ -60,7 +60,7 @@ function isIndependentPartyName(name: string | undefined): boolean {
  */
 function derivePartyId(rec: UpstreamRecord): string {
   if (isIndependentPartyName(rec.PoliticalPartyName)) return "IND";
-  if (Number(rec.SYMBOLCODE) === INDEPENDENT_SYMBOLCODE) return "IND";
+  if (Number(rec.SYMBOLCODE) === INDEPENDENT_SYMBOLCODE && !(rec.PoliticalPartyName ?? "").trim()) return "IND";
   // SYMBOLCODE is always present and numeric in the upstream data
   return String(rec.SYMBOLCODE);
 }

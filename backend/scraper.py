@@ -172,7 +172,7 @@ def _is_independent_party_name(party_name: str) -> bool:
     normalized = " ".join((party_name or "").split())
     if not normalized:
         return False
-    return normalized == "स्वतन्त्र" or "स्वतन्त्र" in normalized
+    return normalized in {"स्वतन्त्र", "स्वतन्त्र उम्मेदवार", "स्वतन्त्र उमेदवार"}
 
 
 def map_party_key(party_name: str) -> str:
@@ -228,7 +228,11 @@ def _derive_party_id(rec: dict[str, Any]) -> str:
     if symbol_code is None:
         symbol_code = _to_int(rec.get("PartyId"))
     if symbol_code == 999:
-        return "IND"
+        if not party_name or _is_independent_party_name(party_name):
+            return "IND"
+        mapped_party = PARTY_MAP.get(party_name)
+        if mapped_party:
+            return mapped_party
     if symbol_code is None:
         return "0"
     return str(symbol_code)

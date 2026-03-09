@@ -75,10 +75,10 @@ def district_en(np_name: str, state_id: int) -> str:
 def derive_party_id(rec: dict[str, Any]) -> str:
     """String(SYMBOLCODE), or 'IND' for independents."""
     party_name = str(rec.get("PoliticalPartyName", "")).strip()
-    if party_name == INDEPENDENT_NP or INDEPENDENT_NP in party_name:
+    if party_name in {INDEPENDENT_NP, "स्वतन्त्र उम्मेदवार", "स्वतन्त्र उमेदवार"}:
         return "IND"
     symbol_code = rec.get("SYMBOLCODE")
-    if str(symbol_code).strip() == str(INDEPENDENT_SYMBOLCODE):
+    if str(symbol_code).strip() == str(INDEPENDENT_SYMBOLCODE) and not party_name:
         return "IND"
     return str(symbol_code if symbol_code is not None else "0")
 
