@@ -285,22 +285,45 @@ export default function NepalMap({
         const primary   = provinceName(prov, lang);
         const secondary = lang === "np" ? provinceName(prov, "en") : provinceName(prov, "np");
         return (
-          <g key={prov} style={{ pointerEvents: "none", userSelect: "none" }}>
+          <g
+            key={prov}
+            role="button"
+            tabIndex={0}
+            aria-label={primary}
+            style={{ cursor: "pointer", userSelect: "none" }}
+            onClick={() => onSelect(prov)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect(prov);
+              }
+            }}
+          >
+            <circle
+              cx={x}
+              cy={y - 4}
+              r={32}
+              fill={isSelected ? "rgba(59,130,246,0.14)" : "transparent"}
+              stroke={isSelected ? "#2563eb" : "transparent"}
+              strokeWidth="1.5"
+            />
             <text x={x} y={y} textAnchor="middle"
               fontSize={isSelected ? "11" : "9"} fontWeight={isSelected ? "800" : "600"}
               fill={isSelected ? "#0f172a" : "#1e293b"}
               stroke="white" strokeWidth="3" paintOrder="stroke"
+              style={{ pointerEvents: "none" }}
             >{primary}</text>
             <text x={x} y={y + 11} textAnchor="middle"
               fontSize="7" fontWeight="400"
               fill={isSelected ? "#334155" : "#475569"}
               stroke="white" strokeWidth="2" paintOrder="stroke"
+              style={{ pointerEvents: "none" }}
             >{secondary}</text>
           </g>
         );
       })}
     </>
-  ), [selectedProvince, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  ), [selectedProvince, lang, onSelect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── District mode paths (memoized — only changes when selection changes) ──
   const districtPaths = useMemo(() => (

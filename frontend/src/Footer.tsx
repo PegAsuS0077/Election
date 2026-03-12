@@ -12,7 +12,7 @@ export default function Footer({ lang = "en" }: { lang?: Lang }) {
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xl">🇳🇵</span>
               <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                {lang === "np" ? "प्रतिनिधि सभा निर्वाचन २०८२" : "Nepal HoR Election 2026"}
+                {lang === "np" ? "निर्वाचन परिणाम अभिलेख २०८२" : "Nepal Election Archive 2026"}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
@@ -51,7 +51,7 @@ export default function Footer({ lang = "en" }: { lang?: Lang }) {
                 result.election.gov.np
               </a>
               <div className="mt-2">
-                {lang === "np" ? "हरेक ३० सेकेन्डमा अपडेट" : "Updates every 30 seconds"}
+                {lang === "np" ? "अन्तिम अभिलेख र विश्लेषणका लागि प्रयोग गरिएको स्रोत" : "Archived final dataset used for results and analysis"}
               </div>
             </div>
           </div>
@@ -62,6 +62,14 @@ export default function Footer({ lang = "en" }: { lang?: Lang }) {
           <nav className="flex items-center gap-3">
             <Link to="/about" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
               {lang === "np" ? "हाम्रोबारे" : "About"}
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/analysis" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              {lang === "np" ? "विश्लेषण" : "Analysis"}
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/news" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              {lang === "np" ? "समाचार" : "News"}
             </Link>
             <span aria-hidden="true">·</span>
             <Link to="/editorial-policy" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">

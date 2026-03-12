@@ -5,7 +5,6 @@ import { useElectionStore } from "../store/electionStore";
 import { useElectionSimulation } from "../hooks/useElectionSimulation";
 import { AuroraBackground } from "./ui/aurora-background";
 import Footer from "../Footer";
-import { t } from "../i18n";
 export { PROVINCE_COLORS, PARTY_HEX } from "../lib/constants";
 
 function SunIcon() {
@@ -38,10 +37,19 @@ interface NavLink {
 }
 const NAV_LINKS: NavLink[] = [
   { path: "/",           labelEn: "Home",        labelNp: "गृहपृष्ठ",        icon: "🏠" },
+  { path: "/analysis",   labelEn: "Analysis",    labelNp: "विश्लेषण",         icon: "📊" },
+  { path: "/news",       labelEn: "News",        labelNp: "समाचार",          icon: "📰" },
   { path: "/explore",    labelEn: "Explore",     labelNp: "अन्वेषण",          icon: "◈", matchPrefixes: ["/constituency/"] },
   { path: "/map",        labelEn: "Map",         labelNp: "नक्सा",            icon: "🗺️" },
   { path: "/parties",    labelEn: "Parties",     labelNp: "दलहरू",            icon: "◉", matchPrefixes: ["/party/"] },
   { path: "/candidates", labelEn: "Candidates",  labelNp: "उम्मेद्वारहरू",   icon: "👤", matchPrefixes: ["/candidate/"] },
+];
+const BOTTOM_NAV_LINKS: NavLink[] = [
+  NAV_LINKS[0],
+  NAV_LINKS[1],
+  NAV_LINKS[3],
+  NAV_LINKS[5],
+  NAV_LINKS[2],
 ];
 
 // ── Layout props ──────────────────────────────────────────────────────────────
@@ -102,7 +110,7 @@ export default function Layout({
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
 
-  const hasLiveData = results.some((r) => r.status !== "PENDING" && r.votesCast > 0);
+  const hasRecordedResults = results.some((r) => r.votesCast > 0);
   const displayTitle = lang === "np" ? titleNp : title;
   const displaySub   = lang === "np" ? subtitleNp : subtitle;
   const isActiveLink = (link: NavLink) => {
@@ -162,7 +170,7 @@ export default function Layout({
               Nepal Election Results 2082{" "}
               <span className="text-[#2563eb]">(2026)</span>
               <span className="hidden sm:inline text-slate-400 dark:text-slate-500 font-normal">
-                {" "}– Live Vote Count
+                {" "}– Results, Analysis & News
               </span>
             </span>
           </Link>
@@ -193,10 +201,10 @@ export default function Layout({
 
           {/* Right controls — hidden on mobile (moved to drawer footer) */}
           <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-            {hasLiveData && (
-              <span className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/60 px-2.5 py-1 text-[11px] font-semibold text-red-700 dark:text-red-400 tracking-wide uppercase mr-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500" style={{ animation: "live-pulse 1.4s ease-in-out infinite" }} />
-                {t("live", lang)}
+            {hasRecordedResults && (
+              <span className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 tracking-wide uppercase mr-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                {lang === "np" ? "अन्तिम अभिलेख" : "Final Archive"}
               </span>
             )}
             <button
@@ -287,7 +295,7 @@ export default function Layout({
               className="rounded-sm"
             />
             <span className="text-[13px] font-bold tracking-tight text-slate-900 dark:text-slate-100" style={{ fontFamily: "'Sora', sans-serif" }}>
-              Nepal 2082
+              Nepal Archive
             </span>
           </div>
           <button
@@ -361,7 +369,7 @@ export default function Layout({
         aria-label="Bottom navigation"
       >
         <div className="h-16 grid grid-cols-5">
-          {NAV_LINKS.map((link) => {
+          {BOTTOM_NAV_LINKS.map((link) => {
             const isActive = isActiveLink(link);
             const label = lang === "np" ? link.labelNp : link.labelEn;
             return (

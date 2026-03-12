@@ -4,13 +4,13 @@ import { useElectionStore } from "./store/electionStore";
 import { provinceName, t } from "./i18n";
 import { getParty } from "./lib/partyRegistry";
 import { PROVINCE_COLORS } from "./lib/constants";
-import { RESULTS_MODE } from "./types";
+import { buildAnalysisOverview } from "./lib/analysis";
+import { getAllPosts } from "./content/posts";
 
 import SummaryCards from "./SummaryCards";
 import PrVotesBars from "./PrVotesBars";
 import SeatShareBars from "./SeatShareBars";
 import HotSeats from "./HotSeats";
-import LatestUpdates from "./LatestUpdates";
 import { PrVotesBarsSkeleton, SummaryCardsSkeleton, SeatShareBarsSkeleton } from "./Skeleton";
 import Layout from "./components/Layout";
 import InstallPrompt from "./components/InstallPrompt";
@@ -43,16 +43,6 @@ function numberFmt(n: number) { return n.toLocaleString("en-IN"); }
 function candidateSlug(candidateId: number, name: string) {
   return `${candidateId}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
-function useCountdownTimer(targetDate: string) {
-  const [remaining, setRemaining] = useState(() => Math.max(0, new Date(targetDate).getTime() - Date.now()));
-  useEffect(() => {
-    const id = setInterval(() => {
-      setRemaining(Math.max(0, new Date(targetDate).getTime() - Date.now()));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [targetDate]);
-  return remaining;
-}
 
 export default function App() {
   const { isLoading, setIsLoading, lang } = useElectionStore();
@@ -73,6 +63,7 @@ export default function App() {
 
   const results       = useElectionStore((s) => s.results);
   const seatTally     = useElectionStore((s) => s.seatTally);
+  const prVoteByParty = useElectionStore((s) => s.prVoteByParty);
   const declaredSeats = useElectionStore((s) => s.declaredSeats);
   const featuredFavorites = useElectionStore((s) => s.featuredFavorites);
   const toggleFeaturedFavorite = useElectionStore((s) => s.toggleFeaturedFavorite);
@@ -83,17 +74,6 @@ export default function App() {
 
   const totalSeats = 275;
   const majority   = seatsToMajority(totalSeats);
-  const msRemaining = useCountdownTimer("2026-03-05T00:00:00+05:45");
-  const isElectionDay = msRemaining === 0;
-  const countdownStr = (() => {
-    const totalSec = Math.floor(msRemaining / 1000);
-    const d = Math.floor(totalSec / 86400);
-    const h = Math.floor((totalSec % 86400) / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    if (d > 0) return `${String(d).padStart(2,"0")}d ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-  })();
 
   const tallyRows = Object.entries(seatTally)
     .map(([partyId, v]) => ({ partyId, total: v.fptp + v.pr }))
@@ -101,7 +81,7 @@ export default function App() {
   const lead      = tallyRows[0];
   const projected = lead && lead.total >= majority ? lead : null;
 
-  const hasLiveData    = RESULTS_MODE === "live" && results.some((r) => r.votesCast > 0);
+  const hasArchivedResults = results.some((r) => r.votesCast > 0);
   const latestUpdatedMs = results.length > 0
     ? Math.max(...results.map((r) => Date.parse(r.lastUpdated)).filter((n) => Number.isFinite(n)))
     : 0;
@@ -202,6 +182,11 @@ export default function App() {
     ? pagedRankedCandidates
     : rankedCandidates.slice(0, 2);
   const topRankedVotes = rankedCandidates[0]?.votes ?? 0;
+  const analysisOverview = useMemo(
+    () => buildAnalysisOverview(results, seatTally, prVoteByParty),
+    [results, seatTally, prVoteByParty],
+  );
+  const featuredPosts = useMemo(() => getAllPosts().slice(0, 2), []);
 
   useEffect(() => {
     setCandidateRankPage((prev) => Math.min(prev, rankedPageCount));
@@ -241,15 +226,15 @@ export default function App() {
 
   const heroBadge = (
     <div className="flex items-center gap-3 flex-wrap">
-      {hasLiveData ? (
-        <span className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3.5 py-1 text-xs font-semibold text-green-400 uppercase tracking-widest">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-400" style={{ animation: "live-pulse 1.4s ease-in-out infinite" }} />
-          {t("live", lang)}
+      {hasArchivedResults ? (
+        <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3.5 py-1 text-xs font-semibold text-cyan-300 uppercase tracking-widest">
+          <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+          {lang === "np" ? "अन्तिम परिणाम अभिलेख" : "Final Results Archive"}
         </span>
       ) : (
         <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1 text-xs font-semibold text-amber-400 uppercase tracking-widest">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-          {t("preElection", lang)}
+          {lang === "np" ? "डेटासेट तयार हुँदैछ" : "Dataset Loading"}
         </span>
       )}
       <span className="text-[11px] text-white/30 tabular-nums">{t("lastUpdated", lang)} {lastUpdatedStr}</span>
@@ -260,8 +245,8 @@ export default function App() {
     <Layout
       title="Nepal House of Representatives"
       titleNp="प्रतिनिधि सभा निर्वाचन"
-      subtitle={"General Election · " + t("electionDate", lang)}
-      subtitleNp={"सामान्य निर्वाचन · " + t("electionDate", lang)}
+      subtitle={"Final Results Archive · " + t("electionDate", lang)}
+      subtitleNp={"अन्तिम परिणाम अभिलेख · " + t("electionDate", lang)}
       badge={heroBadge}
       showStats
       statsContent={statsContent}
@@ -333,6 +318,66 @@ export default function App() {
               {lang === "np" ? "नक्सा खोल्नुहोस् →" : "Open Map →"}
             </Link>
           </div>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Link
+            to="/analysis"
+            className="rounded-2xl border border-cyan-200/70 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-cyan-900/40 dark:bg-[#0c1525]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-600 dark:text-cyan-300">
+                  {lang === "np" ? "विश्लेषण" : "Analysis"}
+                </p>
+                <h2 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {lang === "np" ? "अन्तिम परिणामबाट अन्तर्दृष्टि" : "Insights from the final archive"}
+                </h2>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {lang === "np"
+                    ? "नजिकका प्रतिस्पर्धा, टर्नआउट, प्रदेशगत प्रदर्शन र दलगत रूपान्तरण हेर्नुहोस्।"
+                    : "Explore close races, turnout, province trends, and party performance from the saved results."}
+                </p>
+              </div>
+              <div className="rounded-xl bg-cyan-50 px-3 py-2 text-right dark:bg-cyan-950/30">
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {lang === "np" ? "कुल मत" : "Votes"}
+                </div>
+                <div className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100" style={{ fontFamily: "'DM Mono', monospace" }}>
+                  {numberFmt(analysisOverview.totalVotes)}
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/news"
+            className="rounded-2xl border border-rose-200/70 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-rose-900/40 dark:bg-[#0c1525]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-600 dark:text-rose-300">
+                  {lang === "np" ? "न्युज" : "News"}
+                </p>
+                <h2 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {lang === "np" ? "डेटामा आधारित लेख र व्याख्या" : "Archive-based stories and explainers"}
+                </h2>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {lang === "np"
+                    ? "अन्तिम परिणामलाई सन्दर्भ, ट्रेन्ड र रिपोर्टमा रूपान्तरण गर्ने लेखहरू पढ्नुहोस्।"
+                    : "Read reporting and explainers that turn the saved dataset into useful context."}
+                </p>
+              </div>
+              <div className="rounded-xl bg-rose-50 px-3 py-2 text-right dark:bg-rose-950/30">
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {lang === "np" ? "नयाँ" : "Latest"}
+                </div>
+                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {lang === "np" ? featuredPosts[0]?.titleNp : featuredPosts[0]?.title}
+                </div>
+              </div>
+            </div>
+          </Link>
         </section>
 
         {isLoading ? <SummaryCardsSkeleton /> : <SummaryCards lang={lang} />}
@@ -623,14 +668,11 @@ export default function App() {
           <HotSeats results={results} lang={lang} />
         </section>
 
-        <LatestUpdates results={results} lang={lang} />
-
-        {/* ── Declared Constituencies + Countdown ─────────────────────────── */}
-        <div className="flex flex-col items-center gap-5 py-2">
-          <Link to="/explore?status=DECLARED" className="w-full max-w-md group">
-            <div className="flex items-center justify-between mb-2">
+        <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <Link to="/explore?status=DECLARED" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800/80 dark:bg-[#0c1525]">
+            <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-medium group-hover:text-[#2563eb] dark:group-hover:text-[#3b82f6] transition-colors">
-                {lang === "np" ? "घोषित निर्वाचन क्षेत्र" : "Declared Constituencies"}
+                {lang === "np" ? "अन्तिम सिट घोषणा" : "Declared Constituencies"}
               </span>
               <span className="text-[11px] text-[#2563eb] dark:text-[#3b82f6] tabular-nums font-semibold underline-offset-2 group-hover:underline" style={{ fontFamily: "'DM Mono', monospace" }}>
                 {declaredSeats} / 165 →
@@ -639,34 +681,70 @@ export default function App() {
             <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
               <div className="h-full rounded-full bg-[#2563eb] transition-all duration-700" style={{ width: declaredPct + "%" }} />
             </div>
-            <div className="mt-1 text-center text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
-              {declaredPct}% {lang === "np" ? "घोषित" : "declared"}
+            <div className="mt-3 grid gap-3 sm:grid-cols-3 text-sm">
+              <div>
+                <div className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  {lang === "np" ? "घोषणा प्रगति" : "Completion"}
+                </div>
+                <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">{declaredPct}%</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  {lang === "np" ? "कुल मत" : "Recorded votes"}
+                </div>
+                <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">{numberFmt(analysisOverview.totalVotes)}</div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  {lang === "np" ? "टर्नआउट" : "Turnout"}
+                </div>
+                <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
+                  {analysisOverview.totalTurnoutPct !== null ? `${analysisOverview.totalTurnoutPct.toFixed(1)}%` : "—"}
+                </div>
+              </div>
             </div>
           </Link>
 
-          <div className="rounded-xl px-6 py-4 text-center bg-slate-50 dark:bg-[#060d1f]/80 border border-slate-200 dark:border-slate-700/60">
-            {isElectionDay ? (
-              <>
-                <div className="text-2xl">🗳️</div>
-                <div className="mt-1 text-[9px] font-bold text-green-600 dark:text-green-400 uppercase tracking-[0.15em]">
-                  {lang === "np" ? "आज निर्वाचन!" : "Election Day!"}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-2xl font-bold leading-none tabular-nums text-slate-800 dark:text-white" style={{ fontFamily: "'DM Mono', monospace", letterSpacing: "-0.04em" }}>
-                  {countdownStr}
-                </div>
-                <div className="mt-1 text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">
-                  {t("daysUntilElection", lang)}
-                </div>
-              </>
-            )}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800/80 dark:bg-[#0c1525]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  {lang === "np" ? "समाचारबाट सुरु गर्नुहोस्" : "Start With Stories"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {lang === "np"
+                    ? "अन्तिम परिणामबाट तयार गरिएका व्याख्यात्मक लेखहरू।"
+                    : "Explanatory posts built from the final election archive."}
+                </p>
+              </div>
+              <Link to="/news" className="text-xs font-semibold text-[#2563eb] hover:underline">
+                {lang === "np" ? "सबै लेख" : "All stories"}
+              </Link>
+            </div>
+            <div className="mt-4 space-y-3">
+              {featuredPosts.map((post) => (
+                <Link
+                  key={post.slug}
+                  to={`/news/${post.slug}`}
+                  className="block rounded-xl border border-slate-200 bg-slate-50/70 p-3 transition hover:border-[#2563eb]/40 hover:bg-blue-50/40 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-[#3b82f6]/40"
+                >
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    {post.category}
+                  </div>
+                  <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
+                    {lang === "np" ? post.titleNp : post.title}
+                  </div>
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {lang === "np" ? post.excerptNp : post.excerpt}
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
 
         <div aria-live="polite" aria-atomic="false" className="sr-only">
-          {results.filter((r) => r.status === "COUNTING").length} {t("stillCounting", lang)}
+          {declaredSeats} {lang === "np" ? "निर्वाचन क्षेत्र घोषणा भइसके" : "constituencies declared in the archive"}
         </div>
       </main>
 
@@ -675,27 +753,27 @@ export default function App() {
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#0c1525] p-8 shadow-sm space-y-6">
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
             {lang === "np"
-              ? "नेपाल निर्वाचन परिणाम २०८२ (२०२६) — लाइभ मत गणना"
-              : "Nepal Election Results 2082 (2026) — Live Vote Count"}
+              ? "नेपाल निर्वाचन परिणाम २०८२ (२०२६) — अन्तिम अभिलेख, विश्लेषण र समाचार"
+              : "Nepal Election Results 2082 (2026) — Final Archive, Analysis, and News"}
           </h2>
 
           <div className="prose prose-slate dark:prose-invert max-w-none text-sm text-slate-600 dark:text-slate-400 leading-relaxed space-y-4">
             <p>
               {lang === "np"
-                ? "नेपालभोट्स (NepalVotes) एउटा स्वतन्त्र डिजिटल ड्यासबोर्ड हो जसले नेपालको प्रतिनिधि सभा सामान्य निर्वाचन २०८२ (मार्च ५, २०२६) को मतगणना परिणाम वास्तविक समयमा प्रदर्शन गर्दछ। यो मञ्च निर्वाचन आयोग नेपालको आधिकारिक परिणाम वेबसाइटबाट स्वचालित रूपमा डेटा प्राप्त गर्छ र हरेक ३० सेकेन्डमा अपडेट गर्दछ — निर्वाचनको रात देशभरबाट मत गणना कसरी अगाडि बढ्दैछ भन्ने लगभग वास्तविक समयको दृश्य प्रदान गर्दछ।"
-                : "NepalVotes is an independent informational dashboard tracking the vote count for Nepal's House of Representatives (Pratinidhi Sabha) General Election 2082, held on March 5, 2026. The site fetches data automatically from the official results website of the Election Commission of Nepal and refreshes every 30 seconds, giving you a near-real-time view of how counting is progressing across the country on election night."}
+                ? "नेपालभोट्स (NepalVotes) अब निर्वाचन रातिको लाइभ काउन्टर मात्र होइन। यो नेपालको प्रतिनिधि सभा सामान्य निर्वाचन २०८२ (मार्च ५, २०२६) को अन्तिम परिणाम, डेटा दृश्यांकन, र विश्लेषणात्मक सामग्रीका लागि बनाइएको अभिलेख-आधारित प्लेटफर्म हो।"
+                : "NepalVotes is no longer just an election-night dashboard. It is now an archive-driven platform for final results, data visualisation, and explanatory reporting on Nepal's House of Representatives General Election 2082, held on March 5, 2026."}
             </p>
 
             <p>
               {lang === "np"
-                ? "यस साइटले नेपालका सातै प्रदेशका १६५ प्रत्यक्ष (FPTP) निर्वाचन क्षेत्रहरूको परिणाम समेट्दछ — कोशी, मधेश, बागमती, गण्डकी, लुम्बिनी, कर्णाली र सुदूरपश्चिम। यी क्षेत्रहरूमा ३,४०६ उम्मेदवारहरू ६६ भन्दा बढी दर्ता राजनीतिक दलहरू र स्वतन्त्र उम्मेदवारको रूपमा प्रतिस्पर्धा गर्दैछन्। प्रतिनिधि सभामा कुल २७५ सिट छन् — १६५ प्रत्यक्ष निर्वाचन क्षेत्रका विजेताहरूले भर्ने र ११० समानुपातिक प्रतिनिधित्वमार्फत विभाजित।"
-                : "This site covers all 165 First-Past-The-Post (FPTP) constituencies spread across Nepal's 7 provinces — Koshi, Madhesh, Bagmati, Gandaki, Lumbini, Karnali, and Sudurpashchim. Across these constituencies, 3,406 candidates are contesting under more than 66 registered political parties and as independents. The House of Representatives has 275 total seats: 165 filled by direct constituency winners and 110 allocated through proportional representation."}
+                ? "यस साइटले सातै प्रदेशका १६५ प्रत्यक्ष निर्वाचन क्षेत्र, ३,४०६ उम्मेदवार, दलगत सिट गणना, र उपलब्ध हुँदा समानुपातिक मत सारांश समेट्छ। अब उद्देश्य चलिरहेको मतगणना देखाउनु होइन, बरु अन्तिम परिणामलाई सहज, खोजयोग्य र विश्लेषण गर्न मिल्ने रूपमा प्रस्तुत गर्नु हो।"
+                : "The site covers all 165 FPTP constituencies across Nepal's seven provinces, 3,406 candidates, party seat totals, and proportional-vote summaries where available. The goal is no longer to show a moving count, but to make the final result searchable, explorable, and useful for deeper analysis."}
             </p>
 
             <p>
               {lang === "np"
-                ? "निर्वाचन प्रक्रियाले नेपालभर मतगणना अगाडि बढाउँदा, यो ड्यासबोर्डले घोषित र घोषणा हुन बाँकी निर्वाचन क्षेत्रहरूको सङ्ख्या, दलअनुसार चालू सिट तथ्याङ्क, र बहुमत प्राप्त गर्न कुन दललाई कतिवटा थप सिट चाहिन्छ भन्ने देखाउँछ। प्रत्येक निर्वाचन क्षेत्रको क्लिक गर्न मिल्ने विवरण पृष्ठले उम्मेदवारको नाम, दल, प्राप्त मत, र घोषित भएमा विजेताको स्थिति प्रदर्शन गर्दछ।"
-                : "As counting progresses across Nepal, the dashboard shows how many constituencies have been declared versus still counting, the running seat tally by party, and how many more seats each party needs to reach a majority. Each constituency's clickable detail view shows candidate names, parties, votes received, and winner status where declared."}
+                ? "विश्लेषण खण्डले सबैभन्दा कडा प्रतिस्पर्धा, सबैभन्दा ठूलो जित, प्रदेशगत नक्सा, टर्नआउट, र दलहरूको मत-सिट रूपान्तरणजस्ता प्रश्नहरूको उत्तर दिन्छ। समाचार खण्डले यही saved dataset लाई आधार बनाएर व्याख्यात्मक लेख, ट्रेन्ड रिपोर्ट, र परिणामको सन्दर्भ प्रस्तुत गर्छ।"
+                : "The Analysis section answers questions that matter after election day: which seats were closest, where the biggest mandates emerged, how provinces behaved, and how parties converted votes into seats. The News section uses the same saved dataset for explainers, trend notes, and archive-based reporting."}
             </p>
 
             <p>
@@ -707,22 +785,24 @@ export default function App() {
             <ul className="list-disc list-inside space-y-1 pl-2">
               {lang === "np" ? (
                 <>
-                  <li>हरेक ३० सेकेन्डमा निर्वाचन आयोगबाट स्वचालित डेटा अपडेट</li>
                   <li>१६५ FPTP निर्वाचन क्षेत्रहरूको विस्तृत परिणाम</li>
                   <li>जीवनी जानकारीसहित व्यक्तिगत उम्मेदवार प्रोफाइल पृष्ठहरू</li>
                   <li>प्रदेश, जिल्ला, दल वा लैंगिकताअनुसार फिल्टर गर्ने सुविधा</li>
-                  <li>FPTP जित र समानुपातिक प्रतिनिधित्व अनुमान जोडेर दल सिट तथ्याङ्क</li>
+                  <li>अन्तिम परिणामका आधारमा नजिकका प्रतिस्पर्धा, ठूलो जित र टर्नआउट विश्लेषण</li>
+                  <li>दल सिट तथ्याङ्क, मत हिस्सा र प्रदेशगत तुलना</li>
                   <li>क्षेत्रअनुसार अग्रणी दलहरू देखाउने अन्तरक्रियात्मक प्रदेश नक्सा</li>
+                  <li>डेटामा आधारित समाचार, व्याख्या र पोस्ट-इलेक्शन ब्लग लेखहरू</li>
                   <li>नेपाली (देवनागरी) र अंग्रेजी भाषामा पूर्ण द्विभाषिक समर्थन</li>
                 </>
               ) : (
                 <>
-                  <li>Automatic data refresh every 30 seconds from the Election Commission</li>
                   <li>Detailed results for all 165 FPTP constituencies</li>
                   <li>Individual candidate profile pages with biographical information</li>
                   <li>Filter results by province, district, party, or gender</li>
-                  <li>Party seat tallies combining FPTP wins and proportional representation estimates</li>
+                  <li>Close-race, landslide, turnout, and province analysis from the final archive</li>
+                  <li>Party seat tallies, vote share views, and province comparisons</li>
                   <li>Interactive province map showing leading parties by region</li>
+                  <li>Data-based stories, explainers, and post-election blog coverage</li>
                   <li>Full bilingual support in Nepali (Devanagari) and English</li>
                 </>
               )}
@@ -730,17 +810,21 @@ export default function App() {
 
             <p>
               {lang === "np"
-                ? "यस ड्यासबोर्डले प्रदेश सारांश दृश्य पनि प्रदान गर्दछ जसले सातवटा प्रदेशका प्रत्येकमा दलको प्रदर्शनलाई छुट्टाछुट्टै देखाउँछ। दल पृष्ठले ठूला र साना दुवै दलको सिट तथ्याङ्क एकत्र गर्दछ, जसमा मत प्रतिशत र प्रत्येक प्रतिस्पर्धी दलको FPTP उम्मेदवारहरू समावेश छन्। उम्मेदवार खोज पृष्ठले नागरिकहरूलाई कुनै विशेष व्यक्ति खोज्न र उनीहरूको वर्तमान मत स्थिति हेर्न सक्षम बनाउँछ।"
+                ? "प्रदेश सारांश, दल पृष्ठ, उम्मेद्वार प्रोफाइल, निर्वाचन क्षेत्र विवरण, र विश्लेषण हबले एउटै संग्रहित डेटाबाट विभिन्न कोण उपलब्ध गराउँछन्। यसले प्लेटफर्मलाई केवल नतिजा हेर्ने ठाउँबाट अध्ययन, रिपोर्टिङ, र सार्वजनिक सन्दर्भका लागि उपयोगी स्रोत बनाउँछ।"
                 : <>
-                    The dashboard also provides a province summary view via the{" "}
+                    The{" "}
                     <Link to="/map" className="text-blue-600 dark:text-blue-400 hover:underline">interactive map</Link>
-                    {" "}that breaks down party performance across each of the seven provinces separately. The{" "}
+                    {", "}
+                    <Link to="/analysis" className="text-blue-600 dark:text-blue-400 hover:underline">analysis hub</Link>
+                    {", "}
+                    <Link to="/news" className="text-blue-600 dark:text-blue-400 hover:underline">news section</Link>
+                    {" "}, and the{" "}
                     <Link to="/parties" className="text-blue-600 dark:text-blue-400 hover:underline">parties page</Link>
-                    {" "}aggregates seat tallies for both major and minor parties, including vote percentages and FPTP candidates for each contesting party. The{" "}
+                    {" "}all read from the same saved results archive. The{" "}
                     <Link to="/candidates" className="text-blue-600 dark:text-blue-400 hover:underline">candidates search page</Link>
-                    {" "}enables citizens to look up a specific individual and see their current vote standing. You can also{" "}
+                    {" "}helps readers look up a specific individual, while{" "}
                     <Link to="/explore" className="text-blue-600 dark:text-blue-400 hover:underline">explore all 165 constituencies</Link>
-                    {" "}filtered by province or district.
+                    {" "}keeps the full final dataset browsable by province or district.
                   </>
               }
             </p>

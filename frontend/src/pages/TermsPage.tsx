@@ -51,8 +51,8 @@ export default function TermsPage() {
             </h2>
             <p className="mb-3">
               {lang === "np"
-                ? "मतगणना सम्बन्धी डेटा निर्वाचन आयोग नेपालको आधिकारिक स्रोतबाट स्वचालित रूपमा ल्याइन्छ।"
-                : "Election data is fetched automatically from the official source of the Election Commission of Nepal."}
+                ? "निर्वाचन सम्बन्धी डेटा निर्वाचन आयोग नेपालको आधिकारिक स्रोतबाट सङ्कलन गरिएको अन्तिम अभिलेखमा आधारित छ।"
+                : "Election data on this site is based on a preserved final archive collected from the Election Commission of Nepal's official source."}
             </p>
             <p>
               {lang === "np"

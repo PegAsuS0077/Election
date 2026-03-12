@@ -1,15 +1,16 @@
 /**
- * API layer for live mode — reads static JSON files from the R2 CDN.
+ * API layer for R2-backed election data.
  *
- * In live mode (VITE_RESULTS_MODE=live) the Render background worker writes:
+ * The producer writes:
  *   snapshot.json       — seat tally + declared count
  *   constituencies.json — all 165 constituency results
  *   parties.json        — per-party seat/vote aggregates
  *
- * to a Cloudflare R2 bucket.  The frontend fetches those files directly
+ * to a Cloudflare R2 bucket. The frontend fetches those files directly
  * from the public CDN URL (VITE_CDN_URL).
  *
- * No backend server. No WebSocket. No VITE_API_URL.
+ * Archive mode reads the final snapshot once.
+ * Live mode reads the same files on an interval.
  */
 
 export type {

@@ -40,8 +40,8 @@ export default function EditorialPolicyPage() {
             </h2>
             <p>
               {lang === "np"
-                ? "मतगणना डेटा निर्वाचन आयोग नेपालको आधिकारिक परिणाम प्रणालीबाट स्वचालित रूपमा ल्याइन्छ। साइटमा देखाइने संख्या तेस्रो-पक्ष सरकारी स्रोतबाट प्राप्त रिफ्रेश गरिएको डेटा हो।"
-                : "Vote-count data is fetched automatically from the Election Commission of Nepal's official results system. Numbers shown on this website reflect refreshed data from that third-party government source."}
+                ? "यो साइट निर्वाचन आयोग नेपालको आधिकारिक परिणाम प्रणालीबाट सङ्कलन गरिएको अन्तिम डेटासेटको अभिलेख प्रयोग गर्छ। अहिले देखाइने संख्या त्यही संरक्षित परिणाम, हाम्रो प्रोसेसिङ, र त्यसबाट तयार पारिएका विश्लेषणमा आधारित छन्।"
+                : "This site now uses an archived final dataset collected from the Election Commission of Nepal's official results system. The numbers shown here reflect that preserved source data, our processing pipeline, and analysis derived from it."}
             </p>
           </section>
 
@@ -68,8 +68,8 @@ export default function EditorialPolicyPage() {
             <ul className="list-disc list-inside space-y-2">
               <li>
                 {lang === "np"
-                  ? "स्रोत डेटा गलत भए: आधिकारिक स्रोत अपडेट भएपछि साइट पनि स्वतः अपडेट हुन्छ।"
-                  : "If the official source is wrong or delayed, we wait for source correction and then sync automatically."}
+                  ? "आधिकारिक स्रोत र हाम्रो संरक्षित अभिलेखबीच फरक भेटिएमा हामी दुवै तुलना गरेर आवश्यक भए अभिलेख अद्यावधिक गर्छौं।"
+                  : "If we find a discrepancy between the official source and our preserved archive, we compare both and update the archive when needed."}
               </li>
               <li>
                 {lang === "np"

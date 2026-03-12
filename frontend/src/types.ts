@@ -10,8 +10,9 @@
  *   partyName = raw PoliticalPartyName from upstream (official Nepali text)
  *
  * Vote counts:
- *   In RESULTS_MODE=archive (pre-election), all vote fields are 0.
- *   In RESULTS_MODE=live, vote counts come from the backend/upstream.
+ *   In RESULTS_MODE=archive, vote counts come from the saved post-election
+ *   dataset used for analysis and archive browsing.
+ *   In RESULTS_MODE=live, vote counts come from the CDN-backed live feed.
  */
 
 // ── Province ─────────────────────────────────────────────────────────────────
@@ -53,9 +54,7 @@ export type Candidate = {
   /** Stable party identifier: String(SYMBOLCODE) or "IND" for independents */
   partyId: string;
   /**
-   * Votes received.
-   * ARCHIVE MODE: always 0 (pre-election, no counting has started).
-   * LIVE MODE: TotalVoteReceived from upstream or backend.
+   * Votes received from the saved archive or live CDN feed.
    */
   votes: number;
   gender: "M" | "F";
@@ -93,12 +92,9 @@ export type ConstituencyResult = {
   status: ConstituencyStatus;
   lastUpdated: string;
   candidates: Candidate[];
-  /**
-   * Sum of all candidate votes.
-   * ARCHIVE MODE: always 0.
-   */
+  /** Sum of all candidate votes recorded for this constituency. */
   votesCast: number;
-  /** Optional — not provided by upstream pre-election */
+  /** Optional registered voter total used for turnout calculations. */
   totalVoters?: number;
 };
 
@@ -144,15 +140,13 @@ export type Snapshot = {
 // ── Mode ─────────────────────────────────────────────────────────────────────
 
 /**
- * RESULTS_MODE controls how vote counts are served.
+ * RESULTS_MODE controls how saved election data is served.
  *
- * archive — pre-election: candidate/party/constituency data is real and complete
- *           from the upstream JSON, but ALL vote counts are forced to 0.
- *           Status of every constituency is "PENDING".
+ * archive — default post-election mode: loads the saved final dataset once
+ *           and powers archive browsing, visualisation, and analysis pages.
  *
- * live    — election day: vote counts come from the backend (which scrapes
- *           the upstream JSON every 30 s). The same UI models are used;
- *           only the data source changes.
+ * live    — optional polling mode: reads the CDN payload repeatedly for
+ *           near-real-time updates while counts are still changing.
  *
  * Set via VITE_RESULTS_MODE env var. Defaults to "archive".
  */

@@ -2,22 +2,21 @@
  * useElectionSimulation — data loading hook.
  *
  * ARCHIVE MODE (VITE_RESULTS_MODE=archive, default):
- *   - Fetches the official upstream JSON once (client-side, via Vite proxy in dev).
- *   - All vote counts are zeroed (pre-election archive browsing).
- *   - No polling — data is static for the session.
+ *   - Fetches the final saved dataset from Cloudflare R2 / CDN once.
+ *   - Preserves recorded votes, winner flags, and status values.
+ *   - No polling — this is the post-election analysis/archive experience.
+ *   - Requires VITE_CDN_URL so archive pages use the same R2 source of truth.
  *   - On fetch failure, shows "data unavailable" state (empty results, isLoading=false).
  *
  * LIVE MODE (VITE_RESULTS_MODE=live, requires VITE_CDN_URL):
  *   - Fetches constituencies.json from the R2 CDN immediately.
  *   - Polls every 2 minutes for updates.
- *   - No WebSocket — the CDN is a static file store with no push capability.
  *   - After each poll, fires browser notifications for favorited constituencies
  *     that newly transitioned to DECLARED status.
  */
 
 import { useEffect, useRef } from "react";
 import { useElectionStore } from "../store/electionStore";
-import { loadArchiveData } from "../lib/archiveData";
 import { RESULTS_MODE } from "../types";
 import { notifyDeclared } from "./useConstituencyNotifications";
 import { fetchConstituencies, fetchPrParties } from "../api";
@@ -46,12 +45,28 @@ export function useElectionSimulation() {
   useEffect(() => {
     let cancelled = false;
 
+    if (!CDN_BASE) {
+      console.error("[r2] VITE_CDN_URL is required so results load from Cloudflare R2.");
+      setIsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const loadFromR2 = async () => {
+      const [data, prSnapshot] = await Promise.all([fetchConstituencies(), fetchPrParties()]);
+      if (!data) {
+        throw new Error("R2 constituencies.json is unavailable");
+      }
+      return { data, prSnapshot };
+    };
+
     // ── LIVE MODE ─────────────────────────────────────────────────────────────
-    if (RESULTS_MODE === "live" && CDN_BASE) {
+    if (RESULTS_MODE === "live") {
       // Initial fetch — full replace to seed static candidate data + party registry
-      Promise.all([fetchConstituencies(), fetchPrParties()])
-        .then(([data, prSnapshot]) => {
-          if (cancelled || !data) return;
+      loadFromR2()
+        .then(({ data, prSnapshot }) => {
+          if (cancelled) return;
           setResults(data);
           setPrVotes(toPrVoteMap(prSnapshot));
           setIsLoading(false);
@@ -62,7 +77,7 @@ export function useElectionSimulation() {
           });
         })
         .catch((err) => {
-          console.error("[cdn] initial fetch failed:", err);
+          console.error("[r2] initial fetch failed:", err);
           if (!cancelled) setIsLoading(false);
         });
 
@@ -70,8 +85,8 @@ export function useElectionSimulation() {
       const interval = setInterval(async () => {
         if (cancelled) return;
         try {
-          const [data, prSnapshot] = await Promise.all([fetchConstituencies(), fetchPrParties()]);
-          if (cancelled || !data) return;
+          const { data, prSnapshot } = await loadFromR2();
+          if (cancelled) return;
 
           // Snapshot status BEFORE merge to detect transitions
           const prevByCode = new Map(
@@ -97,7 +112,7 @@ export function useElectionSimulation() {
             }
           }
         } catch (err) {
-          console.error("[cdn] poll error:", err);
+          console.error("[r2] poll error:", err);
         }
       }, POLL_INTERVAL_MS);
 
@@ -108,19 +123,20 @@ export function useElectionSimulation() {
     }
 
     // ── ARCHIVE MODE (default) ────────────────────────────────────────────────
-    loadArchiveData()
-      .then((data) => {
+    loadFromR2()
+      .then(({ data, prSnapshot }) => {
         if (cancelled) return;
         setResults(data);
+        setPrVotes(toPrVoteMap(prSnapshot));
         setIsLoading(false);
         console.info(
-          `[archive] loaded ${data.length} constituencies (${
+          `[r2] archive mode loaded ${data.length} constituencies (${
             data.reduce((n, c) => n + c.candidates.length, 0)
           } candidates)`
         );
       })
       .catch((err) => {
-        console.error("[archive] upstream fetch failed:", err);
+        console.error("[r2] archive fetch failed:", err);
         if (!cancelled) setIsLoading(false);
       });
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import NepalMap from "../NepalMap";
 import type { ConstituencyResult } from "../types";
+import { provinceName } from "../i18n";
 
 const PROVINCES = [
   "Koshi", "Madhesh", "Bagmati", "Gandaki", "Lumbini", "Karnali", "Sudurpashchim",
@@ -22,7 +23,7 @@ const constituencyResults: ConstituencyResult[] = PROVINCES.map((p, i) => ({
 }));
 
 describe("NepalMap", () => {
-  it("renders all 7 province labels", () => {
+  it("renders all 7 province labels", async () => {
     render(
       <NepalMap
         results={constituencyResults}
@@ -34,7 +35,7 @@ describe("NepalMap", () => {
       />
     );
     for (const p of PROVINCES) {
-      expect(screen.getByText(p)).toBeDefined();
+      expect(await screen.findByText(provinceName(p, "en"))).toBeDefined();
     }
   });
 
@@ -50,7 +51,7 @@ describe("NepalMap", () => {
         onSelectSeat={vi.fn()}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: /Bagmati/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Bagmati Province/i }));
     expect(onSelect).toHaveBeenCalledWith("Bagmati");
   });
 });

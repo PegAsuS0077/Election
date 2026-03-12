@@ -16,6 +16,7 @@ import MapPage from "./pages/MapPage.tsx";
 import PartiesPage from "./pages/PartiesPage.tsx";
 import CandidatesPage from "./pages/CandidatesPage.tsx";
 import AboutPage from "./pages/AboutPage.tsx";
+import AnalysisPage from "./pages/AnalysisPage.tsx";
 import PrivacyPage from "./pages/PrivacyPage.tsx";
 import ContactPage from "./pages/ContactPage.tsx";
 import TermsPage from "./pages/TermsPage.tsx";
@@ -26,6 +27,8 @@ import PartyConstituenciesPage from "./pages/PartyConstituenciesPage.tsx";
 import ConstituencyPage from "./pages/ConstituencyPage.tsx";
 import FavoritesPage from "./pages/FavoritesPage.tsx";
 import JamanatJafatPage from "./pages/JamanatJafatPage.tsx";
+import NewsPage from "./pages/NewsPage.tsx";
+import NewsArticlePage from "./pages/NewsArticlePage.tsx";
 
 // Register service worker (autoUpdate — silently refreshes on new version)
 registerSW({ immediate: true });
@@ -36,9 +39,12 @@ createRoot(document.getElementById("root")!).render(
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/map" element={<MapPage />} />
+        <Route path="/news" element={<NewsPage />} />
+        <Route path="/news/:slug" element={<NewsArticlePage />} />
         <Route path="/parties" element={<PartiesPage />} />
         <Route path="/party/:partySlug" element={<PartyPage />} />
         <Route path="/party/:partySlug/constituencies" element={<PartyConstituenciesPage />} />

@@ -93,7 +93,6 @@ function districtEn(np: string, stateId: number): string {
  * Groups by composite key (STATE_ID, DistrictName, SCConstID) — exactly 165 constituencies.
  *
  * Vote counts are preserved as-is from the upstream data.
- * Call zeroVotes (from archiveData.ts) if you need archive mode behaviour.
  *
  * Optional neuLookup: when provided, overlays English names and biographical
  * fields (father, spouse, hometown) from the NEU candidate dataset.
@@ -225,8 +224,8 @@ async function fetchWithFallback(url: string): Promise<string> {
  * Fetches real candidate data from the Election Commission and parses it.
  * Returns null on any error so callers can fall back gracefully.
  *
- * NOTE: Use archiveData.loadArchiveData() for archive mode — it zeroes votes
- * and caches the result. This function preserves raw vote counts.
+ * This is a direct upstream parser. The production site now uses the
+ * Cloudflare R2 snapshots as its canonical frontend data source.
  */
 export async function fetchRealConstituencies(): Promise<ConstituencyResult[] | null> {
   try {

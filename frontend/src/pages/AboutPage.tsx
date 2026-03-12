@@ -8,7 +8,7 @@ export default function AboutPage() {
   useEffect(() => {
     document.title = "About – NepalVotes | Nepal Election Results 2082";
     const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute("content", "About NepalVotes — an independent informational dashboard for Nepal's House of Representatives General Election 2082 (2026). Data sourced exclusively from the Election Commission of Nepal.");
+    if (meta) meta.setAttribute("content", "About NepalVotes — an independent archive, analysis, and news platform for Nepal's House of Representatives General Election 2082 (2026). Data sourced from the Election Commission of Nepal.");
     const canonical = document.querySelector('link[rel="canonical"]');
     if (canonical) canonical.setAttribute("href", "https://nepalvotes.live/about");
     return () => { if (canonical) canonical.setAttribute("href", "https://nepalvotes.live"); };
@@ -18,8 +18,8 @@ export default function AboutPage() {
     <Layout
       title="About NepalVotes"
       titleNp="नेपालभोट्सबारे"
-      subtitle="Independent live election results platform for Nepal 2082"
-      subtitleNp="नेपाल निर्वाचन २०८२ को स्वतन्त्र लाइभ परिणाम मञ्च"
+      subtitle="Independent final-results archive, analysis, and news platform for Nepal 2082"
+      subtitleNp="नेपाल निर्वाचन २०८२ को स्वतन्त्र अन्तिम परिणाम, विश्लेषण र समाचार मञ्च"
     >
       <main className="max-w-3xl mx-auto px-6 py-12 space-y-10">
 
@@ -30,13 +30,13 @@ export default function AboutPage() {
           </h2>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
             {lang === "np"
-              ? "नेपालभोट्स एउटा स्वतन्त्र डिजिटल मञ्च हो जसले नेपालको प्रतिनिधि सभा निर्वाचन २०८२ (मार्च ५, २०२६) को मतगणना परिणाम वास्तविक समयमा प्रदर्शन गर्दछ। यो मञ्च कुनै पनि राजनीतिक दल, सरकारी निकाय वा निर्वाचन आयोगसँग आबद्ध छैन।"
-              : "NepalVotes is an independent digital platform displaying real-time vote count results for Nepal's House of Representatives (Pratinidhi Sabha) General Election 2082 (2026). It is not affiliated with any political party, government body, or the Election Commission of Nepal."}
+              ? "नेपालभोट्स एउटा स्वतन्त्र डिजिटल मञ्च हो जसले नेपालको प्रतिनिधि सभा निर्वाचन २०८२ (मार्च ५, २०२६) को अन्तिम परिणाम, डेटा दृश्यांकन, र विश्लेषणात्मक सामग्री प्रस्तुत गर्दछ। यो मञ्च कुनै पनि राजनीतिक दल, सरकारी निकाय वा निर्वाचन आयोगसँग आबद्ध छैन।"
+              : "NepalVotes is an independent digital platform for final results, data visualisation, and analysis of Nepal's House of Representatives (Pratinidhi Sabha) General Election 2082 (2026). It is not affiliated with any political party, government body, or the Election Commission of Nepal."}
           </p>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
             {lang === "np"
-              ? "हाम्रो लक्ष्य भनेको निर्वाचनको रात नागरिकहरूलाई सफा, द्रुत र सजिलो तरिकाले परिणाम हेर्न सक्ने मञ्च उपलब्ध गराउनु हो — कुनै पनि राजनीतिक पूर्वाग्रह बिना।"
-              : "Our aim is to give citizens a clean, fast, and accessible way to follow results on election night — without political bias or unnecessary complexity."}
+              ? "हाम्रो लक्ष्य भनेको नागरिक, विद्यार्थी, पत्रकार र शोधकर्ताहरूलाई अन्तिम चुनावी डेटा सजिलो तरिकाले बुझ्न, खोज्न र विश्लेषण गर्न सकिने मञ्च उपलब्ध गराउनु हो — कुनै पनि राजनीतिक पूर्वाग्रह बिना।"
+              : "Our aim is to give citizens, students, journalists, and researchers a clean and accessible place to understand, browse, and analyse the final election data — without political bias or unnecessary complexity."}
           </p>
         </section>
 
@@ -47,8 +47,8 @@ export default function AboutPage() {
           </h2>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
             {lang === "np"
-              ? "सबै मतगणना डेटा निर्वाचन आयोग नेपालको आधिकारिक परिणाम वेबसाइटबाट स्वचालित रूपमा लिइन्छ। डेटा हरेक ३० सेकेन्डमा अपडेट हुन्छ।"
-              : "All vote count data is fetched automatically from the official results website of the Election Commission of Nepal. Data refreshes every 30 seconds during the counting period."}
+              ? "सबै परिणाम डेटा निर्वाचन आयोग नेपालको आधिकारिक परिणाम वेबसाइटबाट प्राप्त गरिएको अभिलेखमा आधारित छ। चुनावपछि यो साइटले त्यही डेटा सुरक्षित राखेर विश्लेषण र प्रकाशनका लागि प्रयोग गर्छ।"
+              : "All result data is based on the official results website of the Election Commission of Nepal. After the election, the site preserves that dataset as an archive for analysis and publishing."}
           </p>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-2">
             {lang === "np" ? "आधिकारिक स्रोत:" : "Official source:"}
@@ -85,13 +85,13 @@ export default function AboutPage() {
           </h2>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
             {lang === "np"
-              ? "निर्वाचन आयोगको सर्भरले मतगणना सुरु भएपछि JSON फाइलमा परिणाम प्रकाशित गर्दछ। हाम्रो प्रणालीले त्यो फाइल हरेक ३० सेकेन्डमा डाउनलोड गर्छ, डेटा विश्लेषण गर्छ, र यो ड्यासबोर्डमा प्रदर्शन गर्छ।"
-              : "The Election Commission's server publishes results to a JSON file as counting progresses. Our system downloads that file every 30 seconds, parses the candidate and vote data, and displays it on this dashboard. No human editing is involved — everything is automated directly from the official source."}
+              ? "निर्वाचन आयोगको सर्भरले परिणाम JSON फाइलमार्फत प्रकाशित गरेको डेटा हाम्रो प्रणालीले सङ्कलन र संरक्षित गर्‍यो। अहिले साइटले त्यही saved dataset बाट निर्वाचन क्षेत्र, उम्मेदवार, दल, नक्सा, र विश्लेषण पृष्ठहरू निर्माण गर्छ।"
+              : "The Election Commission published results through JSON files, and our system collected and preserved that data. The site now builds constituency pages, candidate profiles, party views, maps, and analysis directly from that saved dataset."}
           </p>
           <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
             {lang === "np"
-              ? "मतगणना शुरु नहुँदासम्म (पूर्व-निर्वाचन अवस्थामा), यो साइटले उम्मेदवारको नाम, दल र जीवनी जानकारी देखाउँछ तर मत सङ्ख्या शून्य रहन्छ।"
-              : "Before counting begins (pre-election mode), the site shows candidate names, parties, and biographical information, but vote counts remain at zero. Once counting starts on election night, live numbers populate automatically."}
+              ? "अब यो साइटको मुख्य उपयोग पोस्ट-इलेक्शन अभिलेख, परिणाम दृश्यांकन, र व्याख्यात्मक सामग्री हो।"
+              : "The site's primary use now is post-election archiving, result visualisation, and explanatory coverage."}
           </p>
         </section>
 

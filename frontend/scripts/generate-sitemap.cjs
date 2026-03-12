@@ -8,6 +8,7 @@ const ROOT = path.resolve(__dirname, "..");
 const PUBLIC_DIR = path.join(ROOT, "public");
 const SEED_PATH = path.join(PUBLIC_DIR, "constituencies.seed.json");
 const OUT_PATH = path.join(PUBLIC_DIR, "sitemap.xml");
+const POSTS_DIR = path.join(ROOT, "src", "content", "posts");
 
 function slugify(value) {
   return String(value)
@@ -46,13 +47,21 @@ function build() {
   const raw = fs.readFileSync(SEED_PATH, "utf8");
   const constituencies = JSON.parse(raw);
   const urlMap = new Map();
+  const newsPosts = fs.existsSync(POSTS_DIR)
+    ? fs.readdirSync(POSTS_DIR)
+        .filter((file) => file.endsWith(".md"))
+        .map((file) => file.replace(/\.md$/, ""))
+        .sort((a, b) => a.localeCompare(b))
+    : [];
 
   const staticRoutes = [
-    { path: "/", changefreq: "hourly", priority: "1.0" },
-    { path: "/explore", changefreq: "hourly", priority: "0.9" },
-    { path: "/map", changefreq: "hourly", priority: "0.9" },
-    { path: "/parties", changefreq: "hourly", priority: "0.8" },
-    { path: "/candidates", changefreq: "hourly", priority: "0.8" },
+    { path: "/", changefreq: "weekly", priority: "1.0" },
+    { path: "/analysis", changefreq: "weekly", priority: "0.9" },
+    { path: "/news", changefreq: "weekly", priority: "0.9" },
+    { path: "/explore", changefreq: "weekly", priority: "0.9" },
+    { path: "/map", changefreq: "weekly", priority: "0.9" },
+    { path: "/parties", changefreq: "weekly", priority: "0.8" },
+    { path: "/candidates", changefreq: "weekly", priority: "0.8" },
     { path: "/about", changefreq: "monthly", priority: "0.5" },
     { path: "/editorial-policy", changefreq: "monthly", priority: "0.5" },
     { path: "/privacy-policy", changefreq: "monthly", priority: "0.4" },
@@ -68,6 +77,10 @@ function build() {
 
   for (const route of staticRoutes) {
     pushUrl(urlMap, route.path, route.changefreq, route.priority, lastmod);
+  }
+
+  for (const slug of newsPosts) {
+    pushUrl(urlMap, `/news/${slug}`, "monthly", "0.7", lastmod);
   }
 
   const candidateMap = new Map();
@@ -121,7 +134,7 @@ function build() {
 
   console.log(
     `[sitemap] wrote ${entries.length} URLs ` +
-      `(static=${staticRoutes.length}, constituencies=${constituencies.length}, parties=${sortedPartyIds.length}, candidates=${sortedCandidates.length})`
+      `(static=${staticRoutes.length}, news=${newsPosts.length}, constituencies=${constituencies.length}, parties=${sortedPartyIds.length}, candidates=${sortedCandidates.length})`
   );
 }
 
